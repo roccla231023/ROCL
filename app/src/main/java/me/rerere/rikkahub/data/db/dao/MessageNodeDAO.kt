@@ -19,6 +19,16 @@ interface MessageNodeDAO {
     @Query("SELECT * FROM message_node WHERE conversation_id = :conversationId ORDER BY node_index ASC")
     suspend fun getNodesOfConversation(conversationId: String): List<MessageNodeEntity>
 
+    @Query("SELECT messages FROM message_node")
+    suspend fun getMessagesForScan(): List<String>
+
+    @Query(
+        "SELECT mn.messages FROM message_node mn " +
+            "INNER JOIN conversationentity c ON c.id = mn.conversation_id " +
+            "WHERE c.assistant_id = :assistantId"
+    )
+    suspend fun getMessagesOfAssistantForScan(assistantId: String): List<String>
+
     @Query(
         "SELECT * FROM message_node WHERE conversation_id = :conversationId " +
             "ORDER BY node_index ASC LIMIT :limit OFFSET :offset"

@@ -16,6 +16,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -29,8 +30,11 @@ import me.rerere.ai.ui.isEmptyInputMessage
 import me.rerere.rikkahub.R
 import me.rerere.rikkahub.data.datastore.Settings
 import me.rerere.rikkahub.data.datastore.SettingsStore
+import me.rerere.rikkahub.data.datastore.findModelById
+import me.rerere.rikkahub.data.datastore.getAssistantById
 import me.rerere.rikkahub.data.datastore.getCurrentAssistant
 import me.rerere.rikkahub.data.datastore.getCurrentChatModel
+import me.rerere.rikkahub.data.datastore.getGroupChatTemplate
 import me.rerere.rikkahub.data.files.FilesManager
 import me.rerere.rikkahub.data.model.Assistant
 import me.rerere.rikkahub.data.model.Avatar
@@ -116,8 +120,16 @@ class ChatVM(
     }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     // 当前模型
-    val currentChatModel = settings.map { settings ->
-        settings.getCurrentChatModel()
+    val currentChatModel = combine(settings, conversation) { currentSettings, currentConversation ->
+        val group = currentSettings.getGroupChatTemplate(currentConversation.assistantId)
+        if (group != null) {
+            val stickySeat = group.seats.find { it.id == currentConversation.stickySpeakerSeatId }
+                ?: group.seats.firstOrNull()
+            val seatAssistant = stickySeat?.let { currentSettings.getAssistantById(it.assistantId) }
+            currentSettings.findModelById(seatAssistant?.chatModelId ?: currentSettings.chatModelId)
+        } else {
+            currentSettings.getCurrentChatModel()
+        }
     }.stateIn(viewModelScope, SharingStarted.Lazily, null)
 
     // 错误状态
@@ -258,6 +270,10 @@ class ChatVM(
     ) {
         analytics.logEvent("ai_regenerate_at_message", null)
         chatService.regenerateAtMessage(_conversationId, message, regenerateAssistantMsg)
+    }
+
+    fun continueAtMessage(message: UIMessage) {
+        chatService.continueAtMessage(_conversationId, message)
     }
 
     fun handleToolApproval(

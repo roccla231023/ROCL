@@ -62,19 +62,24 @@ import me.rerere.hugeicons.stroke.Menu03
 import me.rerere.hugeicons.stroke.MessageAdd01
 import me.rerere.rikkahub.R
 import me.rerere.rikkahub.data.datastore.Settings
+import me.rerere.rikkahub.data.datastore.findModelById
 import me.rerere.rikkahub.data.datastore.findProvider
+import me.rerere.rikkahub.data.datastore.getAssistantById
 import me.rerere.rikkahub.data.datastore.getCurrentAssistant
 import me.rerere.rikkahub.data.datastore.getCurrentChatModel
+import me.rerere.rikkahub.data.datastore.getGroupChatTemplate
 import me.rerere.rikkahub.data.datastore.getSelectedASRProvider
 import me.rerere.rikkahub.data.files.FilesManager
 import me.rerere.rikkahub.data.model.Assistant
 import me.rerere.rikkahub.data.model.Conversation
+import me.rerere.rikkahub.data.model.buildSeatDisplayNames
 import me.rerere.rikkahub.data.repository.WorkspaceRepository
 import me.rerere.rikkahub.service.ChatError
 import me.rerere.rikkahub.ui.components.ai.ChatAttachmentPickerActions
 import me.rerere.rikkahub.ui.components.ai.ChatInput
 import me.rerere.rikkahub.ui.components.ai.FilesPicker
 import me.rerere.rikkahub.ui.components.ai.SearchMode
+import me.rerere.rikkahub.ui.components.ai.completion.GroupChatMentionCompletionProvider
 import me.rerere.rikkahub.ui.components.ai.completion.WorkspaceCompletionProvider
 import me.rerere.rikkahub.ui.components.ai.rememberChatAttachmentPickerActions
 import me.rerere.rikkahub.ui.context.LocalNavController
@@ -283,7 +288,8 @@ private fun ChatPageContent(
     val workspaceRepository: WorkspaceRepository = koinInject()
     var previewMode by rememberSaveable { mutableStateOf(false) }
     val hazeState = rememberHazeState()
-    val assistant = setting.getCurrentAssistant()
+    val groupTemplate = setting.getGroupChatTemplate(conversation.assistantId)
+    val assistant = setting.getAssistantById(conversation.assistantId) ?: setting.getCurrentAssistant()
     var showFilesSheet by remember { mutableStateOf(false) }
     val attachmentPickerActions = rememberChatAttachmentPickerActions(
         inputState = inputState,
@@ -293,16 +299,34 @@ private fun ChatPageContent(
     val allowAudioVideoAttachments =
         setting.getCurrentChatModel()?.findProvider(setting.providers) is ProviderSetting.Google
 
-    val completionProviders = remember(assistant.workspaceId, conversation.workspaceCwd, workspaceRepository) {
-        assistant.workspaceId?.let { workspaceId ->
-            listOf(
-                WorkspaceCompletionProvider(
-                    workspaceId = workspaceId.toString(),
-                    repository = workspaceRepository,
-                    currentCwd = conversation.workspaceCwd,
+    val completionProviders = remember(
+        assistant.workspaceId,
+        groupTemplate?.id,
+        groupTemplate?.workspaceId,
+        conversation.workspaceCwd,
+        workspaceRepository,
+        setting.assistants,
+    ) {
+        buildList {
+            val workspaceId = groupTemplate?.workspaceId ?: assistant.workspaceId
+            if (workspaceId != null) {
+                add(
+                    WorkspaceCompletionProvider(
+                        workspaceId = workspaceId.toString(),
+                        repository = workspaceRepository,
+                        currentCwd = conversation.workspaceCwd,
+                    )
                 )
-            )
-        }.orEmpty()
+            }
+            if (groupTemplate != null) {
+                add(
+                    GroupChatMentionCompletionProvider(
+                        template = groupTemplate,
+                        assistantsById = setting.assistants.associateBy { it.id },
+                    )
+                )
+            }
+        }
     }
 
     TTSAutoPlay(vm = vm, setting = setting, conversation = conversation)
@@ -348,6 +372,11 @@ private fun ChatPageContent(
                     settings = setting,
                     hazeState = hazeState,
                     completionProviders = completionProviders,
+                    stickySeatLabel = remember(groupTemplate, conversation.stickySpeakerSeatId, setting.assistants) {
+                        val template = groupTemplate ?: return@remember null
+                        val names = template.buildSeatDisplayNames(setting.assistants.associateBy { it.id })
+                        conversation.stickySpeakerSeatId?.let { names[it] }
+                    },
                     onCancelClick = {
                         vm.stopGeneration()
                     },
@@ -459,6 +488,9 @@ private fun ChatPageContent(
                 onClearAllErrors = onClearAllErrors,
                 onRegenerate = {
                     vm.regenerateAtMessage(it)
+                },
+                onContinue = {
+                    vm.continueAtMessage(it)
                 },
                 onEdit = {
                     inputState.editingMessage = it.id
@@ -661,8 +693,15 @@ private fun TopBar(
                 color = Color.Transparent,
             ) {
                 Column {
-                    val assistant = settings.getCurrentAssistant()
-                    val model = settings.getCurrentChatModel()
+                    val groupTemplate = settings.getGroupChatTemplate(conversation.assistantId)
+                    val model = if (groupTemplate != null) {
+                        val stickySeat = groupTemplate.seats.find { it.id == conversation.stickySpeakerSeatId }
+                            ?: groupTemplate.seats.firstOrNull()
+                        val seatAssistant = stickySeat?.let { settings.getAssistantById(it.assistantId) }
+                        settings.findModelById(seatAssistant?.chatModelId ?: settings.chatModelId)
+                    } else {
+                        settings.getCurrentChatModel()
+                    }
                     val provider = model?.findProvider(providers = settings.providers, checkOverwrite = false)
                     Text(
                         text = conversation.title.ifBlank { stringResource(R.string.chat_page_new_chat) },
@@ -670,7 +709,21 @@ private fun TopBar(
                         style = MaterialTheme.typography.bodyMedium,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    if (model != null && provider != null) {
+                    if (groupTemplate != null) {
+                        val names = groupTemplate.buildSeatDisplayNames(settings.assistants.associateBy { it.id })
+                        val subtitle = names.values.joinToString(" · ").ifBlank { groupTemplate.name }
+                        Text(
+                            text = groupTemplate.name.ifBlank { stringResource(R.string.group_chat_page_title) } +
+                                if (subtitle.isNotBlank()) " / $subtitle" else "",
+                            overflow = TextOverflow.Ellipsis,
+                            maxLines = 1,
+                            color = LocalContentColor.current.copy(0.65f),
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontSize = 8.sp,
+                            )
+                        )
+                    } else if (model != null && provider != null) {
+                        val assistant = settings.getCurrentAssistant()
                         Text(
                             text = "${assistant.name.ifBlank { stringResource(R.string.assistant_page_default_assistant) }} / ${model.displayName} (${provider.name})",
                             overflow = TextOverflow.Ellipsis,

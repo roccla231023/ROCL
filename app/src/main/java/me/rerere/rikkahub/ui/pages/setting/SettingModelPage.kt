@@ -161,6 +161,16 @@ private fun ModelSettingsPage(settings: Settings, vm: SettingVM, contentPadding:
                 onSelect = { vm.updateSettings(settings.copy(compressModelId = it.id)) },
             )
         }
+        item {
+            ModelSettingItem(
+                title = stringResource(R.string.setting_model_page_embedding_model),
+                description = stringResource(R.string.setting_model_page_embedding_model_desc),
+                modelId = settings.embeddingModelId,
+                providers = settings.providers,
+                onSelect = { vm.updateSettings(settings.copy(embeddingModelId = it.id)) },
+                modelType = ModelType.EMBEDDING,
+            )
+        }
     }
 }
 
@@ -193,11 +203,12 @@ private fun ModelSettingItem(
     onSelect: (Model) -> Unit,
     reasoningLevel: ReasoningLevel? = null,
     onUpdateReasoningLevel: ((ReasoningLevel) -> Unit)? = null,
+    modelType: ModelType = ModelType.CHAT,
 ) {
     val state = rememberModelListState(
         modelId = modelId,
         providers = providers,
-        type = ModelType.CHAT,
+        type = modelType,
     )
 
     Column {

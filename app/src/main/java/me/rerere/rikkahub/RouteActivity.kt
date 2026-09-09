@@ -84,6 +84,7 @@ import me.rerere.rikkahub.ui.pages.assistant.detail.AssistantMcpPage
 import me.rerere.rikkahub.ui.pages.assistant.detail.AssistantMemoryPage
 import me.rerere.rikkahub.ui.pages.assistant.detail.AssistantPromptPage
 import me.rerere.rikkahub.ui.pages.assistant.detail.AssistantRequestPage
+import me.rerere.rikkahub.ui.pages.assistant.groupchat.GroupChatTemplateDetailPage
 import me.rerere.rikkahub.ui.pages.backup.BackupPage
 import me.rerere.rikkahub.ui.pages.chat.ChatPage
 import me.rerere.rikkahub.ui.pages.debug.DebugPage
@@ -109,9 +110,12 @@ import me.rerere.rikkahub.ui.pages.setting.SettingPreferencesNotificationPage
 import me.rerere.rikkahub.ui.pages.setting.SettingPreferencesGeneralPage
 import me.rerere.rikkahub.ui.pages.setting.SettingPreferencesNetworkPage
 import me.rerere.rikkahub.ui.pages.setting.SettingPreferencesUIPage
+import me.rerere.rikkahub.ui.pages.setting.SettingMessageToolbarPage
+import me.rerere.rikkahub.ui.pages.setting.SettingRpOptimizationsPage
 import me.rerere.rikkahub.ui.pages.setting.SettingThemePage
+import me.rerere.rikkahub.ui.pages.storage.StorageCategoryPage
+import me.rerere.rikkahub.ui.pages.storage.StorageManagerPage
 import me.rerere.rikkahub.ui.pages.setting.SettingDonatePage
-import me.rerere.rikkahub.ui.pages.setting.SettingFilesPage
 import me.rerere.rikkahub.ui.pages.setting.SettingMcpPage
 import me.rerere.rikkahub.ui.pages.setting.SettingModelPage
 import me.rerere.rikkahub.ui.pages.setting.SettingPage
@@ -378,6 +382,10 @@ class RouteActivity : ComponentActivity() {
                                 AssistantLocalToolPage(key.id)
                             }
 
+                            entry<Screen.GroupChatTemplateDetail> { key ->
+                                GroupChatTemplateDetailPage(key.id)
+                            }
+
                             entry<Screen.AssistantInjections> { key ->
                                 AssistantExtensionsPage(key.id)
                             }
@@ -426,6 +434,14 @@ class RouteActivity : ComponentActivity() {
                                 SettingPreferencesUIPage()
                             }
 
+                            entry<Screen.SettingRpOptimizations> {
+                                SettingRpOptimizationsPage()
+                            }
+
+                            entry<Screen.SettingMessageToolbar> {
+                                SettingMessageToolbarPage()
+                            }
+
                             entry<Screen.SettingPreferencesNetwork> {
                                 SettingPreferencesNetworkPage()
                             }
@@ -469,7 +485,11 @@ class RouteActivity : ComponentActivity() {
                             }
 
                             entry<Screen.SettingFiles> {
-                                SettingFilesPage()
+                                StorageManagerPage()
+                            }
+
+                            entry<Screen.StorageCategory> { key ->
+                                StorageCategoryPage(category = key.category)
                             }
 
                             entry<Screen.SettingWeb> {
@@ -624,6 +644,9 @@ sealed interface Screen : NavKey {
     data class AssistantLocalTool(val id: String) : Screen
 
     @Serializable
+    data class GroupChatTemplateDetail(val id: String) : Screen
+
+    @Serializable
     data class AssistantInjections(val id: String) : Screen
 
     @Serializable
@@ -660,6 +683,12 @@ sealed interface Screen : NavKey {
     data object SettingPreferencesUI : Screen
 
     @Serializable
+    data object SettingRpOptimizations : Screen
+
+    @Serializable
+    data object SettingMessageToolbar : Screen
+
+    @Serializable
     data object SettingPreferencesNetwork : Screen
 
     @Serializable
@@ -691,6 +720,9 @@ sealed interface Screen : NavKey {
 
     @Serializable
     data object SettingFiles : Screen
+
+    @Serializable
+    data class StorageCategory(val category: String) : Screen
 
     @Serializable
     data object SettingWeb : Screen

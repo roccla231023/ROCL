@@ -96,6 +96,14 @@ val dataSourceModule = module {
     }
 
     single {
+        get<AppDatabase>().usageStatsDao()
+    }
+
+    single {
+        get<AppDatabase>().dailyActivityDao()
+    }
+
+    single {
         MessageFtsManager(get())
     }
 

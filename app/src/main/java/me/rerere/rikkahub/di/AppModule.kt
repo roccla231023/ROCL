@@ -96,7 +96,7 @@ val appModule = module {
             appEventBus = get(),
             settingsStore = get(),
             conversationRepo = get(),
-            memoryRepository = get(),
+            memoryRetrievalService = get(),
             generationLoop = get(),
             translationHandler = get(),
             templateTransformer = get(),
@@ -108,6 +108,8 @@ val appModule = module {
             folderRepository = get()
         )
     }
+
+    single<me.rerere.rikkahub.data.repository.ConversationDeletionCoordinator> { get<ChatService>() }
 
     single {
         WebServerManager(

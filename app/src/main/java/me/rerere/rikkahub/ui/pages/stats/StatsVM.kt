@@ -2,20 +2,12 @@ package me.rerere.rikkahub.ui.pages.stats
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import me.rerere.rikkahub.data.db.dao.ConversationDAO
-import me.rerere.rikkahub.data.db.dao.MessageNodeDAO
-import me.rerere.rikkahub.data.db.dao.getMessageCountPerDay
-import me.rerere.rikkahub.data.db.dao.getTokenStats
-import me.rerere.rikkahub.data.datastore.SettingsStore
-import java.time.DayOfWeek
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
+import me.rerere.rikkahub.data.db.entity.UsageStatsEntity
+import me.rerere.rikkahub.data.repository.ConversationRepository
 import java.time.LocalDate
-import java.time.temporal.TemporalAdjusters
 
 data class AppStats(
     val isLoading: Boolean = true,
@@ -29,55 +21,26 @@ data class AppStats(
 )
 
 class StatsVM(
-    private val conversationDAO: ConversationDAO,
-    private val messageNodeDAO: MessageNodeDAO,
-    private val settingsStore: SettingsStore,
+    conversationRepo: ConversationRepository,
 ) : ViewModel() {
 
-    private val _stats = MutableStateFlow(AppStats())
-    val stats = _stats.asStateFlow()
-
-    init {
-        viewModelScope.launch { loadStats() }
-    }
-
-    private suspend fun loadStats() {
-        delay(50)
-
-        val today = LocalDate.now()
-
-        // 热力图起始日期（52 周前的周日），格式 "yyyy-MM-dd" 直接与 JSON 中的 LocalDateTime 前缀比较
-        val startDate = today
-            .with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY))
-            .minusWeeks(52)
-            .toString()
-
-        // 基于用户消息的 createdAt 统计每日活跃消息数，SQLite 侧 GROUP BY，返回 ≤371 行
-        val conversationsPerDay = withContext(Dispatchers.IO) {
-            messageNodeDAO
-                .getMessageCountPerDay(startDate)
-                .mapNotNull { entry ->
-                    runCatching { LocalDate.parse(entry.day) to entry.count }.getOrNull()
-                }
-                .toMap()
-        }
-
-        val totalConversations = conversationDAO.countAll()
-
-        // json_each() + json_extract() 在 SQLite 侧聚合，不再加载完整 JSON 到 Kotlin
-        val tokenStats = messageNodeDAO.getTokenStats()
-
-        val launchCount = settingsStore.settingsFlow.value.launchCount
-
-        _stats.value = AppStats(
+    val stats = combine(
+        conversationRepo.countConversationsFlow(),
+        conversationRepo.getUsageStatsFlow(),
+        conversationRepo.getAllDailyActivityFlow(),
+    ) { conversationCount, usage, activity ->
+        val ledger = usage ?: UsageStatsEntity()
+        AppStats(
             isLoading = false,
-            totalConversations = totalConversations,
-            totalMessages = tokenStats.totalMessages,
-            totalPromptTokens = tokenStats.promptTokens,
-            totalCompletionTokens = tokenStats.completionTokens,
-            totalCachedTokens = tokenStats.cachedTokens,
-            conversationsPerDay = conversationsPerDay,
-            launchCount = launchCount,
+            totalConversations = conversationCount,
+            totalMessages = ledger.totalMessages.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
+            totalPromptTokens = ledger.inputTokens,
+            totalCompletionTokens = ledger.outputTokens,
+            totalCachedTokens = ledger.cachedTokens,
+            conversationsPerDay = activity.mapNotNull { entry ->
+                runCatching { LocalDate.parse(entry.date) to entry.messageCount }.getOrNull()
+            }.toMap(),
+            launchCount = ledger.appLaunches.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
         )
-    }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AppStats())
 }

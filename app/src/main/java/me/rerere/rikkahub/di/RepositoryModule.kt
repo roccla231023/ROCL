@@ -9,7 +9,10 @@ import me.rerere.rikkahub.data.repository.FavoriteRepository
 import me.rerere.rikkahub.data.repository.FolderRepository
 import me.rerere.rikkahub.data.repository.FilesRepository
 import me.rerere.rikkahub.data.repository.GenMediaRepository
+import me.rerere.rikkahub.data.ai.rag.EmbeddingService
 import me.rerere.rikkahub.data.repository.MemoryRepository
+import me.rerere.rikkahub.data.repository.MemoryRetrievalService
+import me.rerere.rikkahub.data.repository.StorageManagerRepository
 import me.rerere.rikkahub.data.repository.WorkspaceRepository
 import me.rerere.workspace.ProotShellRunner
 import me.rerere.workspace.RootfsInstaller
@@ -20,7 +23,7 @@ import java.io.File
 
 val repositoryModule = module {
     single {
-        ConversationRepository(get(), get(), get(), get(), get(), get())
+        ConversationRepository(get(), get(), get(), get(), get(), get(), get(), get())
     }
 
     single {
@@ -28,7 +31,33 @@ val repositoryModule = module {
     }
 
     single {
-        MemoryRepository(get())
+        MemoryRepository(get(), get())
+    }
+
+    single {
+        EmbeddingService(
+            providerManager = get(),
+            settingsStore = get(),
+        )
+    }
+
+    single {
+        MemoryRetrievalService(
+            memoryRepository = get(),
+            embeddingService = get(),
+        )
+    }
+
+    single {
+        StorageManagerRepository(
+            context = get(),
+            settingsStore = get(),
+            conversationDAO = get(),
+            conversationRepository = get(),
+            conversationDeletionCoordinator = get(),
+            messageNodeDAO = get(),
+            genMediaDAO = get(),
+        )
     }
 
     single {

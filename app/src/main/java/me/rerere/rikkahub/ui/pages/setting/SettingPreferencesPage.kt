@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import me.rerere.hugeicons.HugeIcons
 import me.rerere.hugeicons.stroke.Notification01
 import me.rerere.hugeicons.stroke.Internet
+import me.rerere.hugeicons.stroke.MoreVertical
 import me.rerere.hugeicons.stroke.PaintBoard
 import me.rerere.hugeicons.stroke.Settings03
 import me.rerere.hugeicons.stroke.Sun01
@@ -82,6 +83,18 @@ fun SettingPreferencesPage() {
                         leadingContent = { Icon(HugeIcons.PaintBoard, null) },
                         headlineContent = { Text(stringResource(R.string.setting_page_preferences_ui)) },
                         supportingContent = { Text(stringResource(R.string.setting_page_preferences_ui_desc)) },
+                    )
+                    item(
+                        onClick = { navController.navigate(Screen.SettingRpOptimizations) },
+                        leadingContent = { Icon(HugeIcons.PaintBoard, null) },
+                        headlineContent = { Text(stringResource(R.string.setting_display_page_rp_optimizations_title)) },
+                        supportingContent = { Text(stringResource(R.string.setting_display_page_rp_optimizations_desc)) },
+                    )
+                    item(
+                        onClick = { navController.navigate(Screen.SettingMessageToolbar) },
+                        leadingContent = { Icon(HugeIcons.MoreVertical, null) },
+                        headlineContent = { Text(stringResource(R.string.setting_page_message_toolbar)) },
+                        supportingContent = { Text(stringResource(R.string.setting_page_message_toolbar_desc)) },
                     )
                     item(
                         onClick = { navController.navigate(Screen.SettingPreferencesNetwork) },
