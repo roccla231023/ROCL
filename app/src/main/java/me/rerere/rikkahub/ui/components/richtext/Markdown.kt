@@ -94,6 +94,7 @@ import me.rerere.hugeicons.stroke.Copy01
 import me.rerere.hugeicons.stroke.Download04
 import me.rerere.hugeicons.stroke.Tick01
 import me.rerere.rikkahub.data.datastore.Settings
+import me.rerere.rikkahub.data.datastore.colorForRpPattern
 import me.rerere.rikkahub.ui.components.table.DataTable
 import me.rerere.rikkahub.ui.context.LocalSettings
 import me.rerere.rikkahub.ui.modifier.onClick
@@ -787,6 +788,7 @@ private fun Paragraph(
         node.findChildOfTypeRecursive(GFMElementTypes.INLINE_MATH) != null
     }
     val enableLatexRendering = LocalSettings.current.displaySetting.enableLatexRendering
+    val rpStyleRules = LocalSettings.current.displaySetting.rpStyleRules
 
     val textStyle = LocalTextStyle.current
     val density = LocalDensity.current
@@ -797,7 +799,7 @@ private fun Paragraph(
             else Modifier
         )
     ) {
-        val annotatedString = remember(content, enableLatexRendering, latexColorArgb) {
+        val annotatedString = remember(content, enableLatexRendering, latexColorArgb, rpStyleRules) {
             buildAnnotatedString {
                 node.children.fastForEach { child ->
                     appendMarkdownNodeContent(
@@ -811,6 +813,7 @@ private fun Paragraph(
                         trim = trim,
                         enableLatexRendering = enableLatexRendering,
                         latexColorArgb = latexColorArgb,
+                        rpStyleRules = rpStyleRules,
                     )
                 }
             }
@@ -995,6 +998,7 @@ private fun AnnotatedString.Builder.appendMarkdownNodeContent(
     style: TextStyle,
     enableLatexRendering: Boolean = true,
     latexColorArgb: Int = 0,
+    rpStyleRules: List<me.rerere.rikkahub.data.datastore.RpStyleRule> = emptyList(),
     onClickCitation: (String) -> Unit = {},
 ) {
     when {
@@ -1017,13 +1021,17 @@ private fun AnnotatedString.Builder.appendMarkdownNodeContent(
                     it
                 }.replace(BREAK_LINE_REGEX, "\n")
             }
-            append(
-                text = text,
-            )
+            appendTextWithRpRules(text, rpStyleRules)
         }
 
         node.type == MarkdownElementTypes.EMPH -> {
-            withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
+            withStyle(
+                SpanStyle(
+                    fontStyle = FontStyle.Italic,
+                    color = colorForRpPattern(rpStyleRules, "*")
+                        ?: Color.Unspecified,
+                )
+            ) {
                 node.children.trim(MarkdownTokenTypes.EMPH, 1).fastForEach {
                     appendMarkdownNodeContent(
                         node = it,
@@ -1034,6 +1042,7 @@ private fun AnnotatedString.Builder.appendMarkdownNodeContent(
                         style = style,
                         enableLatexRendering = enableLatexRendering,
                         latexColorArgb = latexColorArgb,
+                        rpStyleRules = rpStyleRules,
                         onClickCitation = onClickCitation
                     )
                 }
@@ -1041,7 +1050,13 @@ private fun AnnotatedString.Builder.appendMarkdownNodeContent(
         }
 
         node.type == MarkdownElementTypes.STRONG -> {
-            withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+            withStyle(
+                SpanStyle(
+                    fontWeight = FontWeight.Bold,
+                    color = colorForRpPattern(rpStyleRules, "**")
+                        ?: Color.Unspecified,
+                )
+            ) {
                 node.children.trim(MarkdownTokenTypes.EMPH, 2).fastForEach {
                     appendMarkdownNodeContent(
                         node = it,
@@ -1052,6 +1067,7 @@ private fun AnnotatedString.Builder.appendMarkdownNodeContent(
                         style = style,
                         enableLatexRendering = enableLatexRendering,
                         latexColorArgb = latexColorArgb,
+                        rpStyleRules = rpStyleRules,
                         onClickCitation = onClickCitation
                     )
                 }
@@ -1059,7 +1075,13 @@ private fun AnnotatedString.Builder.appendMarkdownNodeContent(
         }
 
         node.type == GFMElementTypes.STRIKETHROUGH -> {
-            withStyle(SpanStyle(textDecoration = TextDecoration.LineThrough)) {
+            withStyle(
+                SpanStyle(
+                    textDecoration = TextDecoration.LineThrough,
+                    color = colorForRpPattern(rpStyleRules, "~~")
+                        ?: Color.Unspecified,
+                )
+            ) {
                 node.children.trim(GFMTokenTypes.TILDE, 2).fastForEach {
                     appendMarkdownNodeContent(
                         node = it,
@@ -1070,6 +1092,7 @@ private fun AnnotatedString.Builder.appendMarkdownNodeContent(
                         style = style,
                         enableLatexRendering = enableLatexRendering,
                         latexColorArgb = latexColorArgb,
+                        rpStyleRules = rpStyleRules,
                         onClickCitation = onClickCitation
                     )
                 }
@@ -1148,7 +1171,8 @@ private fun AnnotatedString.Builder.appendMarkdownNodeContent(
                 SpanStyle(
                     fontFamily = JetbrainsMono,
                     fontSize = 0.9.em,
-                    color = colorScheme.primary,
+                    color = colorForRpPattern(rpStyleRules, "`")
+                        ?: colorScheme.primary,
                 )
             ) {
                 append(' ')
@@ -1236,6 +1260,7 @@ private fun AnnotatedString.Builder.appendMarkdownNodeContent(
                     style = style,
                     enableLatexRendering = enableLatexRendering,
                     latexColorArgb = latexColorArgb,
+                    rpStyleRules = rpStyleRules,
                     onClickCitation = onClickCitation
                 )
             }

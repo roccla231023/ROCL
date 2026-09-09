@@ -90,6 +90,30 @@ interface ConversationDAO {
     @Query("SELECT COUNT(*) FROM conversationentity")
     suspend fun countAll(): Int
 
+    @Query("SELECT COUNT(*) FROM conversationentity")
+    fun countAllFlow(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM conversationentity WHERE assistant_id = :assistantId")
+    suspend fun getConversationCountOfAssistant(assistantId: String): Int
+
+    @Query("SELECT strftime('%Y-%m', update_at / 1000, 'unixepoch', 'localtime') as yearMonth, COUNT(*) as count FROM conversationentity GROUP BY yearMonth ORDER BY yearMonth DESC")
+    suspend fun getConversationMonthCounts(): List<ConversationMonthCount>
+
+    @Query("SELECT strftime('%Y-%m', update_at / 1000, 'unixepoch', 'localtime') as yearMonth, COUNT(*) as count FROM conversationentity WHERE assistant_id = :assistantId GROUP BY yearMonth ORDER BY yearMonth DESC")
+    suspend fun getConversationMonthCountsOfAssistant(assistantId: String): List<ConversationMonthCount>
+
+    @Query("SELECT id FROM conversationentity WHERE update_at >= :startMs AND update_at < :endMs")
+    suspend fun getConversationIdsByUpdateAtRange(startMs: Long, endMs: Long): List<String>
+
+    @Query("SELECT id FROM conversationentity WHERE assistant_id = :assistantId AND update_at >= :startMs AND update_at < :endMs")
+    suspend fun getConversationIdsOfAssistantByUpdateAtRange(assistantId: String, startMs: Long, endMs: Long): List<String>
+
+    @Query("SELECT id, assistant_id as assistantId, title, is_pinned as isPinned, create_at as createAt, update_at as updateAt, folder_id as folderId FROM conversationentity WHERE update_at >= :startMs AND update_at < :endMs ORDER BY is_pinned DESC, update_at DESC")
+    suspend fun getLightConversationsByUpdateAtRange(startMs: Long, endMs: Long): List<LightConversationEntity>
+
+    @Query("SELECT id, assistant_id as assistantId, title, is_pinned as isPinned, create_at as createAt, update_at as updateAt, folder_id as folderId FROM conversationentity WHERE assistant_id = :assistantId AND update_at >= :startMs AND update_at < :endMs ORDER BY is_pinned DESC, update_at DESC")
+    suspend fun getLightConversationsOfAssistantByUpdateAtRange(assistantId: String, startMs: Long, endMs: Long): List<LightConversationEntity>
+
     @Query(
         "SELECT strftime('%Y-%m-%d', create_at/1000, 'unixepoch', 'localtime') AS day, " +
             "COUNT(*) AS count " +
@@ -101,3 +125,8 @@ interface ConversationDAO {
 }
 
 data class ConversationDayCount(val day: String, val count: Int)
+
+data class ConversationMonthCount(
+    val yearMonth: String,
+    val count: Int,
+)

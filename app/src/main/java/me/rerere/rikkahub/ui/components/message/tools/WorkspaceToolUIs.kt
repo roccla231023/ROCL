@@ -41,7 +41,9 @@ import me.rerere.rikkahub.ui.components.richtext.DiffAddedColor
 import me.rerere.rikkahub.ui.components.richtext.DiffRemovedColor
 import me.rerere.rikkahub.ui.components.richtext.DiffView
 import me.rerere.rikkahub.ui.components.richtext.HighlightCodeBlock
+import me.rerere.rikkahub.ui.components.richtext.MarkdownBlock
 import me.rerere.rikkahub.ui.components.richtext.parseDiffStats
+import me.rerere.rikkahub.ui.context.LocalSettings
 import me.rerere.rikkahub.ui.modifier.shimmer
 import me.rerere.rikkahub.utils.generateUnifiedDiff
 import me.rerere.rikkahub.utils.jsonPrimitiveOrNull
@@ -152,7 +154,7 @@ object EditFileToolUI : ToolUIRenderer {
 }
 
 /**
- * 工作空间读取文件: 摘要显示内容首部预览, 详情为带语法高亮的完整内容
+ * 工作空间读取文件: 默认 10 行代码预览; 开关+白名单命中的 md/txt 用 Markdown 内联
  */
 object ReadFileToolUI : ToolUIRenderer {
     override val toolName: String = "workspace_read_file"
@@ -174,11 +176,16 @@ object ReadFileToolUI : ToolUIRenderer {
     @Composable
     override fun Summary(context: ToolUIContext) {
         val text = remember(context) { textOf(context) } ?: return
-        FileContentSummary(
-            text = text,
-            path = context.arguments.getStringContent("path"),
-            loading = context.loading,
-        )
+        val path = context.arguments.getStringContent("path")
+        if (context.shouldInlineMarkdown(path)) {
+            MarkdownBlock(content = text, modifier = Modifier.fillMaxWidth())
+        } else {
+            FileContentSummary(
+                text = text,
+                path = path,
+                loading = context.loading,
+            )
+        }
     }
 
     @Composable
@@ -188,7 +195,12 @@ object ReadFileToolUI : ToolUIRenderer {
             DefaultToolPreview(context = context)
             return
         }
-        FileContentPreview(path = context.arguments.getStringContent("path"), code = text)
+        val path = context.arguments.getStringContent("path")
+        if (context.shouldInlineMarkdown(path)) {
+            FileMarkdownPreview(path = path, content = text)
+        } else {
+            FileContentPreview(path = path, code = text)
+        }
     }
 }
 
@@ -253,6 +265,40 @@ private fun FileContentSummary(text: String, path: String?, loading: Boolean) {
             lineHeight = 14.sp,
             maxLines = FILE_SUMMARY_MAX_LINES,
             overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+
+@Composable
+private fun ToolUIContext.shouldInlineMarkdown(path: String?): Boolean {
+    val display = LocalSettings.current.displaySetting
+    return shouldInlineWorkspaceRead(
+        enabled = display.inlineWorkspaceReadEnabled,
+        allowlist = display.inlineWorkspaceReadAssistantIds,
+        assistantId = assistantId,
+        path = path,
+    )
+}
+
+@Composable
+private fun FileMarkdownPreview(path: String?, content: String) {
+    Column(
+        modifier = Modifier
+            .fillMaxHeight(0.8f)
+            .padding(16.dp)
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            text = path ?: stringResource(R.string.tool_ui_file),
+            style = MaterialTheme.typography.titleMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        MarkdownBlock(
+            content = content,
             modifier = Modifier.fillMaxWidth(),
         )
     }

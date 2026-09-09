@@ -47,6 +47,7 @@ import me.rerere.rikkahub.R
 import me.rerere.rikkahub.Screen
 import me.rerere.rikkahub.data.datastore.Settings
 import me.rerere.rikkahub.data.model.Assistant
+import me.rerere.rikkahub.data.model.GroupChatTemplate
 import me.rerere.rikkahub.ui.components.ui.UIAvatar
 import me.rerere.rikkahub.ui.context.LocalNavController
 import me.rerere.rikkahub.ui.hooks.rememberAssistantState
@@ -61,6 +62,7 @@ fun AssistantPicker(
 ) {
     val state = rememberAssistantState(settings, onUpdateSettings)
     val defaultAssistantName = stringResource(R.string.assistant_page_default_assistant)
+    val groupName = state.currentGroup?.name?.ifBlank { stringResource(R.string.group_chat_page_title) }
     var showPicker by remember { mutableStateOf(false) }
 
     NavigationDrawerItem(
@@ -72,7 +74,7 @@ fun AssistantPicker(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = state.currentAssistant.name.ifEmpty { defaultAssistantName },
+                    text = groupName ?: state.currentAssistant.name.ifEmpty { defaultAssistantName },
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -96,10 +98,14 @@ fun AssistantPicker(
     if (showPicker) {
         AssistantPickerSheet(
             settings = settings,
-            currentAssistant = state.currentAssistant,
+            currentId = settings.assistantId,
             onAssistantSelected = { assistant ->
                 showPicker = false
                 state.setSelectAssistant(assistant)
+            },
+            onGroupSelected = { template ->
+                showPicker = false
+                state.setSelectTarget(template.id)
             },
             onDismiss = {
                 showPicker = false
@@ -111,8 +117,9 @@ fun AssistantPicker(
 @Composable
 private fun AssistantPickerSheet(
     settings: Settings,
-    currentAssistant: Assistant,
+    currentId: Uuid,
     onAssistantSelected: (Assistant) -> Unit,
+    onGroupSelected: (GroupChatTemplate) -> Unit,
     onDismiss: () -> Unit
 ) {
     val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden, enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded))
@@ -181,7 +188,7 @@ private fun AssistantPickerSheet(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 items(filteredAssistants, key = { it.id }) { assistant ->
-                    val checked = assistant.id == currentAssistant.id
+                    val checked = assistant.id == currentId
                     Card(
                         onClick = { onAssistantSelected(assistant) },
                         modifier = Modifier.animateItem(),
@@ -202,6 +209,51 @@ private fun AssistantPickerSheet(
                                 }
                             }
                         )
+                    }
+                }
+                if (settings.groupChatTemplates.isNotEmpty()) {
+                    item {
+                        Text(
+                            text = stringResource(R.string.group_chat_page_title),
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
+                        )
+                    }
+                    items(settings.groupChatTemplates, key = { "group:" + it.id }) { template ->
+                        val checked = template.id == currentId
+                        Card(
+                            onClick = { onGroupSelected(template) },
+                            modifier = Modifier.animateItem(),
+                            shape = MaterialTheme.shapes.large,
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (checked) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+                                contentColor = if (checked) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+                            ),
+                        ) {
+                            ListItem(
+                                headlineContent = {
+                                    Text(
+                                        text = template.name.ifBlank { stringResource(R.string.group_chat_page_title) },
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                },
+                                trailingContent = {
+                                    IconButton(
+                                        onClick = {
+                                            scope.launch {
+                                                sheetState.hide()
+                                                onDismiss()
+                                                navController.navigate(Screen.GroupChatTemplateDetail(template.id.toString()))
+                                            }
+                                        }
+                                    ) {
+                                        Icon(HugeIcons.Edit03, contentDescription = null)
+                                    }
+                                },
+                                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            )
+                        }
                     }
                 }
             }

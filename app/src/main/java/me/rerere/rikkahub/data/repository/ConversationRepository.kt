@@ -15,15 +15,22 @@ import me.rerere.rikkahub.data.db.AppDatabase
 import me.rerere.rikkahub.data.db.fts.MessageFtsManager
 import me.rerere.rikkahub.data.db.fts.MessageSearchSort
 import me.rerere.rikkahub.data.db.dao.ConversationDAO
+import me.rerere.rikkahub.data.db.dao.DailyActivityDAO
 import me.rerere.rikkahub.data.db.dao.FavoriteDAO
 import me.rerere.rikkahub.data.db.dao.MessageNodeDAO
+import me.rerere.rikkahub.data.db.dao.getMessageCountPerDay
+import me.rerere.rikkahub.data.db.dao.getTokenStats
 import me.rerere.rikkahub.data.db.entity.ConversationEntity
+import me.rerere.rikkahub.data.db.entity.DailyActivityEntity
 import me.rerere.rikkahub.data.db.entity.MessageNodeEntity
+import me.rerere.rikkahub.data.db.entity.UsageStatsEntity
+import me.rerere.rikkahub.data.db.dao.UsageStatsDAO
 import me.rerere.rikkahub.data.files.FilesManager
 import me.rerere.rikkahub.data.model.Conversation
 import me.rerere.rikkahub.data.model.MessageNode
 import me.rerere.rikkahub.utils.JsonInstant
 import java.time.Instant
+import java.time.LocalDate
 import kotlin.uuid.Uuid
 
 class ConversationRepository(
@@ -33,6 +40,8 @@ class ConversationRepository(
     private val database: AppDatabase,
     private val filesManager: FilesManager,
     private val messageFtsManager: MessageFtsManager,
+    private val usageStatsDAO: UsageStatsDAO,
+    private val dailyActivityDAO: DailyActivityDAO,
 ) {
     companion object {
         private const val PAGE_SIZE = 20
@@ -286,6 +295,8 @@ class ConversationRepository(
         return conversationDAO.countAll()
     }
 
+    fun countConversationsFlow(): Flow<Int> = conversationDAO.countAllFlow()
+
     suspend fun insertConversation(conversation: Conversation) {
         database.withTransaction {
             conversationDAO.insert(
@@ -308,8 +319,7 @@ class ConversationRepository(
         messageFtsManager.indexConversation(conversation)
     }
 
-    suspend fun deleteConversation(conversation: Conversation) {
-        // 获取完整的 Conversation（包含 messageNodes）以正确清理文件
+    suspend fun deleteConversation(conversation: Conversation, deleteFiles: Boolean = true) {
         val fullConversation = if (conversation.messageNodes.isEmpty()) {
             getConversationById(conversation.id) ?: conversation
         } else {
@@ -317,12 +327,16 @@ class ConversationRepository(
         }
         messageFtsManager.deleteConversation(conversation.id.toString())
         database.withTransaction {
-            // message_node 会通过 CASCADE 自动删除
-            conversationDAO.delete(
-                conversationToConversationEntity(conversation)
-            )
+            conversationDAO.deleteById(conversation.id.toString())
         }
-        filesManager.deleteChatFiles(fullConversation.files)
+        if (deleteFiles) {
+            filesManager.deleteChatFiles(fullConversation.files)
+        }
+    }
+
+    suspend fun deleteConversationById(id: Uuid, deleteFiles: Boolean = true) {
+        val conversation = getConversationById(id) ?: return
+        deleteConversation(conversation, deleteFiles = deleteFiles)
     }
 
     suspend fun searchMessages(
@@ -365,6 +379,7 @@ class ConversationRepository(
             modeInjectionIds = JsonInstant.encodeToString(conversation.modeInjectionIds),
             lorebookIds = JsonInstant.encodeToString(conversation.lorebookIds),
             workspaceCwd = conversation.workspaceCwd ?: "",
+            stickySpeakerSeatId = conversation.stickySpeakerSeatId?.toString() ?: "",
             folderId = conversation.folderId?.toString() ?: "",
         )
     }
@@ -386,6 +401,7 @@ class ConversationRepository(
             modeInjectionIds = JsonInstant.decodeFromString(conversationEntity.modeInjectionIds),
             lorebookIds = JsonInstant.decodeFromString(conversationEntity.lorebookIds),
             workspaceCwd = conversationEntity.workspaceCwd.ifEmpty { null },
+            stickySpeakerSeatId = conversationEntity.stickySpeakerSeatId.ifEmpty { null }?.let { Uuid.parse(it) },
             folderId = conversationEntity.folderId.ifEmpty { null }?.let { Uuid.parse(it) },
         )
     }
@@ -468,6 +484,93 @@ class ConversationRepository(
                 offset += page.size
             }
             nodes
+        }
+    }
+
+    suspend fun initUsageStats() {
+        usageStatsDAO.initIfEmpty()
+    }
+
+    fun getUsageStatsFlow(): Flow<UsageStatsEntity?> = usageStatsDAO.getStatsFlow()
+
+    fun getAllDailyActivityFlow(): Flow<List<DailyActivityEntity>> = dailyActivityDAO.getAllActivityFlow()
+
+    suspend fun recordDailyActivity() {
+        dailyActivityDAO.recordActivity(LocalDate.now().toString())
+    }
+
+    suspend fun incrementConversationCount() {
+        usageStatsDAO.initIfEmpty()
+        usageStatsDAO.incrementConversations()
+    }
+
+    suspend fun incrementMessageCount(count: Int = 1) {
+        if (count <= 0) return
+        usageStatsDAO.initIfEmpty()
+        usageStatsDAO.incrementMessages(count)
+    }
+
+    suspend fun addTokenUsage(inputTokens: Long, outputTokens: Long, cachedTokens: Long) {
+        if (inputTokens <= 0L && outputTokens <= 0L && cachedTokens <= 0L) return
+        usageStatsDAO.initIfEmpty()
+        usageStatsDAO.addTokenUsage(inputTokens, outputTokens, cachedTokens)
+    }
+
+    suspend fun incrementAppLaunches() {
+        usageStatsDAO.initIfEmpty()
+        usageStatsDAO.incrementAppLaunches()
+    }
+
+    suspend fun backfillUsageStatsFromHistoryIfNeeded() {
+        usageStatsDAO.initIfEmpty()
+        val current = usageStatsDAO.getStats() ?: return
+        val conversationCount = conversationDAO.countAll().toLong()
+        val tokenStats = runCatching { messageNodeDAO.getTokenStats() }.getOrNull()
+        val scanned = UsageLedgerSnapshot(
+            totalConversations = conversationCount,
+            totalMessages = tokenStats?.totalMessages?.toLong() ?: 0L,
+            inputTokens = tokenStats?.promptTokens ?: 0L,
+            outputTokens = tokenStats?.completionTokens ?: 0L,
+            cachedTokens = tokenStats?.cachedTokens ?: 0L,
+        )
+        val activityTotal = runCatching { dailyActivityDAO.getTotalMessageCount() }.getOrDefault(0L)
+        val bestMessages = maxOf(scanned.totalMessages, activityTotal, current.totalMessages)
+        val merged = mergeUsageStats(current = UsageLedgerSnapshot(
+            totalConversations = current.totalConversations,
+            totalMessages = current.totalMessages,
+            inputTokens = current.inputTokens,
+            outputTokens = current.outputTokens,
+            cachedTokens = current.cachedTokens,
+        ), scanned = scanned.copy(totalMessages = bestMessages))
+        if (
+            merged.totalConversations == current.totalConversations &&
+            merged.totalMessages == current.totalMessages &&
+            merged.inputTokens == current.inputTokens &&
+            merged.outputTokens == current.outputTokens &&
+            merged.cachedTokens == current.cachedTokens
+        ) {
+            return
+        }
+        usageStatsDAO.overwriteCoreStats(
+            totalConversations = merged.totalConversations,
+            totalMessages = merged.totalMessages,
+            inputTokens = merged.inputTokens,
+            outputTokens = merged.outputTokens,
+            cachedTokens = merged.cachedTokens,
+        )
+    }
+
+    suspend fun backfillDailyActivityFromConversationHistoryIfNeeded() {
+        val counts = runCatching { messageNodeDAO.getMessageCountPerDay("1970-01-01") }.getOrNull().orEmpty()
+        if (counts.isEmpty()) return
+        counts.forEach { entry ->
+            val date = entry.day
+            if (date.isBlank()) return@forEach
+            val timestamp = runCatching {
+                LocalDate.parse(date).atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli()
+            }.getOrDefault(System.currentTimeMillis())
+            dailyActivityDAO.insertBackfilledActivityIfMissing(date, entry.count, timestamp)
+            dailyActivityDAO.mergeBackfilledActivity(date, entry.count, timestamp)
         }
     }
 

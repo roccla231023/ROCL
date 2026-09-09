@@ -144,6 +144,7 @@ fun ChatInput(
     onStartVoiceMode: (() -> Unit)? = null,
     voiceState: VoiceSessionState = VoiceSessionState(),
     onStopVoiceMode: () -> Unit = {},
+    stickySeatLabel: String? = null,
 ) {
     val toaster = LocalToaster.current
     val assistant = settings.getCurrentAssistant()
@@ -251,6 +252,14 @@ fun ChatInput(
                         )
                         androidx.compose.material3.HorizontalDivider(
                             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                        )
+                    }
+                    if (!stickySeatLabel.isNullOrBlank()) {
+                        Text(
+                            text = stringResource(R.string.group_chat_sticky_seat, stickySeatLabel),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                         )
                     }
                     if (state.messageContent.isNotEmpty()) {

@@ -50,8 +50,20 @@ class ChatToolFactory(
             addAll(
                 buildMemoryTools(
                     json = json,
-                    onCreation = { content -> memoryRepository.addMemory(memoryAssistantId, content) },
-                    onUpdate = { id, content -> memoryRepository.updateContent(id, content) },
+                    onCreation = { content ->
+                        memoryRepository.addMemory(
+                            assistantId = memoryAssistantId,
+                            content = content,
+                            embeddingAssistantId = assistant.id.toString(),
+                        )
+                    },
+                    onUpdate = { id, content ->
+                        memoryRepository.updateContent(
+                            id = id,
+                            content = content,
+                            embeddingAssistantId = assistant.id.toString(),
+                        )
+                    },
                     onDelete = { id -> memoryRepository.deleteMemory(id) },
                 )
             )

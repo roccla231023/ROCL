@@ -125,6 +125,7 @@ fun ChatList(
     onRegenerate: (UIMessage) -> Unit = {},
     onEdit: (UIMessage) -> Unit = {},
     onForkMessage: (UIMessage) -> Unit = {},
+    onContinue: (UIMessage) -> Unit = {},
     onDelete: (UIMessage) -> Unit = {},
     onUpdateMessage: (MessageNode) -> Unit = {},
     onClickSuggestion: (String) -> Unit = {},
@@ -167,6 +168,7 @@ fun ChatList(
                 onRegenerate = onRegenerate,
                 onEdit = onEdit,
                 onForkMessage = onForkMessage,
+                onContinue = onContinue,
                 onDelete = onDelete,
                 onUpdateMessage = onUpdateMessage,
                 onClickSuggestion = onClickSuggestion,
@@ -197,6 +199,7 @@ private fun ChatListNormal(
     onRegenerate: (UIMessage) -> Unit,
     onEdit: (UIMessage) -> Unit,
     onForkMessage: (UIMessage) -> Unit,
+    onContinue: (UIMessage) -> Unit = {},
     onDelete: (UIMessage) -> Unit,
     onUpdateMessage: (MessageNode) -> Unit,
     onClickSuggestion: (String) -> Unit,
@@ -332,7 +335,9 @@ private fun ChatListNormal(
                         ChatMessage(
                             node = node,
                             model = node.currentMessage.modelId?.let(modelById::get),
-                            assistant = assistant,
+                            assistant = node.currentMessage.speakerAssistantId
+                                ?.let(settings::getAssistantById)
+                                ?: assistant,
                             loading = loading && index == lastMessageIndex,
                             onRegenerate = {
                                 onRegenerate(node.currentMessage)
@@ -342,6 +347,11 @@ private fun ChatListNormal(
                             },
                             onFork = {
                                 onForkMessage(node.currentMessage)
+                            },
+                            onContinue = if (index == lastMessageIndex) {
+                                { onContinue(node.currentMessage) }
+                            } else {
+                                null
                             },
                             onDelete = {
                                 onDelete(node.currentMessage)

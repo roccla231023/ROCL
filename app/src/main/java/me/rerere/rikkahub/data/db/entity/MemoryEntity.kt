@@ -12,4 +12,25 @@ data class MemoryEntity(
     val assistantId: String,
     @ColumnInfo("content")
     val content: String = "",
+    @ColumnInfo(name = "embedding", defaultValue = "NULL")
+    val embedding: String? = null,
+    @ColumnInfo(name = "embedding_model_id", defaultValue = "")
+    val embeddingModelId: String? = null,
+    @ColumnInfo(name = "type", defaultValue = "0")
+    val type: Int = MemoryType.CORE,
+    @ColumnInfo(name = "pinned", defaultValue = "0")
+    val pinned: Boolean = false,
+    @ColumnInfo(name = "last_accessed_at", defaultValue = "0")
+    val lastAccessedAt: Long = 0,
+    @ColumnInfo(name = "created_at", defaultValue = "0")
+    val createdAt: Long = 0,
+    @ColumnInfo(name = "updated_at", defaultValue = "NULL")
+    val updatedAt: Long? = null,
 )
+
+object MemoryType {
+    const val CORE = 0
+    const val EPISODIC = 1
+    const val TOOL_RESULT = 2
+    const val TOOL_RESULT_CHUNK = 3
+}

@@ -111,6 +111,7 @@ fun ChatMessage(
     onShare: () -> Unit,
     onDelete: () -> Unit,
     onUpdate: (MessageNode) -> Unit,
+    onContinue: (() -> Unit)? = null,
     isFavorite: Boolean = false,
     onToggleFavorite: (() -> Unit)? = null,
     onTranslate: ((UIMessage, Locale) -> Unit)? = null,
@@ -201,8 +202,29 @@ fun ChatMessage(
                     onOpenActionSheet = {
                         showActionsSheet = true
                     },
+                    onContinue = onContinue,
                     onTranslate = onTranslate,
-                    onClearTranslation = onClearTranslation
+                    onClearTranslation = onClearTranslation,
+                    onEdit = onEdit,
+                    onDelete = onDelete,
+                    onShare = onShare,
+                    onFork = onFork,
+                    onSelectAndCopy = { showSelectCopySheet = true },
+                    onWebViewPreview = {
+                        val textContent = message.parts
+                            .filterIsInstance<UIMessagePart.Text>()
+                            .joinToString("\n\n") { it.text }
+                            .trim()
+                        if (textContent.isNotBlank()) {
+                            val htmlContent = buildMarkdownPreviewHtml(
+                                context = context,
+                                markdown = textContent,
+                                colorScheme = colorScheme,
+                            )
+                            val contentId = WebViewContentCache.store(context.cacheDir, htmlContent)
+                            navController.navigate(Screen.WebView(contentId = contentId))
+                        }
+                    },
                 )
             }
         }
@@ -228,8 +250,10 @@ fun ChatMessage(
             onSelectAndCopy = {
                 showSelectCopySheet = true
             },
+            onRegenerate = onRegenerate,
             isFavorite = isFavorite,
             onToggleFavorite = onToggleFavorite,
+            onContinue = onContinue,
             onWebViewPreview = {
                 val textContent = message.parts
                     .filterIsInstance<UIMessagePart.Text>()
@@ -344,6 +368,7 @@ private fun MessagePartsBlock(
                                     ChatMessageToolStep(
                                         tool = step.tool,
                                         loading = loading && !step.tool.isExecuted,
+                                        assistantId = assistant?.id,
                                         onToolApproval = onToolApproval,
                                         onToolAnswer = onToolAnswer,
                                     )

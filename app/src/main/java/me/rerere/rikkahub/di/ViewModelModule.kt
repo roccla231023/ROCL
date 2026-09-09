@@ -2,6 +2,7 @@ package me.rerere.rikkahub.di
 
 import me.rerere.rikkahub.ui.pages.assistant.AssistantVM
 import me.rerere.rikkahub.ui.pages.assistant.detail.AssistantDetailVM
+import me.rerere.rikkahub.ui.pages.assistant.groupchat.GroupChatTemplateDetailVM
 import me.rerere.rikkahub.ui.pages.backup.BackupVM
 import me.rerere.rikkahub.ui.pages.chat.ChatDrawerVM
 import me.rerere.rikkahub.ui.pages.chat.ChatVM
@@ -19,6 +20,8 @@ import me.rerere.rikkahub.ui.pages.extensions.workspace.WorkspaceDetailVM
 import me.rerere.rikkahub.ui.pages.extensions.workspace.WorkspaceVM
 import me.rerere.rikkahub.ui.pages.setting.SettingVM
 import me.rerere.rikkahub.ui.pages.share.handler.ShareHandlerVM
+import me.rerere.rikkahub.ui.pages.storage.StorageCategoryVM
+import me.rerere.rikkahub.ui.pages.storage.StorageManagerVM
 import me.rerere.rikkahub.ui.pages.translator.TranslatorVM
 import org.koin.core.module.dsl.viewModel
 import org.koin.core.module.dsl.viewModelOf
@@ -43,6 +46,13 @@ val viewModelModule = module {
     viewModelOf(::DebugVM)
     viewModelOf(::HistoryVM)
     viewModelOf(::AssistantVM)
+    viewModel<GroupChatTemplateDetailVM> {
+        GroupChatTemplateDetailVM(
+            id = it.get(),
+            settingsStore = get(),
+            workspaceRepository = get(),
+        )
+    }
     viewModel<AssistantDetailVM> {
         AssistantDetailVM(
             id = it.get(),
@@ -77,4 +87,12 @@ val viewModelModule = module {
     viewModelOf(::FavoriteVM)
     viewModelOf(::SearchVM)
     viewModelOf(::StatsVM)
+    viewModelOf(::StorageManagerVM)
+    viewModel<StorageCategoryVM> {
+        StorageCategoryVM(
+            categoryKey = it.get(),
+            settingsStore = get(),
+            storageRepo = get(),
+        )
+    }
 }
