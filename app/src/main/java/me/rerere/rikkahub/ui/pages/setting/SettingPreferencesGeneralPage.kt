@@ -28,6 +28,15 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.rerere.rikkahub.R
 import me.rerere.rikkahub.data.datastore.DisplaySetting
+import me.rerere.rikkahub.data.datastore.formatEmbeddingRetrievalTimeoutSeconds
+import me.rerere.rikkahub.data.datastore.getEmbeddingRetrievalTimeoutMillis
+import me.rerere.rikkahub.data.datastore.parseEmbeddingRetrievalTimeoutMillis
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.ui.CardGroup
 import me.rerere.rikkahub.ui.hooks.rememberSharedPreferenceBoolean
@@ -43,6 +52,7 @@ fun SettingPreferencesGeneralPage(vm: SettingVM = koinViewModel()) {
     var ttsPlaybackSpeed by remember(settings.defaultTTSPlaybackSpeed) {
         mutableFloatStateOf(settings.defaultTTSPlaybackSpeed)
     }
+    val focusManager = LocalFocusManager.current
 
     fun updateDisplaySetting(setting: DisplaySetting) {
         displaySetting = setting
@@ -330,6 +340,73 @@ fun SettingPreferencesGeneralPage(vm: SettingVM = koinViewModel()) {
                                 checked = displaySetting.autoPlayTTSAfterGeneration,
                                 onCheckedChange = {
                                     updateDisplaySetting(displaySetting.copy(autoPlayTTSAfterGeneration = it))
+                                }
+                            )
+                        },
+                    )
+                }
+            }
+
+            item {
+                CardGroup(
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                    title = { Text(stringResource(R.string.setting_model_page_embedding_model)) },
+                ) {
+                    item(
+                        headlineContent = {
+                            Text(stringResource(R.string.setting_display_page_embedding_retrieval_timeout_title))
+                        },
+                        supportingContent = {
+                            Text(stringResource(R.string.setting_display_page_embedding_retrieval_timeout_desc))
+                        },
+                        trailingContent = {
+                            val timeoutMillis = settings.getEmbeddingRetrievalTimeoutMillis()
+                            var timeoutText by remember(timeoutMillis) {
+                                mutableStateOf(formatEmbeddingRetrievalTimeoutSeconds(timeoutMillis))
+                            }
+                            val timeoutIsValid = parseEmbeddingRetrievalTimeoutMillis(timeoutText) != null
+                            OutlinedTextField(
+                                value = timeoutText,
+                                onValueChange = { value ->
+                                    val normalized = value.replace(',', '.')
+                                    timeoutText = normalized
+                                    val parsedMillis = parseEmbeddingRetrievalTimeoutMillis(normalized)
+                                    if (parsedMillis != null) {
+                                        updateDisplaySetting(
+                                            displaySetting.copy(embeddingRetrievalTimeoutMillis = parsedMillis)
+                                        )
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(0.4f),
+                                singleLine = true,
+                                isError = !timeoutIsValid,
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Decimal,
+                                    imeAction = ImeAction.Done,
+                                ),
+                                keyboardActions = KeyboardActions(
+                                    onDone = {
+                                        if (!timeoutIsValid) {
+                                            timeoutText = formatEmbeddingRetrievalTimeoutSeconds(timeoutMillis)
+                                        }
+                                        focusManager.clearFocus()
+                                    }
+                                ),
+                            )
+                        },
+                    )
+                    item(
+                        headlineContent = {
+                            Text(stringResource(R.string.setting_display_page_use_last_turn_memory_title))
+                        },
+                        supportingContent = {
+                            Text(stringResource(R.string.setting_display_page_use_last_turn_memory_desc))
+                        },
+                        trailingContent = {
+                            Switch(
+                                checked = displaySetting.useLastTurnMemoryOnSkip,
+                                onCheckedChange = {
+                                    updateDisplaySetting(displaySetting.copy(useLastTurnMemoryOnSkip = it))
                                 }
                             )
                         },

@@ -39,6 +39,7 @@ import me.rerere.rikkahub.data.datastore.migration.PreferenceStoreV2Migration
 import me.rerere.rikkahub.data.datastore.migration.PreferenceStoreV3Migration
 import me.rerere.rikkahub.data.model.Assistant
 import me.rerere.rikkahub.data.model.Avatar
+import me.rerere.rikkahub.data.model.GroupChatTemplate
 import me.rerere.rikkahub.data.model.InjectionPosition
 import me.rerere.rikkahub.data.model.Lorebook
 import me.rerere.rikkahub.data.model.PromptInjection
@@ -92,6 +93,7 @@ class SettingsStore(
         val FAST_MODEL_REASONING_LEVEL = stringPreferencesKey("fast_model_reasoning_level")
         val TRANSLATE_MODEL = stringPreferencesKey("translate_model")
         val ENABLE_SUGGESTION = booleanPreferencesKey("enable_suggestion")
+        val AUTO_CONTINUE_ON_TRUNCATION = booleanPreferencesKey("auto_continue_on_truncation")
         val IMAGE_GENERATION_MODEL = stringPreferencesKey("image_generation_model")
         val TITLE_PROMPT = stringPreferencesKey("title_prompt")
         val TRANSLATION_PROMPT = stringPreferencesKey("translation_prompt")
@@ -101,6 +103,7 @@ class SettingsStore(
         val OCR_PROMPT = stringPreferencesKey("ocr_prompt")
         val COMPRESS_MODEL = stringPreferencesKey("compress_model")
         val COMPRESS_PROMPT = stringPreferencesKey("compress_prompt")
+        val EMBEDDING_MODEL = stringPreferencesKey("embedding_model")
 
         // 提供商
         val PROVIDERS = stringPreferencesKey("providers")
@@ -109,6 +112,7 @@ class SettingsStore(
         val SELECT_ASSISTANT = stringPreferencesKey("select_assistant")
         val ASSISTANTS = stringPreferencesKey("assistants")
         val ASSISTANT_TAGS = stringPreferencesKey("assistant_tags")
+        val GROUP_CHAT_TEMPLATES = stringPreferencesKey("group_chat_templates")
 
         // 搜索
         val SEARCH_SERVICES = stringPreferencesKey("search_services")
@@ -175,6 +179,7 @@ class SettingsStore(
                 preferences[FAST_MODEL_REASONING_LEVEL] = settings.fastModelReasoningLevel.name
                 preferences[TRANSLATE_MODEL] = settings.translateModeId.toString()
                 preferences[ENABLE_SUGGESTION] = settings.enableSuggestion
+                preferences[AUTO_CONTINUE_ON_TRUNCATION] = settings.autoContinueOnTruncation
                 preferences[IMAGE_GENERATION_MODEL] = settings.imageGenerationModelId.toString()
                 preferences[TITLE_PROMPT] = settings.titlePrompt
                 preferences[TRANSLATION_PROMPT] = settings.translatePrompt
@@ -184,12 +189,14 @@ class SettingsStore(
                 preferences[OCR_PROMPT] = settings.ocrPrompt
                 preferences[COMPRESS_MODEL] = settings.compressModelId.toString()
                 preferences[COMPRESS_PROMPT] = settings.compressPrompt
+                preferences[EMBEDDING_MODEL] = settings.embeddingModelId.toString()
 
                 preferences[PROVIDERS] = JsonInstant.encodeToString(settings.providers)
 
                 preferences[ASSISTANTS] = JsonInstant.encodeToString(settings.assistants)
                 preferences[SELECT_ASSISTANT] = settings.assistantId.toString()
                 preferences[ASSISTANT_TAGS] = JsonInstant.encodeToString(settings.assistantTags)
+                preferences[GROUP_CHAT_TEMPLATES] = JsonInstant.encodeToString(settings.groupChatTemplates)
 
                 preferences[SEARCH_SERVICES] = JsonInstant.encodeToString(settings.searchServices)
                 preferences[SEARCH_COMMON] = JsonInstant.encodeToString(settings.searchCommonOptions)
@@ -246,6 +253,7 @@ class SettingsStore(
                 translateModeId = preferences[TRANSLATE_MODEL]?.let { Uuid.parse(it) }
                     ?: DEFAULT_AUTO_MODEL_ID,
                 enableSuggestion = preferences[ENABLE_SUGGESTION] != false,
+                autoContinueOnTruncation = preferences[AUTO_CONTINUE_ON_TRUNCATION] == true,
                 imageGenerationModelId = preferences[IMAGE_GENERATION_MODEL]?.let { Uuid.parse(it) } ?: Uuid.random(),
                 titlePrompt = preferences[TITLE_PROMPT] ?: DEFAULT_TITLE_PROMPT,
                 translatePrompt = preferences[TRANSLATION_PROMPT] ?: DEFAULT_TRANSLATION_PROMPT,
@@ -255,6 +263,7 @@ class SettingsStore(
                 ocrPrompt = preferences[OCR_PROMPT] ?: DEFAULT_OCR_PROMPT,
                 compressModelId = preferences[COMPRESS_MODEL]?.let { Uuid.parse(it) } ?: DEFAULT_AUTO_MODEL_ID,
                 compressPrompt = preferences[COMPRESS_PROMPT] ?: DEFAULT_COMPRESS_PROMPT,
+                embeddingModelId = preferences[EMBEDDING_MODEL]?.let { Uuid.parse(it) } ?: Uuid.random(),
                 assistantId = preferences[SELECT_ASSISTANT]?.let { Uuid.parse(it) }
                     ?: DEFAULT_ASSISTANT_ID,
                 assistantTags = preferences[ASSISTANT_TAGS]?.let {
@@ -262,6 +271,9 @@ class SettingsStore(
                 } ?: emptyList(),
                 providers = JsonInstant.decodeFromString(preferences[PROVIDERS] ?: "[]"),
                 assistants = JsonInstant.decodeFromString(preferences[ASSISTANTS] ?: "[]"),
+                groupChatTemplates = preferences[GROUP_CHAT_TEMPLATES]?.let {
+                    runCatching { JsonInstant.decodeFromString<List<GroupChatTemplate>>(it) }.getOrNull()
+                } ?: emptyList(),
                 dynamicColor = preferences[DYNAMIC_COLOR] != false,
                 themeId = preferences[THEME_ID] ?: PresetThemes[0].id,
                 customThemes = preferences[CUSTOM_THEMES]?.let {
@@ -540,10 +552,12 @@ data class Settings(
     val ocrPrompt: String = DEFAULT_OCR_PROMPT,
     val compressModelId: Uuid = Uuid.random(),
     val compressPrompt: String = DEFAULT_COMPRESS_PROMPT,
+    val embeddingModelId: Uuid = Uuid.random(),
     val assistantId: Uuid = DEFAULT_ASSISTANT_ID,
     val providers: List<ProviderSetting> = DEFAULT_PROVIDERS,
     val assistants: List<Assistant> = DEFAULT_ASSISTANTS,
     val assistantTags: List<Tag> = emptyList(),
+    val groupChatTemplates: List<GroupChatTemplate> = emptyList(),
     val searchServices: List<SearchServiceOptions> = listOf(SearchServiceOptions.DEFAULT),
     val searchCommonOptions: SearchCommonOptions = SearchCommonOptions(),
     val searchServiceSelected: Int = 0,
@@ -566,6 +580,7 @@ data class Settings(
     val backupReminderConfig: BackupReminderConfig = BackupReminderConfig(),
     val launchCount: Int = 0,
     val sponsorAlertDismissedAt: Int = 0,
+    val autoContinueOnTruncation: Boolean = false,
 ) {
     companion object {
         // 构造一个用于初始化的settings, 但它不能用于保存，防止使用初始值存储
@@ -634,6 +649,14 @@ data class DisplaySetting(
     val chatCustomFontName: String = "",
     val enableVolumeKeyScroll: Boolean = false,
     val volumeKeyScrollRatio: Float = 1.0f,
+    val embeddingRetrievalTimeoutMillis: Long = DEFAULT_EMBEDDING_RETRIEVAL_TIMEOUT_MILLIS,
+    val useLastTurnMemoryOnSkip: Boolean = true,
+    val showContinueOnAssistantToolbar: Boolean = false,
+    val rpStyleRules: List<RpStyleRule> = emptyList(),
+    val inlineWorkspaceReadEnabled: Boolean = false,
+    val inlineWorkspaceReadAssistantIds: Set<Uuid> = emptySet(),
+    val userMessageToolbar: MessageToolbarConfig = MessageToolbarConfig.DEFAULT_USER,
+    val assistantMessageToolbar: MessageToolbarConfig = MessageToolbarConfig.DEFAULT_ASSISTANT,
 )
 
 @Serializable
@@ -691,6 +714,12 @@ fun Settings.getCurrentAssistant(): Assistant {
 fun Settings.getAssistantById(id: Uuid): Assistant? {
     return this.assistants.find { it.id == id }
 }
+
+fun Settings.getGroupChatTemplate(id: Uuid): GroupChatTemplate? {
+    return groupChatTemplates.find { it.id == id }
+}
+
+fun Settings.isGroupChat(id: Uuid): Boolean = getGroupChatTemplate(id) != null
 
 fun Settings.getQuickMessagesOfAssistant(assistant: Assistant) =
     quickMessages.filter { it.id in assistant.quickMessageIds }

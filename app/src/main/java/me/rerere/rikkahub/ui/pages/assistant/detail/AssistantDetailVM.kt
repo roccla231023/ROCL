@@ -187,14 +187,31 @@ class AssistantDetailVM(
             }
             memoryRepository.addMemory(
                 assistantId = memoryAssistantId,
-                content = memory.content
+                content = memory.content,
+                type = memory.type,
+                pinned = memory.pinned,
+                embeddingAssistantId = assistantId.toString(),
             )
         }
     }
 
     fun updateMemory(memory: AssistantMemory) {
         viewModelScope.launch {
-            memoryRepository.updateContent(id = memory.id, content = memory.content)
+            val current = memories.value.find { it.id == memory.id }
+            if (current == null || current.content != memory.content) {
+                memoryRepository.updateContent(
+                    id = memory.id,
+                    content = memory.content,
+                    embeddingAssistantId = assistantId.toString(),
+                )
+            }
+            if (current == null || current.type != memory.type || current.pinned != memory.pinned) {
+                memoryRepository.updateMetadata(
+                    id = memory.id,
+                    type = memory.type,
+                    pinned = memory.pinned,
+                )
+            }
         }
     }
 

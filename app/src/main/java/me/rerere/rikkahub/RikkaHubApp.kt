@@ -104,8 +104,6 @@ class RikkaHubApp : Application() {
 
         // Increment launch count
         incrementLaunchCount()
-
-        // Composer.setDiagnosticStackTraceMode(ComposeStackTraceMode.Auto)
     }
 
     private fun incrementLaunchCount() {
@@ -117,6 +115,15 @@ class RikkaHubApp : Application() {
                 Log.i(TAG, "incrementLaunchCount: ${store.settingsFlowRaw.first().launchCount}")
             }.onFailure {
                 Log.e(TAG, "incrementLaunchCount failed", it)
+            }
+            runCatching {
+                val repo = get<me.rerere.rikkahub.data.repository.ConversationRepository>()
+                repo.initUsageStats()
+                repo.backfillDailyActivityFromConversationHistoryIfNeeded()
+                repo.backfillUsageStatsFromHistoryIfNeeded()
+                repo.incrementAppLaunches()
+            }.onFailure {
+                Log.e(TAG, "usage stats init/backfill failed", it)
             }
         }
     }

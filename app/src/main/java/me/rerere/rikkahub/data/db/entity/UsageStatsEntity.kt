@@ -1,0 +1,23 @@
+package me.rerere.rikkahub.data.db.entity
+
+import androidx.room.ColumnInfo
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+
+@Entity(tableName = "usage_stats")
+data class UsageStatsEntity(
+    @PrimaryKey
+    val id: Int = 1,
+    @ColumnInfo(name = "total_conversations")
+    val totalConversations: Long = 0L,
+    @ColumnInfo(name = "total_messages")
+    val totalMessages: Long = 0L,
+    @ColumnInfo(name = "input_tokens")
+    val inputTokens: Long = 0L,
+    @ColumnInfo(name = "output_tokens")
+    val outputTokens: Long = 0L,
+    @ColumnInfo(name = "cached_tokens")
+    val cachedTokens: Long = 0L,
+    @ColumnInfo(name = "app_launches")
+    val appLaunches: Long = 0L,
+)

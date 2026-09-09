@@ -28,6 +28,21 @@ data class Assistant(
     val streamOutput: Boolean = true,
     val enableMemory: Boolean = false,
     val useGlobalMemory: Boolean = false, // 使用全局共享记忆而非助手隔离记忆
+    val embeddingModelId: Uuid? = null,
+    val memoryRetrievalMode: MemoryRetrievalMode? = null,
+    val useRagMemoryRetrieval: Boolean = true,
+    val ragSimilarityThreshold: Float = 0.45f,
+    val ragLimit: Int = 5,
+    val ragIncludeEpisodes: Boolean = true,
+    val ragIncludeCore: Boolean = true,
+    val enableMemoryConsolidation: Boolean = false,
+    val enableMemorySummary: Boolean = false,
+    val enableAutoMemorySummary: Boolean = true,
+    val memorySummaryChangeThreshold: Int = 10,
+    val memorySummaryIntervalDays: Int = 3,
+    val summarizerModelId: Uuid? = null,
+    val consolidationPrompt: String = "",
+    val memorySummaryPrompt: String = "",
     val enableRecentChatsReference: Boolean = false,
     val messageTemplate: String = "{{ message }}",
     val presetMessages: List<UIMessage> = emptyList(),
@@ -64,6 +79,13 @@ data class QuickMessage(
 data class AssistantMemory(
     val id: Int,
     val content: String = "",
+    val embedding: List<Float>? = null,
+    val embeddingModelId: String? = null,
+    val type: Int = 0,
+    val pinned: Boolean = false,
+    val lastAccessedAt: Long = 0,
+    val createdAt: Long = 0,
+    val updatedAt: Long? = null,
 )
 
 @Serializable

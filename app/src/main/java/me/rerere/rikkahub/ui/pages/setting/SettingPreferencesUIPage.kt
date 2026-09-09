@@ -7,12 +7,14 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
@@ -401,6 +403,87 @@ fun SettingPreferencesUIPage(vm: SettingVM = koinViewModel()) {
                                 checked = displaySetting.showLineNumbers,
                                 onCheckedChange = {
                                     updateDisplaySetting(displaySetting.copy(showLineNumbers = it))
+                                }
+                            )
+                        },
+                    )
+                }
+            }
+
+            item {
+                CardGroup(
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                    title = { Text(stringResource(R.string.setting_page_workspace_read_display)) },
+                ) {
+                    item(
+                        headlineContent = { Text(stringResource(R.string.setting_display_page_inline_workspace_read_title)) },
+                        supportingContent = { Text(stringResource(R.string.setting_display_page_inline_workspace_read_desc)) },
+                        trailingContent = {
+                            Switch(
+                                checked = displaySetting.inlineWorkspaceReadEnabled,
+                                onCheckedChange = {
+                                    updateDisplaySetting(displaySetting.copy(inlineWorkspaceReadEnabled = it))
+                                }
+                            )
+                        },
+                    )
+                    if (displaySetting.inlineWorkspaceReadEnabled) {
+                        item(
+                            headlineContent = { Text(stringResource(R.string.setting_display_page_inline_workspace_read_allowlist_title)) },
+                            supportingContent = {
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text(stringResource(R.string.setting_display_page_inline_workspace_read_allowlist_desc))
+                                    if (displaySetting.inlineWorkspaceReadAssistantIds.isEmpty()) {
+                                        Text(stringResource(R.string.setting_display_page_inline_workspace_read_empty_allowlist))
+                                    }
+                                    FlowRow(
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        settings.assistants.forEach { assistant ->
+                                            val selected = assistant.id in displaySetting.inlineWorkspaceReadAssistantIds
+                                            FilterChip(
+                                                selected = selected,
+                                                onClick = {
+                                                    val next = if (selected) {
+                                                        displaySetting.inlineWorkspaceReadAssistantIds - assistant.id
+                                                    } else {
+                                                        displaySetting.inlineWorkspaceReadAssistantIds + assistant.id
+                                                    }
+                                                    updateDisplaySetting(
+                                                        displaySetting.copy(inlineWorkspaceReadAssistantIds = next)
+                                                    )
+                                                },
+                                                label = {
+                                                    Text(
+                                                        assistant.name.trim().ifBlank {
+                                                            stringResource(R.string.storage_assistant_unnamed)
+                                                        }
+                                                    )
+                                                },
+                                            )
+                                        }
+                                    }
+                                }
+                            },
+                        )
+                    }
+                }
+            }
+
+            item {
+                CardGroup(
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                    title = { Text(stringResource(R.string.setting_page_message_toolbar)) },
+                ) {
+                    item(
+                        headlineContent = { Text(stringResource(R.string.developer_option_auto_continue_on_truncation_title)) },
+                        supportingContent = { Text(stringResource(R.string.developer_option_auto_continue_on_truncation_desc)) },
+                        trailingContent = {
+                            Switch(
+                                checked = settings.autoContinueOnTruncation,
+                                onCheckedChange = {
+                                    vm.updateSettings(settings.copy(autoContinueOnTruncation = it))
                                 }
                             )
                         },

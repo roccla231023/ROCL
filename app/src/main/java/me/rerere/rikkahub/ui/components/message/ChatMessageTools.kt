@@ -58,6 +58,7 @@ import me.rerere.rikkahub.ui.components.ui.ChainOfThoughtScope
 import me.rerere.rikkahub.ui.components.ui.DotLoading
 import me.rerere.rikkahub.ui.modifier.shimmer
 import me.rerere.rikkahub.utils.JsonInstant
+import kotlin.uuid.Uuid
 
 private const val ASK_USER_TOOL_NAME = "ask_user"
 
@@ -94,6 +95,7 @@ fun ChainOfThoughtScope.ChatMessageServerToolStep(tool: UIMessagePart.ServerTool
 fun ChainOfThoughtScope.ChatMessageToolStep(
     tool: UIMessagePart.Tool,
     loading: Boolean = false,
+    assistantId: Uuid? = null,
     onToolApproval: ((toolCallId: String, approved: Boolean, reason: String) -> Unit)? = null,
     onToolAnswer: ((toolCallId: String, answer: String) -> Unit)? = null,
 ) {
@@ -104,7 +106,7 @@ fun ChainOfThoughtScope.ChatMessageToolStep(
     }
 
     val renderer = remember(tool.toolName) { ToolUIRegistry.resolve(tool.toolName) }
-    val context = remember(tool, loading) {
+    val context = remember(tool, loading, assistantId) {
         ToolUIContext(
             tool = tool,
             arguments = tool.inputAsJson(),
@@ -118,6 +120,7 @@ fun ChainOfThoughtScope.ChatMessageToolStep(
                 null
             },
             loading = loading,
+            assistantId = assistantId,
         )
     }
 

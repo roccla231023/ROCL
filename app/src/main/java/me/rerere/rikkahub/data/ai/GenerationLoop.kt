@@ -27,6 +27,7 @@ import me.rerere.ai.provider.TextGenerationParams
 import me.rerere.ai.ui.UIMessage
 import me.rerere.ai.ui.UIMessagePart
 import me.rerere.ai.ui.ToolApprovalState
+import me.rerere.ai.ui.StreamChunk
 import me.rerere.ai.ui.StreamChunkHandler
 import me.rerere.ai.ui.handleTextGenerationResult
 import me.rerere.ai.ui.limitContext
@@ -62,7 +63,8 @@ private class StreamChunkHandlingException(cause: Throwable) : RuntimeException(
 @Serializable
 sealed interface GenerationChunk {
     data class Messages(
-        val messages: List<UIMessage>
+        val messages: List<UIMessage>,
+        val finishReason: String? = null,
     ) : GenerationChunk
 }
 
@@ -102,10 +104,11 @@ class GenerationLoop(
             } ?: emptyList()
 
             val toolsToProcess: List<UIMessagePart.Tool>
+            var stepFinishReason: String? = null
 
             // Skip generation if we have approved/denied tool calls to handle
             if (pendingTools.isEmpty()) {
-                generateInternal(
+                stepFinishReason = generateInternal(
                     assistant = assistant,
                     settings = settings,
                     messages = messages,
@@ -161,7 +164,7 @@ class GenerationLoop(
                     finishedAt = Clock.System.now()
                         .toLocalDateTime(TimeZone.currentSystemDefault())
                 )
-                emit(GenerationChunk.Messages(messages))
+                emit(GenerationChunk.Messages(messages, finishReason = stepFinishReason))
 
                 val toolCalls = messages.last().getTools().filter { !it.isExecuted }
                 if (toolCalls.isEmpty()) {
@@ -342,7 +345,7 @@ class GenerationLoop(
         conversationModeInjectionIds: Set<Uuid> = emptySet(),
         conversationLorebookIds: Set<Uuid> = emptySet(),
         workspaceCwd: String? = null,
-    ) {
+    ): String? {
         val internalMessages = buildList {
             val system = buildString {
                 val effectiveSystemPrompt =
@@ -416,6 +419,7 @@ class GenerationLoop(
                         )
                     }
                 var retryCount = 0
+                var finishReason: String? = null
 
                 while (true) {
                     val streamChunkHandler = StreamChunkHandler(model)
@@ -430,6 +434,9 @@ class GenerationLoop(
                                 if (retryCount > 0) {
                                     processingStatus.value = null
                                 }
+                                if (chunk is StreamChunk.Finish) {
+                                    finishReason = chunk.finishReason
+                                }
                                 attemptMessages = streamChunkHandler.handle(attemptMessages, chunk)
                                 onUpdateMessages(attemptMessages)
                             } catch (error: CancellationException) {
@@ -440,7 +447,7 @@ class GenerationLoop(
                             }
                         }
                         messages = attemptMessages
-                        break
+                        return finishReason
                     } catch (error: Throwable) {
                         if (error is StreamChunkHandlingException) {
                             throw error.cause ?: error
@@ -466,6 +473,7 @@ class GenerationLoop(
                 }
                 messages = messages.handleTextGenerationResult(result = result, model = model)
                 onUpdateMessages(messages)
+                return result.finishReason
             }
         } finally {
             processingStatus.value = null

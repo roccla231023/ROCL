@@ -32,8 +32,7 @@ import me.rerere.rikkahub.ui.components.ui.permission.rememberPermissionState
 import me.rerere.rikkahub.ui.context.LocalASRState
 import me.rerere.rikkahub.ui.context.LocalTTSState
 import me.rerere.rikkahub.ui.context.LocalToaster
-import me.rerere.rikkahub.utils.extractQuotedContentAsText
-import me.rerere.rikkahub.utils.removeBracketedContent
+import me.rerere.rikkahub.data.datastore.prepareTtsText
 import me.rerere.rikkahub.utils.stripMarkdown
 import okhttp3.OkHttpClient
 import org.koin.compose.koinInject
@@ -84,13 +83,7 @@ fun rememberVoiceModeStarter(vm: ChatVM, settings: Settings): () -> Unit {
                 createAsr = { createVoiceAsr(context, client, checkNotNull(provider)) },
                 speak = if (tts.isAvailable.value) {
                     { reply ->
-                        var text = reply
-                        if (settings.displaySetting.ttsOnlyReadQuoted) {
-                            text = text.extractQuotedContentAsText() ?: text
-                        }
-                        if (settings.displaySetting.ttsOnlyReadOutsideBrackets) {
-                            text = text.removeBracketedContent() ?: text
-                        }
+                        var text = prepareTtsText(reply, settings.displaySetting)
                         text = text.stripMarkdown()
                         if (text.isNotBlank()) {
                             tts.speak(text)

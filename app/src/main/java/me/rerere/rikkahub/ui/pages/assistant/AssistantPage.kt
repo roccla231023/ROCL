@@ -64,6 +64,7 @@ import me.rerere.rikkahub.data.datastore.DEFAULT_ASSISTANTS_IDS
 import me.rerere.rikkahub.data.datastore.Settings
 import me.rerere.rikkahub.data.model.Assistant
 import me.rerere.rikkahub.data.model.AssistantMemory
+import me.rerere.rikkahub.data.model.GroupChatTemplate
 import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.ui.FormItem
 import me.rerere.rikkahub.ui.components.ui.Tag
@@ -120,6 +121,21 @@ fun AssistantPage(vm: AssistantVM = koinViewModel()) {
                     BackButton()
                 },
                 actions = {
+                    IconButton(
+                        onClick = {
+                            val template = GroupChatTemplate(
+                                name = "",
+                            )
+                            vm.updateSettings(
+                                settings.copy(
+                                    groupChatTemplates = settings.groupChatTemplates + template
+                                )
+                            )
+                            navController.navigate(Screen.GroupChatTemplateDetail(id = template.id.toString()))
+                        }
+                    ) {
+                        Icon(HugeIcons.Add01, stringResource(R.string.group_chat_page_add))
+                    }
                     IconButton(
                         onClick = {
                             createState.open(Assistant())
@@ -185,6 +201,26 @@ fun AssistantPage(vm: AssistantVM = koinViewModel()) {
                     selectedTagIds = ids
                 }
             )
+
+            if (settings.groupChatTemplates.isNotEmpty() && searchQuery.isBlank() && selectedTagIds.isEmpty()) {
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                ) {
+                    lazyItems(settings.groupChatTemplates, key = { it.id }) { template ->
+                        FilterChip(
+                            selected = false,
+                            onClick = {
+                                navController.navigate(Screen.GroupChatTemplateDetail(id = template.id.toString()))
+                            },
+                            label = {
+                                Text(template.name.ifBlank { stringResource(R.string.group_chat_page_title) })
+                            },
+                            shape = RoundedCornerShape(50),
+                        )
+                    }
+                }
+            }
 
             LazyColumn(
                 modifier = Modifier
