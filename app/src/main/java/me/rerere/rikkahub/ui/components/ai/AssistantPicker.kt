@@ -238,6 +238,16 @@ private fun AssistantPickerSheet(
                                         overflow = TextOverflow.Ellipsis,
                                     )
                                 },
+                                supportingContent = {
+                                    Text(
+                                        text = stringResource(R.string.group_chat_members_count, template.seats.size),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                },
+                                leadingContent = {
+                                    Icon(HugeIcons.LookTop, contentDescription = null)
+                                },
                                 trailingContent = {
                                     IconButton(
                                         onClick = {

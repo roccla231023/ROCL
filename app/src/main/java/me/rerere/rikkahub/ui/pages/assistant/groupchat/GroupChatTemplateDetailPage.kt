@@ -2,38 +2,43 @@ package me.rerere.rikkahub.ui.pages.assistant.groupchat
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.rerere.ai.provider.ModelType
 import me.rerere.hugeicons.HugeIcons
 import me.rerere.hugeicons.stroke.Add01
+import me.rerere.hugeicons.stroke.ArrowRight01
 import me.rerere.hugeicons.stroke.Delete01
 import me.rerere.rikkahub.R
+import me.rerere.rikkahub.data.datastore.findModelById
 import me.rerere.rikkahub.data.db.entity.WorkspaceEntity
 import me.rerere.rikkahub.data.model.Assistant
 import me.rerere.rikkahub.data.model.GroupChatSeat
@@ -41,11 +46,13 @@ import me.rerere.rikkahub.data.model.GroupChatTemplate
 import me.rerere.rikkahub.data.model.buildSeatDisplayNames
 import me.rerere.rikkahub.ui.components.ai.ModelSelector
 import me.rerere.rikkahub.ui.components.nav.BackButton
-import me.rerere.rikkahub.ui.components.ui.FormItem
+import me.rerere.rikkahub.ui.components.ui.CardGroup
 import me.rerere.rikkahub.ui.components.ui.RikkaConfirmDialog
 import me.rerere.rikkahub.ui.components.ui.Select
+import me.rerere.rikkahub.ui.components.ui.UIAvatar
 import me.rerere.rikkahub.ui.context.LocalNavController
 import me.rerere.rikkahub.ui.theme.CustomColors
+import me.rerere.rikkahub.utils.plus
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 import kotlin.uuid.Uuid
@@ -59,11 +66,25 @@ fun GroupChatTemplateDetailPage(id: String) {
     val navController = LocalNavController.current
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     var pendingDelete by remember { mutableStateOf(false) }
+    var showIntroEditor by remember { mutableStateOf(false) }
+    var showAddMember by remember { mutableStateOf(false) }
+    var editingSeatId by remember { mutableStateOf<Uuid?>(null) }
+
+    val assistantsById = remember(settings.assistants) { settings.assistants.associateBy { it.id } }
+    val defaultAssistantName = stringResource(R.string.assistant_page_default_assistant)
+    val seatNames = template.buildSeatDisplayNames(assistantsById, defaultAssistantName)
+    val editingSeat = template.seats.find { it.id == editingSeatId }
 
     Scaffold(
         topBar = {
             LargeFlexibleTopAppBar(
-                title = { Text(stringResource(R.string.group_chat_page_title)) },
+                title = {
+                    Text(
+                        text = template.name.ifBlank { stringResource(R.string.group_chat_page_title) },
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                },
                 navigationIcon = { BackButton() },
                 actions = {
                     IconButton(onClick = { pendingDelete = true }) {
@@ -77,73 +98,117 @@ fun GroupChatTemplateDetailPage(id: String) {
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = CustomColors.topBarColors.containerColor,
     ) { innerPadding ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp)
-                .padding(innerPadding)
                 .imePadding(),
+            contentPadding = innerPadding + PaddingValues(8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            FormItem(label = { Text(stringResource(R.string.group_chat_page_name)) }) {
-                OutlinedTextField(
-                    value = template.name,
-                    onValueChange = { vm.update(template.copy(name = it)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                )
-            }
-            FormItem(
-                label = { Text(stringResource(R.string.group_chat_page_workspace)) },
-                description = { Text(stringResource(R.string.group_chat_page_workspace_desc)) },
-            ) {
-                val selected = workspaces.find { it.id == template.workspaceId?.toString() }
-                Select(
-                    options = listOf<WorkspaceEntity?>(null) + workspaces,
-                    selectedOption = selected,
-                    onOptionSelected = { workspace ->
-                        vm.update(template.copy(workspaceId = workspace?.id?.let { Uuid.parse(it) }))
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    optionToString = { workspace ->
-                        workspace?.name ?: stringResource(R.string.workspace_no_binding)
-                    },
-                )
-            }
-            HorizontalDivider()
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = stringResource(R.string.group_chat_page_seats),
-                    modifier = Modifier.weight(1f),
-                )
-                IconButton(
-                    onClick = {
-                        val firstAssistant = settings.assistants.firstOrNull() ?: return@IconButton
-                        vm.update(
-                            template.copy(
-                                seats = template.seats + GroupChatSeat(assistantId = firstAssistant.id)
-                            )
-                        )
-                    }
+            item(key = "identity") {
+                CardGroup(
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                    title = { Text(stringResource(R.string.group_chat_page_identity)) },
                 ) {
-                    Icon(HugeIcons.Add01, contentDescription = stringResource(R.string.group_chat_page_add_seat))
+                    item(
+                        supportingContent = { Text(stringResource(R.string.group_chat_page_name_desc)) },
+                        trailingContent = {
+                            OutlinedTextField(
+                                value = template.name,
+                                onValueChange = { vm.update(template.copy(name = it)) },
+                                modifier = Modifier.fillMaxWidth(0.45f),
+                                singleLine = true,
+                            )
+                        },
+                        headlineContent = { Text(stringResource(R.string.group_chat_page_name)) },
+                    )
+                    item(
+                        onClick = { showIntroEditor = true },
+                        supportingContent = {
+                            Text(
+                                text = template.intro.trim().ifBlank {
+                                    stringResource(R.string.group_chat_page_intro_desc)
+                                },
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        },
+                        trailingContent = { Icon(HugeIcons.ArrowRight01, contentDescription = null) },
+                        headlineContent = { Text(stringResource(R.string.group_chat_page_intro)) },
+                    )
+                    item(
+                        supportingContent = { Text(stringResource(R.string.group_chat_page_workspace_desc)) },
+                        trailingContent = {
+                            val selected = workspaces.find { it.id == template.workspaceId?.toString() }
+                            Select(
+                                options = listOf<WorkspaceEntity?>(null) + workspaces,
+                                selectedOption = selected,
+                                onOptionSelected = { workspace ->
+                                    vm.update(template.copy(workspaceId = workspace?.id?.let { Uuid.parse(it) }))
+                                },
+                                modifier = Modifier.fillMaxWidth(0.45f),
+                                optionToString = { workspace ->
+                                    workspace?.name ?: stringResource(R.string.workspace_no_binding)
+                                },
+                            )
+                        },
+                        headlineContent = { Text(stringResource(R.string.group_chat_page_workspace)) },
+                    )
                 }
             }
-            val names = template.buildSeatDisplayNames(settings.assistants.associateBy { it.id })
-            template.seats.forEach { seat ->
-                SeatRow(
-                    template = template,
-                    seat = seat,
-                    displayName = names[seat.id].orEmpty(),
-                    assistants = settings.assistants,
-                    providers = settings.providers,
-                    mcpServers = settings.mcpServers,
-                    onUpdate = vm::update,
-                )
+
+            item(key = "members") {
+                CardGroup(
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                    title = { Text(stringResource(R.string.group_chat_page_seats)) },
+                ) {
+                    template.seats.forEach { seat ->
+                        val assistant = assistantsById[seat.assistantId]
+                        val title = seatNames[seat.id].orEmpty().ifBlank { defaultAssistantName }
+                        val model = settings.findModelById(
+                            seat.overrides.chatModelId ?: assistant?.chatModelId ?: settings.chatModelId
+                        )
+                        item(
+                            onClick = { editingSeatId = seat.id },
+                            leadingContent = {
+                                UIAvatar(
+                                    name = title,
+                                    value = assistant?.avatar,
+                                    modifier = Modifier.size(40.dp),
+                                )
+                            },
+                            supportingContent = {
+                                Text(
+                                    text = model?.displayName
+                                        ?: stringResource(R.string.assistant_page_no_system_prompt),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            },
+                            trailingContent = {
+                                Switch(
+                                    checked = seat.defaultEnabled,
+                                    onCheckedChange = { enabled ->
+                                        vm.update(
+                                            template.copy(
+                                                seats = template.seats.map {
+                                                    if (it.id == seat.id) it.copy(defaultEnabled = enabled) else it
+                                                }
+                                            )
+                                        )
+                                    },
+                                )
+                            },
+                            headlineContent = { Text(title) },
+                        )
+                    }
+                    item(
+                        onClick = { showAddMember = true },
+                        leadingContent = { Icon(HugeIcons.Add01, contentDescription = null) },
+                        trailingContent = { Icon(HugeIcons.ArrowRight01, contentDescription = null) },
+                        headlineContent = { Text(stringResource(R.string.group_chat_page_add_seat)) },
+                    )
+                }
             }
         }
     }
@@ -161,45 +226,127 @@ fun GroupChatTemplateDetailPage(id: String) {
         onDismiss = { pendingDelete = false },
         text = { Text(template.name.ifBlank { stringResource(R.string.group_chat_page_title) }) },
     )
+
+    if (showIntroEditor) {
+        var draft by remember(template.id, showIntroEditor) { mutableStateOf(template.intro) }
+        AlertDialog(
+            onDismissRequest = { showIntroEditor = false },
+            title = { Text(stringResource(R.string.group_chat_page_intro)) },
+            text = {
+                OutlinedTextField(
+                    value = draft,
+                    onValueChange = { draft = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 4,
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        vm.update(template.copy(intro = draft))
+                        showIntroEditor = false
+                    }
+                ) { Text(stringResource(R.string.assistant_page_save)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showIntroEditor = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
+    }
+
+    if (showAddMember) {
+        ModalBottomSheet(onDismissRequest = { showAddMember = false }) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 16.dp)
+                    .padding(bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.group_chat_page_add_seat),
+                    style = MaterialTheme.typography.titleLarge,
+                )
+                CardGroup {
+                    settings.assistants.forEach { assistant ->
+                        item(
+                            onClick = {
+                                vm.update(
+                                    template.copy(
+                                        seats = template.seats + GroupChatSeat(assistantId = assistant.id)
+                                    )
+                                )
+                                showAddMember = false
+                            },
+                            leadingContent = {
+                                UIAvatar(
+                                    name = assistant.name.ifBlank { defaultAssistantName },
+                                    value = assistant.avatar,
+                                    modifier = Modifier.size(32.dp),
+                                )
+                            },
+                            headlineContent = {
+                                Text(assistant.name.ifBlank { defaultAssistantName })
+                            },
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    if (editingSeat != null) {
+        SeatEditorSheet(
+            template = template,
+            seat = editingSeat,
+            assistants = settings.assistants,
+            providers = settings.providers,
+            mcpServers = settings.mcpServers,
+            displayName = seatNames[editingSeat.id].orEmpty().ifBlank { defaultAssistantName },
+            onUpdate = vm::update,
+            onDismiss = { editingSeatId = null },
+        )
+    }
 }
 
 @Composable
-private fun SeatRow(
+private fun SeatEditorSheet(
     template: GroupChatTemplate,
     seat: GroupChatSeat,
-    displayName: String,
     assistants: List<Assistant>,
     providers: List<me.rerere.ai.provider.ProviderSetting>,
     mcpServers: List<me.rerere.rikkahub.data.ai.mcp.McpServerConfig>,
+    displayName: String,
     onUpdate: (GroupChatTemplate) -> Unit,
+    onDismiss: () -> Unit,
 ) {
     val selected = assistants.find { it.id == seat.assistantId } ?: assistants.firstOrNull()
     fun patch(transform: (GroupChatSeat) -> GroupChatSeat) {
         onUpdate(template.copy(seats = template.seats.map { if (it.id == seat.id) transform(it) else it }))
     }
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(displayName.ifBlank { stringResource(R.string.assistant_page_default_assistant) })
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 16.dp)
+                .padding(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            Text(displayName, style = MaterialTheme.typography.titleLarge)
             if (selected != null) {
                 Select(
                     options = assistants,
                     selectedOption = selected,
                     onOptionSelected = { assistant -> patch { it.copy(assistantId = assistant.id) } },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.fillMaxWidth(),
                     optionToString = { assistant ->
                         assistant.name.ifBlank { stringResource(R.string.assistant_page_default_assistant) }
                     },
                 )
             }
-            IconButton(onClick = { onUpdate(template.copy(seats = template.seats.filterNot { it.id == seat.id })) }) {
-                Icon(HugeIcons.Delete01, contentDescription = stringResource(R.string.assistant_page_delete))
-            }
-        }
-        FormItem(label = { Text(stringResource(R.string.assistant_page_chat_model)) }) {
+            Text(stringResource(R.string.assistant_page_chat_model), style = MaterialTheme.typography.titleSmall)
             ModelSelector(
                 modelId = seat.overrides.chatModelId,
                 providers = providers,
@@ -215,49 +362,62 @@ private fun SeatRow(
                     }
                 },
             )
-        }
-        FormItem(
-            label = { Text(stringResource(R.string.assistant_page_memory)) },
-            tail = {
-                Switch(
-                    checked = seat.overrides.enableMemory ?: (selected?.enableMemory == true),
-                    onCheckedChange = { enabled ->
-                        patch { it.copy(overrides = it.overrides.copy(enableMemory = enabled)) }
-                    },
-                )
-            },
-        )
-        FormItem(
-            label = { Text(stringResource(R.string.use_web_search)) },
-            tail = {
-                Switch(
-                    checked = seat.overrides.enableWebSearch ?: (selected?.enableWebSearch == true),
-                    onCheckedChange = { enabled ->
-                        patch { it.copy(overrides = it.overrides.copy(enableWebSearch = enabled)) }
-                    },
-                )
-            },
-        )
-        FormItem(
-            label = { Text(stringResource(R.string.mcp_picker_title)) },
-        ) {
-            val enabledIds = seat.overrides.mcpServers ?: selected?.mcpServers.orEmpty()
-            mcpServers.filter { it.commonOptions.enable }.forEach { server ->
-                FormItem(
-                    label = { Text(server.commonOptions.name) },
-                    tail = {
+            CardGroup {
+                item(
+                    headlineContent = { Text(stringResource(R.string.assistant_page_memory)) },
+                    trailingContent = {
                         Switch(
-                            checked = server.id in enabledIds,
-                            onCheckedChange = { checked ->
-                                val next = enabledIds.toMutableSet()
-                                if (checked) next.add(server.id) else next.remove(server.id)
-                                patch { it.copy(overrides = it.overrides.copy(mcpServers = next)) }
+                            checked = seat.overrides.enableMemory ?: (selected?.enableMemory == true),
+                            onCheckedChange = { enabled ->
+                                patch { it.copy(overrides = it.overrides.copy(enableMemory = enabled)) }
+                            },
+                        )
+                    },
+                )
+                item(
+                    headlineContent = { Text(stringResource(R.string.use_web_search)) },
+                    trailingContent = {
+                        Switch(
+                            checked = seat.overrides.enableWebSearch ?: (selected?.enableWebSearch == true),
+                            onCheckedChange = { enabled ->
+                                patch { it.copy(overrides = it.overrides.copy(enableWebSearch = enabled)) }
                             },
                         )
                     },
                 )
             }
+            val enabledIds = seat.overrides.mcpServers ?: selected?.mcpServers.orEmpty()
+            val enabledServers = mcpServers.filter { it.commonOptions.enable }
+            if (enabledServers.isNotEmpty()) {
+                CardGroup(title = { Text(stringResource(R.string.mcp_picker_title)) }) {
+                    enabledServers.forEach { server ->
+                        item(
+                            headlineContent = { Text(server.commonOptions.name) },
+                            trailingContent = {
+                                Switch(
+                                    checked = server.id in enabledIds,
+                                    onCheckedChange = { checked ->
+                                        val next = enabledIds.toMutableSet()
+                                        if (checked) next.add(server.id) else next.remove(server.id)
+                                        patch { it.copy(overrides = it.overrides.copy(mcpServers = next)) }
+                                    },
+                                )
+                            },
+                        )
+                    }
+                }
+            }
+            TextButton(
+                onClick = {
+                    onUpdate(template.copy(seats = template.seats.filterNot { it.id == seat.id }))
+                    onDismiss()
+                }
+            ) {
+                Text(
+                    text = stringResource(R.string.assistant_page_delete),
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
         }
-        HorizontalDivider()
     }
 }

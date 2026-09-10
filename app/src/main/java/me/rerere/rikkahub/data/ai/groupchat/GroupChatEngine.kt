@@ -53,14 +53,15 @@ object GroupChatEngine {
         stickySeatId: Uuid?,
         defaultName: String = "Assistant",
     ): List<Uuid> {
-        val seatsById = template.seats.associateBy { it.id }
+        val enabledSeats = template.seats.filter { it.defaultEnabled }
+        val seatsById = enabledSeats.associateBy { it.id }
         val mentioned = resolveMentionedSeatIds(userText, template, assistantsById, defaultName)
             .filter { it in seatsById }
         if (mentioned.isNotEmpty()) return mentioned.distinct()
         stickySeatId?.let { sticky ->
             if (sticky in seatsById) return listOf(sticky)
         }
-        return template.seats.firstOrNull()?.id?.let { listOf(it) }.orEmpty()
+        return enabledSeats.firstOrNull()?.id?.let { listOf(it) }.orEmpty()
     }
 
     fun nextStickySeatId(speakerSeatIds: List<Uuid>, previousSticky: Uuid?): Uuid? {
@@ -123,9 +124,13 @@ object GroupChatEngine {
     ): String {
         val selfName = seatDisplayNames[seat.id] ?: "Assistant"
         val others = template.seats
-            .filter { it.id != seat.id }
+            .filter { it.id != seat.id && it.defaultEnabled }
             .mapNotNull { seatDisplayNames[it.id] }
         return buildString {
+            val intro = template.intro.trim()
+            if (intro.isNotBlank()) {
+                appendLine(intro)
+            }
             appendLine("You are $selfName in a group chat.")
             if (others.isNotEmpty()) {
                 appendLine("Other seats: ${others.joinToString(", ")}.")
