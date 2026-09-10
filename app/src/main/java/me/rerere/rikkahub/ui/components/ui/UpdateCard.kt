@@ -44,7 +44,7 @@ import me.rerere.rikkahub.ui.pages.chat.ChatVM
 import me.rerere.rikkahub.utils.UpdateDownload
 import me.rerere.rikkahub.utils.onError
 import me.rerere.rikkahub.utils.onSuccess
-import me.rerere.rikkahub.utils.shouldOfferNightlyUpdate
+import me.rerere.rikkahub.utils.shouldOfferStableUpdate
 import me.rerere.rikkahub.utils.toLocalDateTime
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
@@ -82,7 +82,7 @@ fun UpdateCard(vm: ChatVM) {
         var dismissed by remember { mutableStateOf(false) }
         val isNewer = remember(info) {
             info.downloads.isNotEmpty() &&
-                shouldOfferNightlyUpdate(BuildConfig.GIT_SHA, info.commitSha)
+                shouldOfferStableUpdate(BuildConfig.VERSION_NAME, info.version)
         }
         if (isNewer && !dismissed) {
             Card(

@@ -3,8 +3,8 @@ package me.rerere.rikkahub.utils
 import java.util.Locale
 
 const val ROCL_GITHUB_URL = "https://github.com/roccla231023/ROCL"
-const val ROCL_NIGHTLY_API_URL =
-    "https://api.github.com/repos/roccla231023/ROCL/releases/tags/nightly"
+const val ROCL_LATEST_API_URL =
+    "https://api.github.com/repos/roccla231023/ROCL/releases/latest"
 
 private val COMMIT_IN_BODY = Regex("""commit [`']([0-9a-fA-F]{7,40})[`']""")
 
@@ -13,15 +13,15 @@ fun commitShaFromReleaseBody(body: String?): String? {
     return COMMIT_IN_BODY.find(body)?.groupValues?.get(1)
 }
 
-fun shouldOfferNightlyUpdate(localSha: String, remoteSha: String?): Boolean {
-    val local = localSha.trim()
-    val remote = remoteSha?.trim().orEmpty()
-    if (remote.length < 7 || local.length < 7) return false
-    if (local.equals("unknown", ignoreCase = true)) return false
-    val a = local.lowercase(Locale.US)
-    val b = remote.lowercase(Locale.US)
-    if (a.startsWith(b) || b.startsWith(a)) return false
-    return true
+fun versionFromReleaseTag(tag: String?): String {
+    return tag.orEmpty().trim().removePrefix("v").removePrefix("V")
+}
+
+fun shouldOfferStableUpdate(localVersion: String, remoteVersion: String?): Boolean {
+    val local = versionFromReleaseTag(localVersion)
+    val remote = versionFromReleaseTag(remoteVersion)
+    if (local.isEmpty() || remote.isEmpty()) return false
+    return Version(remote) > Version(local)
 }
 
 fun formatAssetSize(bytes: Long): String {
