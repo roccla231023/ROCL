@@ -18,8 +18,8 @@ import androidx.compose.ui.unit.dp
 import me.rerere.hugeicons.HugeIcons
 import me.rerere.hugeicons.stroke.Notification01
 import me.rerere.hugeicons.stroke.Internet
-import me.rerere.hugeicons.stroke.MoreVertical
 import me.rerere.hugeicons.stroke.PaintBoard
+import me.rerere.hugeicons.stroke.Tools
 import me.rerere.hugeicons.stroke.Settings03
 import me.rerere.hugeicons.stroke.Sun01
 import me.rerere.rikkahub.R
@@ -92,7 +92,7 @@ fun SettingPreferencesPage() {
                     )
                     item(
                         onClick = { navController.navigate(Screen.SettingMessageToolbar) },
-                        leadingContent = { Icon(HugeIcons.MoreVertical, null) },
+                        leadingContent = { Icon(HugeIcons.Tools, null) },
                         headlineContent = { Text(stringResource(R.string.setting_page_message_toolbar)) },
                         supportingContent = { Text(stringResource(R.string.setting_page_message_toolbar_desc)) },
                     )
