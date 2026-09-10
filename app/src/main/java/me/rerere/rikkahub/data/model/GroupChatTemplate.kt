@@ -8,6 +8,7 @@ import kotlin.uuid.Uuid
 data class GroupChatTemplate(
     val id: Uuid = Uuid.random(),
     val name: String = "",
+    val intro: String = "",
     val workspaceId: Uuid? = null,
     val seats: List<GroupChatSeat> = emptyList(),
 )
@@ -18,6 +19,7 @@ data class GroupChatSeat(
     val assistantId: Uuid,
     val instanceNumber: Int = 1,
     val overrides: GroupChatSeatOverrides = GroupChatSeatOverrides(),
+    val defaultEnabled: Boolean = true,
 )
 
 @Serializable
