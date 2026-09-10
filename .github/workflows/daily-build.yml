@@ -65,6 +65,40 @@ jobs:
           echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
           echo "tag=v$VERSION_NAME" >> "$GITHUB_OUTPUT"
 
+          NOTES=$(python3 - "$VERSION_NAME" <<'PY'
+import re, sys
+version = sys.argv[1]
+try:
+    text = open("CHANGELOG.md", encoding="utf-8").read()
+except FileNotFoundError:
+    print("_No CHANGELOG.md_")
+    raise SystemExit(0)
+pattern = rf"(?ms)^## {re.escape(version)}\s*\n(.*?)(?=^## |\Z)"
+match = re.search(pattern, text)
+body = match.group(1).strip() if match else ""
+print(body if body else "_No notes for this version in CHANGELOG.md_")
+PY
+)
+          {
+            echo "notes<<CHANGELOG_EOF"
+            echo "$NOTES"
+            echo "CHANGELOG_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+          git fetch origin --tags
+          PREV=$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || true)
+          if [ -n "$PREV" ]; then
+            RANGE="$PREV..HEAD"
+          else
+            RANGE="-20"
+          fi
+          COMMITS=$(git log --pretty=format:'- %s (`%h`)' $RANGE)
+          {
+            echo "commits<<COMMITS_EOF"
+            echo "$COMMITS"
+            echo "COMMITS_EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Refuse duplicate stable tag
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.publish == 'stable'
         run: |
@@ -126,6 +160,11 @@ jobs:
           body: |
             自动每日构建（commit `${{ github.sha }}`）
 
+            ${{ steps.meta.outputs.notes }}
+
+            ### Commits
+            ${{ steps.meta.outputs.commits }}
+
             > ⚠️ 开发版本，可能不稳定，仅供测试。
           files: app/build/outputs/apk/release/*.apk
 
@@ -141,4 +180,9 @@ jobs:
             ROCL ${{ steps.meta.outputs.version }} (`versionCode` ${{ steps.meta.outputs.code }})
 
             commit `${{ github.sha }}`
+
+            ${{ steps.meta.outputs.notes }}
+
+            ### Commits
+            ${{ steps.meta.outputs.commits }}
           files: app/build/outputs/apk/release/*.apk
