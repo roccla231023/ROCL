@@ -396,7 +396,7 @@ class ChatCompletionsAPI(
                             }
                         } else {
                             if (level != ReasoningLevel.AUTO) {
-                                put("reasoning_effort", if (level.effort == "none") "low" else level.effort)
+                                put("reasoning_effort", level.effort)
                             }
                         }
                     }
@@ -408,10 +408,9 @@ class ChatCompletionsAPI(
                     }
 
                     else -> {
-                        // OpenAI 官方
-                        // 文档中，completions API 只支持 "low", "medium", "high"
+                        // OpenAI-compatible default. Newer models accept none for off.
                         if (level != ReasoningLevel.AUTO) {
-                            put("reasoning_effort", if (level.effort == "none") "low" else level.effort)
+                            put("reasoning_effort", level.effort)
                         }
                     }
                 }
