@@ -4,11 +4,17 @@ on:
   # 每天 UTC 09:00、18:00 触发（北京时间 17:00、次日 02:00）
   schedule:
     - cron: '0 9,18 * * *'
-  # 也支持手动触发
   workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish as
+        type: choice
+        options:
+          - nightly
+          - stable
+        default: nightly
 
 jobs:
-  # 检查过去 24 小时内是否有新提交，没有则跳过构建，避免重复打包
   check:
     runs-on: ubuntu-latest
     outputs:
@@ -18,12 +24,10 @@ jobs:
       - name: Check for recent commits
         id: check
         run: |
-          # 手动触发时无条件构建
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "should_build=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          # 定时触发：仅当过去 24 小时内有新提交才构建
           if [ -n "$(git log --since='24 hours ago' --oneline)" ]; then
             echo "should_build=true" >> "$GITHUB_OUTPUT"
           else
@@ -36,13 +40,40 @@ jobs:
     if: needs.check.outputs.should_build == 'true'
     runs-on: ubuntu-latest
     permissions:
-      contents: write   # 发布 Release 需要写权限
+      contents: write
 
     steps:
+      - name: Require custom for stable
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.publish == 'stable'
+        run: |
+          if [ "${{ github.ref_name }}" != "custom" ]; then
+            echo "Stable releases must be built from custom (got ${{ github.ref_name }})."
+            exit 1
+          fi
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          submodules: recursive # 拉取子模块
+          submodules: recursive
+
+      - name: Read version
+        id: meta
+        run: |
+          VERSION_NAME=$(sed -n 's/.*versionName = "\(.*\)"/\1/p' app/build.gradle.kts | head -n 1)
+          VERSION_CODE=$(sed -n 's/.*versionCode = \([0-9]*\)/\1/p' app/build.gradle.kts | head -n 1)
+          echo "version=$VERSION_NAME" >> "$GITHUB_OUTPUT"
+          echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Refuse duplicate stable tag
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.publish == 'stable'
+        run: |
+          TAG="${{ steps.meta.outputs.tag }}"
+          git fetch origin --tags
+          if git rev-parse "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists. Bump versionName in app/build.gradle.kts first."
+            exit 1
+          fi
 
       - name: Set up JDK
         uses: actions/setup-java@v4
@@ -50,7 +81,6 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      # web 模块的 preBuild 会执行 `pnpm run build` 构建前端，必须准备好 Node + pnpm
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
         with:
@@ -63,7 +93,6 @@ jobs:
           cache: pnpm
           cache-dependency-path: web-ui/pnpm-lock.yaml
 
-      # gradle 的 buildWebUi 任务只跑 build 不跑 install，需在此提前安装依赖
       - name: Install web-ui dependencies
         working-directory: web-ui
         run: pnpm install --frozen-lockfile
@@ -78,13 +107,8 @@ jobs:
 
       - name: Prepare build files
         run: |
-          # 解码base64编码的keystore文件
           echo "${{ secrets.KEY_BASE64 }}" | base64 -d > app/app.key
-
-          # 写入签名配置到local.properties
           echo "${{ secrets.SIGNING_CONFIG }}" > local.properties
-
-          # 写入Google Services配置
           echo '${{ secrets.GOOGLE_SERVICES_JSON }}' > app/google-services.json
 
       - name: Gradle Build
@@ -92,16 +116,29 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleRelease
 
-      # 把 APK 直接发布为 Prerelease，用户点链接即可下载单个 apk，无需登录、无需解压
       - name: Publish nightly prerelease
         uses: softprops/action-gh-release@v2
-        if: success()
+        if: success() && (github.event_name == 'schedule' || github.event.inputs.publish != 'stable')
         with:
-          tag_name: nightly            # 固定 tag，每晚覆盖同一个「最新每日构建」
+          tag_name: nightly
           name: Nightly Build
           prerelease: true
           body: |
             自动每日构建（commit `${{ github.sha }}`）
 
             > ⚠️ 开发版本，可能不稳定，仅供测试。
+          files: app/build/outputs/apk/release/*.apk
+
+      - name: Publish stable release
+        uses: softprops/action-gh-release@v2
+        if: success() && github.event_name == 'workflow_dispatch' && github.event.inputs.publish == 'stable'
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: ROCL ${{ steps.meta.outputs.version }}
+          prerelease: false
+          make_latest: true
+          body: |
+            ROCL ${{ steps.meta.outputs.version }} (`versionCode` ${{ steps.meta.outputs.code }})
+
+            commit `${{ github.sha }}`
           files: app/build/outputs/apk/release/*.apk
