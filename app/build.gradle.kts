@@ -1,6 +1,7 @@
 import com.android.build.api.dsl.Packaging
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import java.io.ByteArrayOutputStream
 import java.io.FileInputStream
 import java.util.Properties
 
@@ -14,6 +15,20 @@ plugins {
     alias(libs.plugins.baselineprofile)
 }
 
+fun gitCommitSha(): String {
+    val stdout = ByteArrayOutputStream()
+    val result = exec {
+        workingDir = rootProject.projectDir
+        commandLine("git", "rev-parse", "HEAD")
+        standardOutput = stdout
+        isIgnoreExitValue = true
+    }
+    val sha = stdout.toString().trim()
+    return if (result.exitValue == 0 && sha.isNotEmpty()) sha else "unknown"
+}
+
+val gitSha = gitCommitSha()
+
 android {
     namespace = "me.rerere.rikkahub"
     compileSdk = 37
@@ -23,7 +38,7 @@ android {
         minSdk = 26
         targetSdk = 37
         versionCode = 186
-        versionName = "2.5.1"
+        versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -77,11 +92,13 @@ android {
             }
             buildConfigField("String", "VERSION_NAME", "\"${android.defaultConfig.versionName}\"")
             buildConfigField("String", "VERSION_CODE", "\"${android.defaultConfig.versionCode}\"")
+            buildConfigField("String", "GIT_SHA", "\"$gitSha\"")
         }
         debug {
             applicationIdSuffix = ".debug"
             buildConfigField("String", "VERSION_NAME", "\"${android.defaultConfig.versionName}\"")
             buildConfigField("String", "VERSION_CODE", "\"${android.defaultConfig.versionCode}\"")
+            buildConfigField("String", "GIT_SHA", "\"$gitSha\"")
         }
     }
     compileOptions {

@@ -47,6 +47,7 @@ import me.rerere.rikkahub.ui.components.easteregg.EmojiBurstHost
 import me.rerere.rikkahub.ui.components.ui.CardGroup
 import me.rerere.rikkahub.ui.context.LocalNavController
 import me.rerere.rikkahub.ui.theme.CustomColors
+import me.rerere.rikkahub.utils.ROCL_GITHUB_URL
 import me.rerere.rikkahub.utils.openUrl
 import me.rerere.rikkahub.utils.plus
 
@@ -121,7 +122,7 @@ fun SettingAboutPage() {
                         )
 
                         Text(
-                            text = "RikkaHub",
+                            text = stringResource(R.string.app_name),
                             style = MaterialTheme.typography.displaySmall,
                         )
                     }
@@ -163,9 +164,9 @@ fun SettingAboutPage() {
                             headlineContent = { Text(stringResource(R.string.about_page_website)) },
                         )
                         item(
-                            onClick = { context.openUrl("https://github.com/rikkahub/rikkahub") },
+                            onClick = { context.openUrl(ROCL_GITHUB_URL) },
                             leadingContent = { Icon(HugeIcons.Github, null) },
-                            supportingContent = { Text("https://github.com/rikkahub/rikkahub") },
+                            supportingContent = { Text(ROCL_GITHUB_URL) },
                             headlineContent = { Text(stringResource(R.string.about_page_github)) },
                         )
                         item(
