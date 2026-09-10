@@ -39,7 +39,7 @@ class UpdateChecker(
         emit(
             UiState.Success(
                 data = try {
-                    fetchNightly()
+                    fetchLatest()
                 } catch (e: Exception) {
                     throw Exception("Failed to fetch update info", e)
                 }
@@ -49,10 +49,10 @@ class UpdateChecker(
         emit(UiState.Error(it))
     }.flowOn(Dispatchers.IO)
 
-    private suspend fun fetchNightly(): UpdateInfo {
+    private suspend fun fetchLatest(): UpdateInfo {
         val response = client.newCall(
             Request.Builder()
-                .url(ROCL_NIGHTLY_API_URL)
+                .url(ROCL_LATEST_API_URL)
                 .get()
                 .addHeader("Accept", "application/vnd.github+json")
                 .addHeader(
@@ -65,7 +65,7 @@ class UpdateChecker(
             throw Exception("Failed to fetch update info")
         }
         val release = json.decodeFromString<GitHubRelease>(response.body.string())
-        val sha = commitShaFromReleaseBody(release.body)
+        val version = versionFromReleaseTag(release.tagName).ifBlank { release.name.orEmpty() }
         val downloads = pickNightlyApk(
             release.assets.map { asset ->
                 UpdateDownload(
@@ -75,18 +75,12 @@ class UpdateChecker(
                 )
             }
         )
-        val shortSha = sha?.take(7)
-        val version = if (shortSha.isNullOrBlank()) {
-            BuildConfig.VERSION_NAME
-        } else {
-            "${BuildConfig.VERSION_NAME} · $shortSha"
-        }
         return UpdateInfo(
             version = version,
             publishedAt = release.publishedAt.ifBlank { "1970-01-01T00:00:00Z" },
             changelog = release.body.orEmpty(),
             downloads = downloads,
-            commitSha = sha.orEmpty(),
+            commitSha = commitShaFromReleaseBody(release.body).orEmpty(),
         )
     }
 
@@ -135,6 +129,8 @@ data class UpdateInfo(
 @Serializable
 private data class GitHubRelease(
     val body: String? = null,
+    val name: String? = null,
+    @SerialName("tag_name") val tagName: String = "",
     @SerialName("published_at") val publishedAt: String = "",
     val assets: List<GitHubAsset> = emptyList(),
 )
