@@ -3,10 +3,15 @@ package me.rerere.rikkahub.ui.pages.assistant
 import me.rerere.hugeicons.HugeIcons
 import me.rerere.hugeicons.stroke.Copy01
 import me.rerere.hugeicons.stroke.Add01
+import me.rerere.hugeicons.stroke.ArrowRight01
+import me.rerere.hugeicons.stroke.Edit03
+import me.rerere.hugeicons.stroke.LookTop
 import me.rerere.hugeicons.stroke.Search01
 import me.rerere.hugeicons.stroke.Delete01
 import me.rerere.hugeicons.stroke.Cancel01
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -47,6 +52,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -66,6 +72,7 @@ import me.rerere.rikkahub.data.model.Assistant
 import me.rerere.rikkahub.data.model.AssistantMemory
 import me.rerere.rikkahub.data.model.GroupChatTemplate
 import me.rerere.rikkahub.ui.components.nav.BackButton
+import me.rerere.rikkahub.ui.components.ui.CardGroup
 import me.rerere.rikkahub.ui.components.ui.FormItem
 import me.rerere.rikkahub.ui.components.ui.Tag
 import me.rerere.rikkahub.ui.components.ui.TagType
@@ -99,6 +106,7 @@ fun AssistantPage(vm: AssistantVM = koinViewModel()) {
     var selectedTagIds by remember { mutableStateOf(emptySet<Uuid>()) }
     // 操作菜单状态
     var actionSheetAssistant by remember { mutableStateOf<Assistant?>(null) }
+    var showCreateSheet by remember { mutableStateOf(false) }
 
     // 根据搜索关键词和选中的标签过滤助手
     val filteredAssistants = remember(settings.assistants, selectedTagIds, searchQuery) {
@@ -121,25 +129,7 @@ fun AssistantPage(vm: AssistantVM = koinViewModel()) {
                     BackButton()
                 },
                 actions = {
-                    IconButton(
-                        onClick = {
-                            val template = GroupChatTemplate(
-                                name = "",
-                            )
-                            vm.updateSettings(
-                                settings.copy(
-                                    groupChatTemplates = settings.groupChatTemplates + template
-                                )
-                            )
-                            navController.navigate(Screen.GroupChatTemplateDetail(id = template.id.toString()))
-                        }
-                    ) {
-                        Icon(HugeIcons.Add01, stringResource(R.string.group_chat_page_add))
-                    }
-                    IconButton(
-                        onClick = {
-                            createState.open(Assistant())
-                        }) {
+                    IconButton(onClick = { showCreateSheet = true }) {
                         Icon(HugeIcons.Add01, stringResource(R.string.assistant_page_add))
                     }
                 },
@@ -161,7 +151,7 @@ fun AssistantPage(vm: AssistantVM = koinViewModel()) {
             val lazyListState = rememberLazyListState()
             val isFiltering = selectedTagIds.isNotEmpty() || searchQuery.isNotBlank()
             val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
-                if (!isFiltering) {
+                if (!isFiltering && from.index < filteredAssistants.size && to.index < filteredAssistants.size) {
                     val newAssistants = settings.assistants.toMutableList().apply {
                         add(to.index, removeAt(from.index))
                     }
@@ -202,22 +192,12 @@ fun AssistantPage(vm: AssistantVM = koinViewModel()) {
                 }
             )
 
-            if (settings.groupChatTemplates.isNotEmpty() && searchQuery.isBlank() && selectedTagIds.isEmpty()) {
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                ) {
-                    lazyItems(settings.groupChatTemplates, key = { it.id }) { template ->
-                        FilterChip(
-                            selected = false,
-                            onClick = {
-                                navController.navigate(Screen.GroupChatTemplateDetail(id = template.id.toString()))
-                            },
-                            label = {
-                                Text(template.name.ifBlank { stringResource(R.string.group_chat_page_title) })
-                            },
-                            shape = RoundedCornerShape(50),
-                        )
+            val filteredGroupChats = remember(settings.groupChatTemplates, searchQuery) {
+                if (searchQuery.isBlank()) {
+                    settings.groupChatTemplates
+                } else {
+                    settings.groupChatTemplates.filter { template ->
+                        template.name.contains(searchQuery, ignoreCase = true)
                     }
                 }
             }
@@ -269,11 +249,96 @@ fun AssistantPage(vm: AssistantVM = koinViewModel()) {
                         )
                     }
                 }
+                if (selectedTagIds.isEmpty()) {
+                    item(key = "group_chat_header") {
+                        Text(
+                            text = stringResource(R.string.group_chat_page_title),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(top = 12.dp, bottom = 4.dp, start = 4.dp),
+                        )
+                    }
+                    if (filteredGroupChats.isEmpty()) {
+                        item(key = "group_chat_empty") {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                onClick = {
+                                    val template = GroupChatTemplate()
+                                    vm.updateSettings(
+                                        settings.copy(groupChatTemplates = settings.groupChatTemplates + template)
+                                    )
+                                    navController.navigate(Screen.GroupChatTemplateDetail(id = template.id.toString()))
+                                },
+                                colors = CardDefaults.cardColors(
+                                    containerColor = CustomColors.listItemColors.containerColor
+                                ),
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.group_chat_template_create),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(16.dp),
+                                )
+                            }
+                        }
+                    } else {
+                        lazyItems(filteredGroupChats, key = { "group:" + it.id }) { template ->
+                            GroupChatListItem(
+                                template = template,
+                                onClick = {
+                                    navController.navigate(Screen.GroupChatTemplateDetail(id = template.id.toString()))
+                                },
+                            )
+                        }
+                    }
+                }
             }
         }
     }
 
     AssistantCreationSheet(createState)
+
+    if (showCreateSheet) {
+        ModalBottomSheet(onDismissRequest = { showCreateSheet = false }) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 16.dp)
+                    .padding(bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.assistant_page_add),
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
+                CardGroup {
+                    item(
+                        onClick = {
+                            showCreateSheet = false
+                            createState.open(Assistant())
+                        },
+                        leadingContent = { Icon(HugeIcons.Add01, contentDescription = null) },
+                        trailingContent = { Icon(HugeIcons.ArrowRight01, contentDescription = null) },
+                        headlineContent = { Text(stringResource(R.string.assistant_page_title)) },
+                    )
+                    item(
+                        onClick = {
+                            showCreateSheet = false
+                            val template = GroupChatTemplate()
+                            vm.updateSettings(
+                                settings.copy(groupChatTemplates = settings.groupChatTemplates + template)
+                            )
+                            navController.navigate(Screen.GroupChatTemplateDetail(id = template.id.toString()))
+                        },
+                        leadingContent = { Icon(HugeIcons.LookTop, contentDescription = null) },
+                        trailingContent = { Icon(HugeIcons.ArrowRight01, contentDescription = null) },
+                        headlineContent = { Text(stringResource(R.string.group_chat_template_create)) },
+                    )
+                }
+            }
+        }
+    }
 
     // 操作菜单 Bottom Sheet
     actionSheetAssistant?.let { assistant ->
@@ -289,6 +354,65 @@ fun AssistantPage(vm: AssistantVM = koinViewModel()) {
                 actionSheetAssistant = null
             }
         )
+    }
+}
+
+@Composable
+private fun GroupChatListItem(
+    template: GroupChatTemplate,
+    onClick: () -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        onClick = onClick,
+        colors = CardDefaults.cardColors(
+            containerColor = CustomColors.listItemColors.containerColor
+        ),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = HugeIcons.LookTop,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    text = template.name.ifBlank { stringResource(R.string.group_chat_page_title) },
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = stringResource(R.string.group_chat_members_count, template.seats.size),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Icon(
+                imageVector = HugeIcons.Edit03,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 

@@ -48,6 +48,30 @@ class GroupChatEngineTest {
     }
 
     @Test
+    fun disabledSeatIsSkippedWhenNoMention() {
+        val disabledFirst = gptSeat.copy(defaultEnabled = false)
+        val speakers = GroupChatEngine.resolveSpeakerSeatIds(
+            userText = "hello everyone",
+            template = template.copy(seats = listOf(disabledFirst, claudeSeat)),
+            assistantsById = assistants,
+            stickySeatId = null,
+        )
+        assertEquals(listOf(claudeSeat.id), speakers)
+    }
+
+    @Test
+    fun introPrefixedOntoSeatSystemPrompt() {
+        val names = template.buildSeatDisplayNames(assistants)
+        val suffix = GroupChatEngine.contextSystemPromptSuffix(
+            template = template.copy(intro = "Shared code review room."),
+            seat = claudeSeat,
+            seatDisplayNames = names,
+        )
+        assertTrue(suffix.startsWith("Shared code review room."))
+        assertTrue(suffix.contains("You are Claude in a group chat."))
+    }
+
+    @Test
     fun neverMentionedFallsToFirstSeatNotHostRouter() {
         val speakers = GroupChatEngine.resolveSpeakerSeatIds(
             userText = "hello everyone",
