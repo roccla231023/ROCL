@@ -143,32 +143,34 @@ private fun StorageCategoriesGroup(
     onOpenCategory: (StorageCategoryKey) -> Unit,
 ) {
     val context = LocalContext.current
+    val byKey = (overviewState as? UiState.Success<StorageOverview>)
+        ?.data
+        ?.categories
+        ?.associateBy { it.category }
+        .orEmpty()
+    val placeholderText = when (overviewState) {
+        UiState.Idle, UiState.Loading -> stringResource(R.string.storage_manager_loading_placeholder)
+        is UiState.Error -> overviewState.error.message ?: "Error"
+        is UiState.Success -> null
+    }
+    val subtitles = StorageCategoryKey.entries.associateWith { category ->
+        placeholderText ?: run {
+            val usage = byKey[category]
+            val bytes = usage?.bytes ?: 0L
+            val count = usage?.fileCount ?: 0
+            val bytesText = runCatching { Formatter.formatShortFileSize(context, bytes) }
+                .getOrNull()
+                ?: "$bytes B"
+            stringResource(R.string.storage_category_subtitle, bytesText, count)
+        }
+    }
+
     CardGroup(
         modifier = Modifier.padding(horizontal = 8.dp),
         title = { Text(stringResource(R.string.storage_manager_categories)) },
     ) {
-        val byKey = (overviewState as? UiState.Success<StorageOverview>)
-            ?.data
-            ?.categories
-            ?.associateBy { it.category }
-            .orEmpty()
-
-        val placeholderText = when (overviewState) {
-            UiState.Idle, UiState.Loading -> stringResource(R.string.storage_manager_loading_placeholder)
-            is UiState.Error -> overviewState.error.message ?: "Error"
-            is UiState.Success -> null
-        }
-
         StorageCategoryKey.entries.forEach { category ->
-            val usage = byKey[category]
-            val subtitleText = placeholderText ?: run {
-                val bytes = usage?.bytes ?: 0L
-                val count = usage?.fileCount ?: 0
-                val bytesText = runCatching { Formatter.formatShortFileSize(context, bytes) }
-                    .getOrNull()
-                    ?: "$bytes B"
-                stringResource(R.string.storage_category_subtitle, bytesText, count)
-            }
+            val subtitleText = subtitles.getValue(category)
             item(
                 onClick = { onOpenCategory(category) },
                 leadingContent = {

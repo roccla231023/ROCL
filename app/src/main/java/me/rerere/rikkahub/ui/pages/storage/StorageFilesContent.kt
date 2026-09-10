@@ -145,16 +145,19 @@ fun StorageFilesScaffoldContent(
                 totalBytes = totalBytes,
                 onSelectAll = {
                     if (assistantFilesState !is UiState.Success) return@AssistantFilesCard
-                    if (assistantFilesState.data.items.isEmpty()) return@AssistantFilesCard                    selectedPaths = assistantFilesState.data.items
+                    if (assistantFilesState.data.items.isEmpty()) return@AssistantFilesCard
+                    selectedPaths = assistantFilesState.data.items
                         .asSequence()
                         .map { it.absolutePath }
                         .toSet()
                 },
                 onClearSelection = {
-                    if (selectedPaths.isEmpty()) return@AssistantFilesCard                    selectedPaths = emptySet()
+                    if (selectedPaths.isEmpty()) return@AssistantFilesCard
+                    selectedPaths = emptySet()
                 },
                 onRequestDelete = {
-                    if (selectedPaths.isEmpty()) return@AssistantFilesCard                    showConfirmDelete = true
+                    if (selectedPaths.isEmpty()) return@AssistantFilesCard
+                    showConfirmDelete = true
                 },
             )
         }
@@ -171,10 +174,12 @@ fun StorageFilesScaffoldContent(
                     selected = isSelected,
                     selectionMode = selectionMode,
                     onClick = {
-                        if (selectionMode) {                            selectedPaths =
+                        if (selectionMode) {
+                        selectedPaths =
                                 if (isSelected) selectedPaths - entry.absolutePath else selectedPaths + entry.absolutePath
                             return@AssistantFileRow
-                        }                        runCatching {
+                        }
+                        runCatching {
                             val file = File(entry.absolutePath)
                             val uri = FileProvider.getUriForFile(
                                 context,
@@ -186,7 +191,8 @@ fun StorageFilesScaffoldContent(
                                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                             }
                             context.startActivity(Intent.createChooser(intent, null))
-                        }.onFailure {                            toaster.show(
+                        }.onFailure {
+                        toaster.show(
                                 message = context.getString(
                                     R.string.storage_files_open_failed,
                                     entry.fileName.trim().ifBlank { File(entry.absolutePath).name },
@@ -195,7 +201,8 @@ fun StorageFilesScaffoldContent(
                             )
                         }
                     },
-                    onLongClick = {                        selectedPaths =
+                    onLongClick = {
+                        selectedPaths =
                             if (isSelected) selectedPaths - entry.absolutePath else selectedPaths + entry.absolutePath
                     },
                 )
@@ -233,7 +240,8 @@ fun StorageFilesScaffoldContent(
             },
             confirmButton = {
                 TextButton(
-                    onClick = {                        showConfirmDelete = false
+                    onClick = {
+                        showConfirmDelete = false
                         val targets = selectedPaths.toList()
                         selectedPaths = emptySet()
                         onDeleteFiles(selectedAssistantId, targets)

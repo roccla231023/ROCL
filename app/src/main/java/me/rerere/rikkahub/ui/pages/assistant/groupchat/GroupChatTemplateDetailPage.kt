@@ -184,15 +184,17 @@ private fun SeatRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Select(
-                options = assistants,
-                selectedOption = selected,
-                onOptionSelected = { assistant -> patch { it.copy(assistantId = assistant.id) } },
-                modifier = Modifier.weight(1f),
-                optionToString = { assistant ->
-                    assistant.name.ifBlank { stringResource(R.string.assistant_page_default_assistant) }
-                },
-            )
+            if (selected != null) {
+                Select(
+                    options = assistants,
+                    selectedOption = selected,
+                    onOptionSelected = { assistant -> patch { it.copy(assistantId = assistant.id) } },
+                    modifier = Modifier.weight(1f),
+                    optionToString = { assistant ->
+                        assistant.name.ifBlank { stringResource(R.string.assistant_page_default_assistant) }
+                    },
+                )
+            }
             IconButton(onClick = { onUpdate(template.copy(seats = template.seats.filterNot { it.id == seat.id })) }) {
                 Icon(HugeIcons.Delete01, contentDescription = stringResource(R.string.assistant_page_delete))
             }
