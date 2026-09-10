@@ -1,7 +1,6 @@
 import com.android.build.api.dsl.Packaging
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-import java.io.ByteArrayOutputStream
 import java.io.FileInputStream
 import java.util.Properties
 
@@ -16,15 +15,16 @@ plugins {
 }
 
 fun gitCommitSha(): String {
-    val stdout = ByteArrayOutputStream()
-    val result = exec {
-        workingDir = rootProject.projectDir
-        commandLine("git", "rev-parse", "HEAD")
-        standardOutput = stdout
-        isIgnoreExitValue = true
-    }
-    val sha = stdout.toString().trim()
-    return if (result.exitValue == 0 && sha.isNotEmpty()) sha else "unknown"
+    val fromCi = System.getenv("GITHUB_SHA")?.trim().orEmpty()
+    if (fromCi.isNotEmpty()) return fromCi
+    return runCatching {
+        val proc = ProcessBuilder("git", "rev-parse", "HEAD")
+            .directory(rootProject.projectDir)
+            .redirectErrorStream(true)
+            .start()
+        val sha = proc.inputStream.bufferedReader().readText().trim()
+        if (proc.waitFor() == 0 && sha.matches(Regex("[0-9a-f]{7,40}"))) sha else "unknown"
+    }.getOrDefault("unknown")
 }
 
 val gitSha = gitCommitSha()
