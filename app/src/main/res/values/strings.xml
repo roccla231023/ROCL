@@ -879,7 +879,7 @@
   <string name="setting_display_page_inline_workspace_read_allowlist_desc">Pick at least one. Unselected assistants keep the code preview even when the switch is on.</string>
   <string name="setting_display_page_inline_workspace_read_empty_allowlist">None selected — all assistants keep the code preview.</string>
   <string name="setting_page_message_toolbar">Message toolbar</string>
-  <string name="setting_page_message_toolbar_desc">Choose which actions sit on the bar and which stay in More. ⋮ and the branch picker are always visible.</string>
+  <string name="setting_page_message_toolbar_desc">Which actions sit on the bar vs More</string>
   <string name="setting_page_message_toolbar_user">User messages</string>
   <string name="setting_page_message_toolbar_assistant">Assistant messages</string>
   <string name="setting_page_message_toolbar_hint">On = toolbar. Off = More menu. A button is never hidden completely.</string>

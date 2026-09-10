@@ -869,7 +869,7 @@
   <string name="setting_display_page_inline_workspace_read_allowlist_desc">至少选一个。未选的助手即使总开关打开也保持代码预览。</string>
   <string name="setting_display_page_inline_workspace_read_empty_allowlist">还没选助手，全部保持代码预览。</string>
   <string name="setting_page_message_toolbar">消息底部工具栏</string>
-  <string name="setting_page_message_toolbar_desc">选择按钮在工具栏还是「更多」里。⋮ 和分支选择器始终显示。</string>
+  <string name="setting_page_message_toolbar_desc">选择按钮在工具栏还是「更多」里</string>
   <string name="setting_page_message_toolbar_user">用户消息</string>
   <string name="setting_page_message_toolbar_assistant">助手消息</string>
   <string name="setting_page_message_toolbar_hint">打开 = 工具栏。关闭 = 更多菜单。按钮不会被彻底隐藏。</string>
