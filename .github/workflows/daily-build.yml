@@ -64,27 +64,11 @@ jobs:
           echo "version=$VERSION_NAME" >> "$GITHUB_OUTPUT"
           echo "code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
           echo "tag=v$VERSION_NAME" >> "$GITHUB_OUTPUT"
-
-          NOTES=$(python3 - "$VERSION_NAME" <<'PY'
-import re, sys
-version = sys.argv[1]
-try:
-    text = open("CHANGELOG.md", encoding="utf-8").read()
-except FileNotFoundError:
-    print("_No CHANGELOG.md_")
-    raise SystemExit(0)
-pattern = rf"(?ms)^## {re.escape(version)}\s*\n(.*?)(?=^## |\Z)"
-match = re.search(pattern, text)
-body = match.group(1).strip() if match else ""
-print(body if body else "_No notes for this version in CHANGELOG.md_")
-PY
-)
           {
             echo "notes<<CHANGELOG_EOF"
-            echo "$NOTES"
+            python3 .github/scripts/release-notes.py "$VERSION_NAME"
             echo "CHANGELOG_EOF"
           } >> "$GITHUB_OUTPUT"
-
           git fetch origin --tags
           PREV=$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || true)
           if [ -n "$PREV" ]; then
@@ -92,10 +76,10 @@ PY
           else
             RANGE="-20"
           fi
-          COMMITS=$(git log --pretty=format:'- %s (`%h`)' $RANGE)
           {
             echo "commits<<COMMITS_EOF"
-            echo "$COMMITS"
+            git log --pretty=format:'- %s (`%h`)' $RANGE
+            echo
             echo "COMMITS_EOF"
           } >> "$GITHUB_OUTPUT"
 
