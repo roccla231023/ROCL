@@ -112,7 +112,8 @@ fun HistoryFilesCard(
                 ) {
                     FilledTonalButton(
                         modifier = Modifier.weight(1f),
-                        onClick = {                            onScan()
+                        onClick = {
+                        onScan()
                         }
                     ) {
                         Icon(HugeIcons.Refresh01, contentDescription = null)
@@ -122,7 +123,8 @@ fun HistoryFilesCard(
 
                     FilledTonalButton(
                         modifier = Modifier.weight(1f),
-                        onClick = {                            confirmClear = true
+                        onClick = {
+                        confirmClear = true
                         },
                         colors = ButtonDefaults.filledTonalButtonColors(
                             containerColor = MaterialTheme.colorScheme.errorContainer,
@@ -194,7 +196,8 @@ fun HistoryFilesCard(
             text = { Text(stringResource(R.string.storage_confirm_clear_history_desc)) },
             confirmButton = {
                 TextButton(
-                    onClick = {                        confirmClear = false
+                    onClick = {
+                        confirmClear = false
                         onClearAll()
                     }
                 ) { Text(stringResource(R.string.confirm)) }

@@ -97,7 +97,8 @@ fun StorageCacheCard(
             ) {
                 FilledTonalButton(
                     modifier = Modifier.weight(1f),
-                    onClick = {                        showConfirm = true
+                    onClick = {
+                        showConfirm = true
                     },
                     colors = ButtonDefaults.filledTonalButtonColors(
                         containerColor = MaterialTheme.colorScheme.errorContainer,
@@ -119,7 +120,8 @@ fun StorageCacheCard(
             text = { Text(stringResource(R.string.storage_confirm_clear_cache_desc)) },
             confirmButton = {
                 TextButton(
-                    onClick = {                        showConfirm = false
+                    onClick = {
+                        showConfirm = false
                         onClearCache()
                     }
                 ) { Text(stringResource(R.string.confirm)) }

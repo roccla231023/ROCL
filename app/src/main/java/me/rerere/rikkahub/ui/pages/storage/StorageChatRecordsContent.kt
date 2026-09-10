@@ -116,14 +116,17 @@ fun StorageChatRecordsScaffoldContent(
                 totalConversationCount = totalConversationCount,
                 selectedConversationCount = selectedConversationCount,
                 onSelectAll = {
-                    if (months.isEmpty()) return@ChatRecordsActionCard                    selections = months.asSequence()
+                    if (months.isEmpty()) return@ChatRecordsActionCard
+                    selections = months.asSequence()
                         .associate { it.yearMonth to ChatRecordMonthSelection.All(it.conversationCount) }
                 },
                 onClearSelection = {
-                    if (selections.isEmpty()) return@ChatRecordsActionCard                    selections = emptyMap()
+                    if (selections.isEmpty()) return@ChatRecordsActionCard
+                    selections = emptyMap()
                 },
                 onRequestClear = {
-                    if (selections.isEmpty()) return@ChatRecordsActionCard                    showConfirmClear = true
+                    if (selections.isEmpty()) return@ChatRecordsActionCard
+                    showConfirmClear = true
                 },
             )
         }
@@ -148,11 +151,13 @@ fun StorageChatRecordsScaffoldContent(
                         entry = entry,
                         selectedCount = selectedCount,
                         selectionMode = selectionMode,
-                        onClick = {                            conversationSheetState = UiState.Idle
+                        onClick = {
+                        conversationSheetState = UiState.Idle
                             activeYearMonth = entry.yearMonth
                             showConversationSheet = true
                         },
-                        onLongClick = {                            selections = when (selections[entry.yearMonth]) {
+                        onLongClick = {
+                        selections = when (selections[entry.yearMonth]) {
                                 is ChatRecordMonthSelection.All -> selections - entry.yearMonth
                                 else -> selections + (entry.yearMonth to ChatRecordMonthSelection.All(entry.conversationCount))
                             }
@@ -240,7 +245,8 @@ fun StorageChatRecordsScaffoldContent(
             confirmButton = {
                 TextButton(
                     enabled = isRecordCountConfirmed,
-                    onClick = {                        showConfirmClear = false
+                    onClick = {
+                        showConfirmClear = false
                         val targets = buildChatRecordClearTargets(selections)
                         selections = emptyMap()
                         onClearChatRecordSelection(
