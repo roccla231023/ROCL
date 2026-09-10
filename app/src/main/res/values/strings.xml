@@ -833,7 +833,7 @@
   <string name="setting_display_page_embedding_retrieval_timeout_title">Embedding retrieval timeout</string>
   <string name="setting_display_page_embedding_retrieval_timeout_desc">Skip vector retrieval after this many seconds (decimals allowed)</string>
   <string name="setting_display_page_use_last_turn_memory_title">Reuse last-turn memories on skip</string>
-  <string name="setting_display_page_use_last_turn_memory_desc">If retrieval is skipped or times out, reuse the previous turn's memories</string>
+  <string name="setting_display_page_use_last_turn_memory_desc">If retrieval is skipped or times out, reuse the previous turn\'s memories</string>
   <string name="setting_model_page_compress_prompt_vars">Variables: {content}, {target_tokens}, {additional_context}</string>
   <string name="setting_model_page_ocr_model">OCR Model</string>
   <string name="setting_model_page_ocr_model_desc">Model used for optical character recognition on images</string>
@@ -886,7 +886,7 @@
   <string name="setting_display_page_rp_optimizations_title">RP Optimizations</string>
   <string name="setting_display_page_rp_optimizations_desc">Custom text colors for wrapped roleplay markers</string>
   <string name="rp_optimizations_page_heading">Custom text styling</string>
-  <string name="rp_optimizations_page_desc">Text wrapped in a pattern such as *action* or %emphasize% can use a custom color. Standard Markdown still works; this only tints matching spans.</string>
+  <string name="rp_optimizations_page_desc">Text wrapped in a pattern such as *action* or %%emphasize%% can use a custom color. Standard Markdown still works; this only tints matching spans.</string>
   <string name="rp_optimizations_page_empty">No rules yet. Tap + to add one.</string>
   <string name="rp_optimizations_page_example_text">%1$spreview%1$s</string>
   <string name="rp_optimizations_pattern_help_text">Text wrapped like %1$stext%1$s will be styled</string>
