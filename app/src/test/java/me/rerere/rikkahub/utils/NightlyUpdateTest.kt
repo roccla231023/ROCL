@@ -27,29 +27,22 @@ class NightlyUpdateTest {
     }
 
     @Test
-    fun `same nightly is not offered`() {
-        val sha = "d971d303c0af4eaf16d9eb9a1d31accbbb944737"
-        assertFalse(shouldOfferNightlyUpdate(sha, sha))
-        assertFalse(shouldOfferNightlyUpdate(sha, sha.take(7)))
-        assertFalse(shouldOfferNightlyUpdate(sha.take(7), sha))
+    fun `same stable version is not offered`() {
+        assertFalse(shouldOfferStableUpdate("1.0", "1.0"))
+        assertFalse(shouldOfferStableUpdate("1.0", "v1.0"))
+        assertFalse(shouldOfferStableUpdate("1.1", "1.0"))
     }
 
     @Test
-    fun `different sha is offered`() {
-        assertTrue(
-            shouldOfferNightlyUpdate(
-                "d971d303c0af4eaf16d9eb9a1d31accbbb944737",
-                "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-            )
-        )
+    fun `newer stable version is offered`() {
+        assertTrue(shouldOfferStableUpdate("1.0", "1.1"))
+        assertTrue(shouldOfferStableUpdate("1.0", "v1.1"))
     }
 
     @Test
-    fun `unknown or short sha is not offered`() {
-        assertFalse(shouldOfferNightlyUpdate("unknown", "d971d30"))
-        assertFalse(shouldOfferNightlyUpdate("abc", "d971d30"))
-        assertFalse(shouldOfferNightlyUpdate("d971d30", null))
-        assertFalse(shouldOfferNightlyUpdate("d971d30", ""))
+    fun `blank remote is not offered`() {
+        assertFalse(shouldOfferStableUpdate("1.0", null))
+        assertFalse(shouldOfferStableUpdate("1.0", ""))
     }
 
     @Test
