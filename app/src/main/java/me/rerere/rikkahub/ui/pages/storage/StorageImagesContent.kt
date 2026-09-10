@@ -158,17 +158,20 @@ fun StorageImagesScaffoldContent(
                 totalCount = totalCount,
                 totalBytes = totalBytes,
                 onSelectAll = {
-                    if (assistantImagesState is UiState.Success && assistantImagesState.data.items.isNotEmpty()) {                        selectedPaths = assistantImagesState.data.items
+                    if (assistantImagesState is UiState.Success && assistantImagesState.data.items.isNotEmpty()) {
+                        selectedPaths = assistantImagesState.data.items
                             .asSequence()
                             .map { it.absolutePath }
                             .toSet()
                     }
                 },
                 onClearSelection = {
-                    if (selectedPaths.isEmpty()) return@AssistantImagesGalleryCard                    selectedPaths = emptySet()
+                    if (selectedPaths.isEmpty()) return@AssistantImagesGalleryCard
+                    selectedPaths = emptySet()
                 },
                 onRequestDelete = {
-                    if (selectedPaths.isEmpty()) return@AssistantImagesGalleryCard                    showConfirmDelete = true
+                    if (selectedPaths.isEmpty()) return@AssistantImagesGalleryCard
+                    showConfirmDelete = true
                 },
             )
         }
@@ -185,11 +188,14 @@ fun StorageImagesScaffoldContent(
                     selected = isSelected,
                     selectionMode = selectionMode,
                     onClick = {
-                        if (selectionMode) {                            selectedPaths = if (isSelected) selectedPaths - entry.absolutePath else selectedPaths + entry.absolutePath
-                        } else {                            previewIndex = index
+                        if (selectionMode) {
+                        selectedPaths = if (isSelected) selectedPaths - entry.absolutePath else selectedPaths + entry.absolutePath
+                        } else {
+                        previewIndex = index
                         }
                     },
-                    onLongClick = {                        selectedPaths = if (isSelected) selectedPaths - entry.absolutePath else selectedPaths + entry.absolutePath
+                    onLongClick = {
+                        selectedPaths = if (isSelected) selectedPaths - entry.absolutePath else selectedPaths + entry.absolutePath
                     },
                 )
             }
@@ -227,7 +233,8 @@ fun StorageImagesScaffoldContent(
             },
             confirmButton = {
                 TextButton(
-                    onClick = {                        showConfirmDelete = false
+                    onClick = {
+                        showConfirmDelete = false
                         val targets = selectedPaths.toList()
                         selectedPaths = emptySet()
                         onDeleteImages(selectedAssistantId, targets)

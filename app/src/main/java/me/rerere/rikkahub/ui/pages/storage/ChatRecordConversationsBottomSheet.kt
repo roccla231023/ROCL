@@ -94,7 +94,8 @@ internal fun ChatRecordConversationsBottomSheet(
                 containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
         dragHandle = {
             IconButton(
-                onClick = {                    onHide()
+                onClick = {
+                        onHide()
                 },
             ) {
                 Icon(HugeIcons.ArrowDown01, contentDescription = null)
@@ -158,7 +159,8 @@ internal fun ChatRecordConversationsBottomSheet(
                             ?.map { it.id }
                             ?.toSet()
                             .orEmpty()
-                        if (allIds.isEmpty()) return@FilledTonalButton                        selectedIds = allIds
+                        if (allIds.isEmpty()) return@FilledTonalButton
+                    selectedIds = allIds
                     },
                 ) {
                     Text(stringResource(R.string.storage_action_select_all))
@@ -166,14 +168,16 @@ internal fun ChatRecordConversationsBottomSheet(
 
                 FilledTonalButton(
                     enabled = selectedIds.isNotEmpty(),
-                    onClick = {                        selectedIds = emptySet()
+                    onClick = {
+                        selectedIds = emptySet()
                     },
                 ) {
                     Text(stringResource(R.string.storage_action_clear_selection))
                 }
 
                 TextButton(
-                    onClick = {                        onApplySelection(selectedIds)
+                    onClick = {
+                        onApplySelection(selectedIds)
                         onHide()
                     },
                 ) {
@@ -219,7 +223,8 @@ internal fun ChatRecordConversationsBottomSheet(
                                 ChatRecordConversationRow(
                                     title = conversation.title,
                                     selected = selected,
-                                    onClick = {                                        selectedIds = if (selected) {
+                                    onClick = {
+                        selectedIds = if (selected) {
                                             selectedIds - conversation.id
                                         } else {
                                             selectedIds + conversation.id
