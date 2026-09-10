@@ -41,6 +41,7 @@ import me.rerere.rikkahub.R
 import me.rerere.rikkahub.data.datastore.findModelById
 import me.rerere.rikkahub.data.db.entity.WorkspaceEntity
 import me.rerere.rikkahub.data.model.Assistant
+import me.rerere.rikkahub.data.model.Avatar
 import me.rerere.rikkahub.data.model.GroupChatSeat
 import me.rerere.rikkahub.data.model.GroupChatTemplate
 import me.rerere.rikkahub.data.model.buildSeatDisplayNames
@@ -142,7 +143,7 @@ fun GroupChatTemplateDetailPage(id: String) {
                             val selected = workspaces.find { it.id == template.workspaceId?.toString() }
                             Select(
                                 options = listOf<WorkspaceEntity?>(null) + workspaces,
-                                selectedOption = selected,
+                                selectedOption = selected as WorkspaceEntity?,
                                 onOptionSelected = { workspace ->
                                     vm.update(template.copy(workspaceId = workspace?.id?.let { Uuid.parse(it) }))
                                 },
@@ -173,7 +174,7 @@ fun GroupChatTemplateDetailPage(id: String) {
                             leadingContent = {
                                 UIAvatar(
                                     name = title,
-                                    value = assistant?.avatar,
+                                    value = assistant?.avatar ?: Avatar.Dummy,
                                     modifier = Modifier.size(40.dp),
                                 )
                             },
