@@ -876,7 +876,7 @@
   <string name="setting_display_page_rp_optimizations_title">RP 优化</string>
   <string name="setting_display_page_rp_optimizations_desc">为角色扮演包裹符号设置自定义文字颜色</string>
   <string name="rp_optimizations_page_heading">自定义文本样式</string>
-  <string name="rp_optimizations_page_desc">被特定符号包裹的文本可以指定颜色，例如让 *动作* 显示为灰色，或让 %强调% 显示为黄色。标准 Markdown 仍然生效，这里只给匹配片段上色。</string>
+  <string name="rp_optimizations_page_desc">被特定符号包裹的文本可以指定颜色，例如让 *动作* 显示为灰色，或让 %%强调%% 显示为黄色。标准 Markdown 仍然生效，这里只给匹配片段上色。</string>
   <string name="rp_optimizations_page_empty">还没有规则。点击 + 添加。</string>
   <string name="rp_optimizations_page_example_text">%1$s示例文本%1$s</string>
   <string name="rp_optimizations_pattern_help_text">被 %1$stext%1$s 包裹的文本将应用样式</string>
