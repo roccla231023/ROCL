@@ -71,6 +71,7 @@ import me.rerere.hugeicons.stroke.TransactionHistory
 import me.rerere.rikkahub.R
 import me.rerere.rikkahub.Screen
 import me.rerere.rikkahub.data.datastore.Settings
+import me.rerere.rikkahub.data.datastore.getGroupChatTemplate
 import me.rerere.rikkahub.data.model.Assistant
 import me.rerere.rikkahub.data.model.Conversation
 import me.rerere.rikkahub.data.model.Folder
@@ -318,8 +319,12 @@ fun ChatDrawerContent(
                 },
                 modifier = Modifier.fillMaxWidth(),
                 onClickSetting = {
-                    val currentAssistantId = settings.assistantId
-                    navController.navigate(Screen.AssistantDetail(id = currentAssistantId.toString()))
+                    val group = settings.getGroupChatTemplate(settings.assistantId)
+                    if (group != null) {
+                        navController.navigate(Screen.GroupChatTemplateDetail(id = group.id.toString()))
+                    } else {
+                        navController.navigate(Screen.AssistantDetail(id = settings.assistantId.toString()))
+                    }
                 }
             )
 

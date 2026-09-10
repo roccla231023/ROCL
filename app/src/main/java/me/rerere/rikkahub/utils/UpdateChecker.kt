@@ -15,13 +15,12 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.SerialName
 import me.rerere.common.http.await
 import me.rerere.rikkahub.AppScope
 import me.rerere.rikkahub.BuildConfig
 import okhttp3.OkHttpClient
 import okhttp3.Request
-
-private const val API_URL = "https://updates.rikka-ai.com/"
 
 class UpdateChecker(
     private val client: OkHttpClient,
@@ -40,21 +39,7 @@ class UpdateChecker(
         emit(
             UiState.Success(
                 data = try {
-                    val response = client.newCall(
-                        Request.Builder()
-                            .url(API_URL)
-                            .get()
-                            .addHeader(
-                                "User-Agent",
-                                "RikkaHub ${BuildConfig.VERSION_NAME} #${BuildConfig.VERSION_CODE}"
-                            )
-                            .build()
-                    ).await()
-                    if (response.isSuccessful) {
-                        json.decodeFromString<UpdateInfo>(response.body.string())
-                    } else {
-                        throw Exception("Failed to fetch update info")
-                    }
+                    fetchNightly()
                 } catch (e: Exception) {
                     throw Exception("Failed to fetch update info", e)
                 }
@@ -63,6 +48,47 @@ class UpdateChecker(
     }.catch {
         emit(UiState.Error(it))
     }.flowOn(Dispatchers.IO)
+
+    private suspend fun fetchNightly(): UpdateInfo {
+        val response = client.newCall(
+            Request.Builder()
+                .url(ROCL_NIGHTLY_API_URL)
+                .get()
+                .addHeader("Accept", "application/vnd.github+json")
+                .addHeader(
+                    "User-Agent",
+                    "ROCL-Android/${BuildConfig.VERSION_NAME} #${BuildConfig.GIT_SHA}"
+                )
+                .build()
+        ).await()
+        if (!response.isSuccessful) {
+            throw Exception("Failed to fetch update info")
+        }
+        val release = json.decodeFromString<GitHubRelease>(response.body.string())
+        val sha = commitShaFromReleaseBody(release.body)
+        val downloads = pickNightlyApk(
+            release.assets.map { asset ->
+                UpdateDownload(
+                    name = asset.name,
+                    url = asset.browserDownloadUrl,
+                    size = formatAssetSize(asset.size),
+                )
+            }
+        )
+        val shortSha = sha?.take(7)
+        val version = if (shortSha.isNullOrBlank()) {
+            BuildConfig.VERSION_NAME
+        } else {
+            "${BuildConfig.VERSION_NAME} · $shortSha"
+        }
+        return UpdateInfo(
+            version = version,
+            publishedAt = release.publishedAt.ifBlank { "1970-01-01T00:00:00Z" },
+            changelog = release.body.orEmpty(),
+            downloads = downloads,
+            commitSha = sha.orEmpty(),
+        )
+    }
 
     fun downloadUpdate(context: Context, download: UpdateDownload) {
         runCatching {
@@ -102,7 +128,22 @@ data class UpdateInfo(
     val version: String,
     val publishedAt: String,
     val changelog: String,
-    val downloads: List<UpdateDownload>
+    val downloads: List<UpdateDownload>,
+    val commitSha: String = "",
+)
+
+@Serializable
+private data class GitHubRelease(
+    val body: String? = null,
+    @SerialName("published_at") val publishedAt: String = "",
+    val assets: List<GitHubAsset> = emptyList(),
+)
+
+@Serializable
+private data class GitHubAsset(
+    val name: String,
+    @SerialName("browser_download_url") val browserDownloadUrl: String,
+    val size: Long = 0,
 )
 
 /**
