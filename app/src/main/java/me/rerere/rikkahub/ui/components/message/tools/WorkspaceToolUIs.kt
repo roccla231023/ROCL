@@ -178,7 +178,7 @@ object ReadFileToolUI : ToolUIRenderer {
         val text = remember(context) { textOf(context) } ?: return
         val path = context.arguments.getStringContent("path")
         if (context.shouldInlineMarkdown(path)) {
-            MarkdownBlock(content = text, modifier = Modifier.fillMaxWidth())
+            MarkdownBlock(content = text, modifier = Modifier.fillMaxWidth(), compact = true)
         } else {
             FileContentSummary(
                 text = text,
@@ -300,6 +300,7 @@ private fun FileMarkdownPreview(path: String?, content: String) {
         MarkdownBlock(
             content = content,
             modifier = Modifier.fillMaxWidth(),
+            compact = true,
         )
     }
 }

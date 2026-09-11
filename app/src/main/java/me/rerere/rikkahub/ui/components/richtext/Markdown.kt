@@ -38,6 +38,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
@@ -231,13 +232,22 @@ private fun parseMarkdown(content: String): MarkdownParseResult {
     return MarkdownParseResult(preprocessed, astTree, astTree.containsHtml())
 }
 
+val LocalMarkdownCompact = compositionLocalOf { false }
+
 @Composable
 fun MarkdownBlock(
     content: String,
     modifier: Modifier = Modifier,
     style: TextStyle = LocalTextStyle.current,
-    onClickCitation: (String) -> Unit = {}
+    onClickCitation: (String) -> Unit = {},
+    compact: Boolean = false,
 ) {
+    val effectiveCompact = compact || LocalMarkdownCompact.current
+    val bodyStyle = if (effectiveCompact) {
+        style.copy(fontSize = 13.sp, lineHeight = 18.sp)
+    } else {
+        style
+    }
     var (data, setData) = remember { mutableStateOf(parseMarkdown(content)) }
 
     // 监听内容变化，重新解析AST树
@@ -252,22 +262,24 @@ fun MarkdownBlock(
             .collect { setData(it) }
     }
 
-    if (data.hasHtml) {
-        MarkdownNew(
-            content = content,
-            modifier = modifier,
-            style = style,
-            onClickCitation = onClickCitation,
-        )
-    } else {
-        ProvideTextStyle(style) {
-            Column(
-                modifier = modifier.padding(horizontal = 4.dp)
-            ) {
-                data.astTree.children.fastForEach { child ->
-                    MarkdownNode(
-                        node = child, content = data.preprocessed, onClickCitation = onClickCitation
-                    )
+    CompositionLocalProvider(LocalMarkdownCompact provides effectiveCompact) {
+        if (data.hasHtml) {
+            MarkdownNew(
+                content = content,
+                modifier = modifier,
+                style = bodyStyle,
+                onClickCitation = onClickCitation,
+            )
+        } else {
+            ProvideTextStyle(bodyStyle) {
+                Column(
+                    modifier = modifier.padding(horizontal = 4.dp)
+                ) {
+                    data.astTree.children.fastForEach { child ->
+                        MarkdownNode(
+                            node = child, content = data.preprocessed, onClickCitation = onClickCitation
+                        )
+                    }
                 }
             }
         }
@@ -285,14 +297,23 @@ private fun dumpAst(node: ASTNode, text: String, indent: String = "") {
 object HeaderStyle {
     private const val LINE_HEIGHT_RATIO = 1.25f
 
-    fun fromLevel(level: Int, fontSizeRatio: Float): TextStyle {
-        val fontSize = when (level) {
-            1 -> 24.sp
-            2 -> 22.sp
-            3 -> 20.sp
-            4 -> 18.sp
-            5 -> 16.sp
-            else -> 14.sp
+    fun fromLevel(level: Int, fontSizeRatio: Float, compact: Boolean = false): TextStyle {
+        val fontSize = if (compact) {
+            when (level) {
+                1 -> 16.sp
+                2 -> 15.sp
+                3 -> 14.sp
+                else -> 13.sp
+            }
+        } else {
+            when (level) {
+                1 -> 24.sp
+                2 -> 22.sp
+                3 -> 20.sp
+                4 -> 18.sp
+                5 -> 16.sp
+                else -> 14.sp
+            }
         } * fontSizeRatio
 
         return TextStyle(
@@ -303,16 +324,28 @@ object HeaderStyle {
         )
     }
 
-    fun verticalPadding(level: Int) = when (level) {
-        1 -> 16.dp
-        2 -> 14.dp
-        3 -> 12.dp
-        4 -> 10.dp
-        5 -> 8.dp
-        else -> 6.dp
+    fun verticalPadding(level: Int, compact: Boolean = false) = if (compact) {
+        when (level) {
+            1 -> 6.dp
+            2, 3 -> 4.dp
+            else -> 2.dp
+        }
+    } else {
+        when (level) {
+            1 -> 16.dp
+            2 -> 14.dp
+            3 -> 12.dp
+            4 -> 10.dp
+            5 -> 8.dp
+            else -> 6.dp
+        }
     }
 
-    fun fromMarkdownType(type: IElementType, fontSizeRatio: Float): TextStyle = fromLevel(
+    fun fromMarkdownType(
+        type: IElementType,
+        fontSizeRatio: Float,
+        compact: Boolean = false,
+    ): TextStyle = fromLevel(
         level = when (type) {
             MarkdownElementTypes.ATX_1 -> 1
             MarkdownElementTypes.ATX_2 -> 2
@@ -323,9 +356,10 @@ object HeaderStyle {
             else -> 6
         },
         fontSizeRatio = fontSizeRatio,
+        compact = compact,
     )
 
-    fun verticalPadding(type: IElementType) = verticalPadding(
+    fun verticalPadding(type: IElementType, compact: Boolean = false) = verticalPadding(
         level = when (type) {
             MarkdownElementTypes.ATX_1 -> 1
             MarkdownElementTypes.ATX_2 -> 2
@@ -333,7 +367,8 @@ object HeaderStyle {
             MarkdownElementTypes.ATX_4 -> 4
             MarkdownElementTypes.ATX_5 -> 5
             else -> 6
-        }
+        },
+        compact = compact,
     )
 }
 
@@ -364,11 +399,13 @@ private fun MarkdownNode(
 
         // 标题
         MarkdownElementTypes.ATX_1, MarkdownElementTypes.ATX_2, MarkdownElementTypes.ATX_3, MarkdownElementTypes.ATX_4, MarkdownElementTypes.ATX_5, MarkdownElementTypes.ATX_6 -> {
+            val compact = LocalMarkdownCompact.current
             val style = HeaderStyle.fromMarkdownType(
                 type = node.type,
                 fontSizeRatio = LocalSettings.current.displaySetting.fontSizeRatio,
+                compact = compact,
             )
-            val headingPadding = HeaderStyle.verticalPadding(node.type)
+            val headingPadding = HeaderStyle.verticalPadding(node.type, compact = compact)
             ProvideTextStyle(value = LocalTextStyle.current.merge(style)) {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     node.children.fastForEach { node ->
