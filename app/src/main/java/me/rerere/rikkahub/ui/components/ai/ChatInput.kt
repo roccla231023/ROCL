@@ -100,7 +100,7 @@ import me.rerere.rikkahub.data.datastore.BackgroundEffectType
 import me.rerere.rikkahub.data.datastore.Settings
 import me.rerere.rikkahub.data.datastore.getCurrentAssistant
 import me.rerere.rikkahub.data.datastore.getCurrentChatModel
-import me.rerere.rikkahub.data.datastore.getQuickMessagesOfAssistant
+import me.rerere.rikkahub.data.datastore.getQuickMessages
 import me.rerere.rikkahub.data.files.FilesManager
 import me.rerere.rikkahub.data.model.Assistant
 import me.rerere.rikkahub.data.model.QuickMessage
@@ -152,6 +152,7 @@ fun ChatInput(
     voiceState: VoiceSessionState = VoiceSessionState(),
     onStopVoiceMode: () -> Unit = {},
     stickySeatLabel: String? = null,
+    quickMessageIds: Set<Uuid>? = null,
 ) {
     val toaster = LocalToaster.current
     val assistant = settings.getCurrentAssistant()
@@ -300,6 +301,7 @@ fun ChatInput(
                         state = state,
                         completionProviders = completionProviders,
                         onSendMessage = { sendMessage() },
+                        quickMessageIds = quickMessageIds,
                     )
 
                     Row(
@@ -494,12 +496,14 @@ private fun TextInputRow(
     state: ChatInputState,
     completionProviders: List<ChatCompletionProvider>,
     onSendMessage: () -> Unit,
+    quickMessageIds: Set<Uuid>? = null,
 ) {
     val settings = LocalSettings.current
     val filesManager: FilesManager = koinInject()
     val assistant = settings.getCurrentAssistant()
-    val quickMessages = remember(settings.quickMessages, assistant.quickMessageIds) {
-        settings.getQuickMessagesOfAssistant(assistant)
+    val resolvedQuickMessageIds = quickMessageIds ?: assistant.quickMessageIds
+    val quickMessages = remember(settings.quickMessages, resolvedQuickMessageIds) {
+        settings.getQuickMessages(resolvedQuickMessageIds)
     }
 
     Column(

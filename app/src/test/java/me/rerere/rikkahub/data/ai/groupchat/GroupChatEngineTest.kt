@@ -201,18 +201,64 @@ class GroupChatEngineTest {
     }
 
     @Test
-    fun applyGroupSeatUsesTemplateSkillsAndOverridePrompt() {
+    fun applyGroupSeatKeepsIdentityAndDropsAssistantBindings() {
+        val lorebookId = Uuid.parse("44444444-4444-4444-4444-444444444444")
+        val modeId = Uuid.parse("55555555-5555-5555-5555-555555555555")
+        val mcpId = Uuid.parse("66666666-6666-6666-6666-666666666666")
+        val seated = gpt.copy(
+            systemPrompt = "Original",
+            enableMemory = true,
+            enableSessionMemory = true,
+            enableWebSearch = true,
+            useGlobalMemory = true,
+            enableRecentChatsReference = true,
+            enableTimeReminder = true,
+            mcpServers = setOf(mcpId),
+            enabledSkills = setOf("solo-skill"),
+            lorebookIds = setOf(lorebookId),
+            modeInjectionIds = setOf(modeId),
+            allowConversationPromptInjection = true,
+            allowConversationSystemPrompt = true,
+        ).applyGroupSeat(template, gptSeat)
+        assertEquals("Original", seated.systemPrompt)
+        assertEquals(false, seated.enableMemory)
+        assertEquals(false, seated.enableSessionMemory)
+        assertEquals(false, seated.enableWebSearch)
+        assertEquals(false, seated.useGlobalMemory)
+        assertEquals(false, seated.enableRecentChatsReference)
+        assertEquals(false, seated.enableTimeReminder)
+        assertEquals(emptySet<Uuid>(), seated.mcpServers)
+        assertEquals(emptySet<String>(), seated.enabledSkills)
+        assertEquals(emptySet<Uuid>(), seated.lorebookIds)
+        assertEquals(emptySet<Uuid>(), seated.modeInjectionIds)
+        assertEquals(false, seated.allowConversationPromptInjection)
+        assertEquals(false, seated.allowConversationSystemPrompt)
+    }
+
+    @Test
+    fun applyGroupSeatUsesSeatSkillsAndOverridePrompt() {
+        val lorebookId = Uuid.parse("44444444-4444-4444-4444-444444444444")
         val overrideSeat = gptSeat.copy(
-            overrides = gptSeat.overrides.copy(systemPrompt = "Reviewer only."),
+            overrides = gptSeat.overrides.copy(
+                systemPrompt = "Reviewer only.",
+                enabledSkills = setOf("workspace-python"),
+                lorebookIds = setOf(lorebookId),
+                enableMemory = true,
+                enableWebSearch = true,
+            ),
         )
-        val group = template.copy(
-            enabledSkills = setOf("workspace-python"),
-            seats = listOf(overrideSeat, claudeSeat),
-        )
-        val seated = gpt.copy(enabledSkills = setOf("solo-skill"), systemPrompt = "Original")
-            .applyGroupSeat(group, overrideSeat)
+        val seated = gpt.copy(
+            enabledSkills = setOf("solo-skill"),
+            systemPrompt = "Original",
+            enableMemory = false,
+            enableWebSearch = false,
+        ).applyGroupSeat(template, overrideSeat)
         assertEquals("Reviewer only.", seated.systemPrompt)
         assertEquals(setOf("workspace-python"), seated.enabledSkills)
+        assertEquals(setOf(lorebookId), seated.lorebookIds)
+        assertEquals(true, seated.enableMemory)
+        assertEquals(true, seated.enableWebSearch)
+        assertEquals(false, seated.enableSessionMemory)
     }
 
     @Test

@@ -74,6 +74,7 @@ import me.rerere.rikkahub.data.datastore.findProvider
 import me.rerere.rikkahub.data.db.entity.WorkspaceEntity
 import me.rerere.rikkahub.data.model.Assistant
 import me.rerere.rikkahub.data.model.Conversation
+import me.rerere.rikkahub.data.model.GroupChatTemplate
 import me.rerere.rikkahub.data.repository.WorkspaceRepository
 import me.rerere.rikkahub.ui.components.ui.ExtensionSelector
 import me.rerere.rikkahub.ui.components.ui.permission.PermissionCamera
@@ -95,6 +96,8 @@ internal fun FilesPicker(
     onCompressContext: (additionalPrompt: String, targetTokens: Int, keepRecentMessages: Int) -> Job,
     onUpdateAssistant: (Assistant) -> Unit,
     onUpdateConversation: (Conversation) -> Unit,
+    groupTemplate: GroupChatTemplate? = null,
+    onUpdateGroupTemplate: ((GroupChatTemplate) -> Unit)? = null,
     showInjectionSheet: Boolean,
     onShowInjectionSheetChange: (Boolean) -> Unit,
     showCompressDialog: Boolean,
@@ -179,17 +182,19 @@ internal fun FilesPicker(
             )
         }
 
-        // Extensions (Quick Messages + Prompt Injections + Skills)
         val modeAndLorebookCount =
             if (assistant.allowConversationPromptInjection) {
                 conversation.modeInjectionIds.size + conversation.lorebookIds.size
             } else {
                 assistant.modeInjectionIds.size + assistant.lorebookIds.size
             }
-        val activeCount =
+        val activeCount = if (groupTemplate != null) {
+            groupTemplate.quickMessageIds.size
+        } else {
             assistant.quickMessageIds.size +
                 modeAndLorebookCount +
                 assistant.enabledSkills.size
+        }
         ListItem(
             leadingContent = {
                 Icon(
@@ -291,6 +296,8 @@ internal fun FilesPicker(
             conversation = conversation,
             assistant = assistant,
             settings = settings,
+            groupTemplate = groupTemplate,
+            onUpdateGroupTemplate = onUpdateGroupTemplate,
             onUpdateAssistant = onUpdateAssistant,
             onUpdateConversation = onUpdateConversation,
             onDismiss = { onShowInjectionSheetChange(false) },
@@ -400,6 +407,8 @@ private fun InjectionQuickConfigSheet(
     conversation: Conversation,
     assistant: Assistant,
     settings: Settings,
+    groupTemplate: GroupChatTemplate? = null,
+    onUpdateGroupTemplate: ((GroupChatTemplate) -> Unit)? = null,
     onUpdateAssistant: (Assistant) -> Unit,
     onUpdateConversation: (Conversation) -> Unit,
     onDismiss: () -> Unit,
@@ -425,6 +434,11 @@ private fun InjectionQuickConfigSheet(
                 conversation = conversation,
                 onUpdateConversation = onUpdateConversation,
                 modifier = Modifier.weight(1f),
+                selectedQuickMessageIds = groupTemplate?.quickMessageIds,
+                onUpdateQuickMessageIds = groupTemplate?.let { template ->
+                    { ids -> onUpdateGroupTemplate?.invoke(template.copy(quickMessageIds = ids)) }
+                },
+                quickMessagesOnly = groupTemplate != null,
                 onNavigateToQuickMessages = {
                     onDismissAll()
                     navController.navigate(Screen.QuickMessages)

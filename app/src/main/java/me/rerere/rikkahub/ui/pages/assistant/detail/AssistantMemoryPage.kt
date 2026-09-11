@@ -5,6 +5,11 @@ import me.rerere.hugeicons.stroke.Add01
 import me.rerere.hugeicons.stroke.Delete01
 import me.rerere.hugeicons.stroke.Pin
 import me.rerere.hugeicons.stroke.PinOff
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -271,7 +276,13 @@ private fun AssistantMemoryContent(
                     )
                 }
             )
-            if (assistant.enableMemory) {
+        }
+        AnimatedVisibility(
+            visible = assistant.enableMemory,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically(),
+        ) {
+            CardGroup {
                 item(
                     headlineContent = { Text(stringResource(R.string.assistant_page_global_memory)) },
                     supportingContent = {
@@ -324,7 +335,13 @@ private fun AssistantMemoryContent(
                     )
                 }
             )
-            if (assistant.enableTimeReminder) {
+        }
+        AnimatedVisibility(
+            visible = assistant.enableTimeReminder,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically(),
+        ) {
+            CardGroup {
                 item(
                     headlineContent = { Text(stringResource(R.string.assistant_page_time_reminder_interval)) },
                     supportingContent = { Text(stringResource(R.string.assistant_page_time_reminder_interval_desc)) },
@@ -337,7 +354,12 @@ private fun AssistantMemoryContent(
             }
         }
 
-        if (assistant.enableMemory) {
+        AnimatedVisibility(
+            visible = assistant.enableMemory,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically(),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             MemoryRetrievalSettings(
                 assistant = assistant,
                 settings = settings,
@@ -384,6 +406,7 @@ private fun AssistantMemoryContent(
                     }
                 )
             }
+        }
         }
         }
     }

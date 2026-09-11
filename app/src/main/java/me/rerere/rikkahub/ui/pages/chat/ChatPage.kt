@@ -72,6 +72,7 @@ import me.rerere.rikkahub.data.datastore.getSelectedASRProvider
 import me.rerere.rikkahub.data.files.FilesManager
 import me.rerere.rikkahub.data.model.Assistant
 import me.rerere.rikkahub.data.model.Conversation
+import me.rerere.rikkahub.data.model.GroupChatTemplate
 import me.rerere.rikkahub.data.model.buildSeatDisplayNames
 import me.rerere.rikkahub.data.repository.WorkspaceRepository
 import me.rerere.rikkahub.service.ChatError
@@ -393,6 +394,7 @@ private fun ChatPageContent(
                         val names = template.buildSeatDisplayNames(setting.assistants.associateBy { it.id })
                         conversation.stickySpeakerSeatId?.let { names[it] }
                     },
+                    quickMessageIds = groupTemplate?.quickMessageIds,
                     onCancelClick = {
                         vm.stopGeneration()
                     },
@@ -576,6 +578,7 @@ private fun ChatPageContent(
                 setting = setting,
                 conversation = conversation,
                 assistant = assistant,
+                groupTemplate = groupTemplate,
                 vm = vm,
                 attachmentPickerActions = attachmentPickerActions,
                 onStartVoiceMode = onStartVoiceMode,
@@ -591,6 +594,7 @@ private fun ChatFilesPickerSheet(
     setting: Settings,
     conversation: Conversation,
     assistant: Assistant,
+    groupTemplate: GroupChatTemplate?,
     vm: ChatVM,
     attachmentPickerActions: ChatAttachmentPickerActions,
     onStartVoiceMode: () -> Unit,
@@ -620,6 +624,16 @@ private fun ChatFilesPickerSheet(
             conversation = conversation,
             state = inputState,
             assistant = assistant,
+            groupTemplate = groupTemplate,
+            onUpdateGroupTemplate = { updated ->
+                vm.updateSettings(
+                    setting.copy(
+                        groupChatTemplates = setting.groupChatTemplates.map { template ->
+                            if (template.id == updated.id) updated else template
+                        }
+                    )
+                )
+            },
             mcpManager = vm.mcpManager,
             onCompressContext = { additionalPrompt, targetTokens, keepRecentMessages ->
                 vm.handleCompressContext(additionalPrompt, targetTokens, keepRecentMessages)
