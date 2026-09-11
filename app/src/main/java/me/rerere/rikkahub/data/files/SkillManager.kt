@@ -69,11 +69,19 @@ class SkillManager(
                         }
                     },
                     groupChatTemplates = settings.groupChatTemplates.map { template ->
-                        if (name in template.enabledSkills) {
-                            template.copy(enabledSkills = template.enabledSkills - name)
-                        } else {
-                            template
-                        }
+                        template.copy(
+                            seats = template.seats.map { seat ->
+                                if (name in seat.overrides.enabledSkills) {
+                                    seat.copy(
+                                        overrides = seat.overrides.copy(
+                                            enabledSkills = seat.overrides.enabledSkills - name,
+                                        )
+                                    )
+                                } else {
+                                    seat
+                                }
+                            }
+                        )
                     },
                 )
             }
@@ -102,13 +110,18 @@ class SkillManager(
                 }
             }
             val newTemplates = settings.groupChatTemplates.map { template ->
-                val pruned = template.enabledSkills.filterTo(LinkedHashSet()) { it in existing }
-                if (pruned.size != template.enabledSkills.size) {
-                    changed = true
-                    template.copy(enabledSkills = pruned)
-                } else {
-                    template
+                var templateChanged = false
+                val newSeats = template.seats.map { seat ->
+                    val pruned = seat.overrides.enabledSkills.filterTo(LinkedHashSet()) { it in existing }
+                    if (pruned.size != seat.overrides.enabledSkills.size) {
+                        templateChanged = true
+                        changed = true
+                        seat.copy(overrides = seat.overrides.copy(enabledSkills = pruned))
+                    } else {
+                        seat
+                    }
                 }
+                if (templateChanged) template.copy(seats = newSeats) else template
             }
             if (changed) settings.copy(assistants = newAssistants, groupChatTemplates = newTemplates) else settings
         }

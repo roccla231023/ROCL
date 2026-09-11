@@ -3,12 +3,24 @@ package me.rerere.rikkahub.ui.pages.assistant.groupchat
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.LaunchedEffect
+import me.rerere.rikkahub.data.files.SkillManager
+import me.rerere.rikkahub.data.files.SkillMetadata
+import me.rerere.rikkahub.data.model.Lorebook
+import me.rerere.rikkahub.data.model.PromptInjection
+import me.rerere.rikkahub.ui.components.ai.LorebooksContent
+import me.rerere.rikkahub.ui.components.ai.ModeInjectionsContent
+import me.rerere.rikkahub.ui.components.ai.SkillsContent
+import org.koin.compose.koinInject
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -69,7 +81,6 @@ fun GroupChatTemplateDetailPage(id: String) {
     var pendingDelete by remember { mutableStateOf(false) }
     var showIntroEditor by remember { mutableStateOf(false) }
     var showAddMember by remember { mutableStateOf(false) }
-    var showSkillsSheet by remember { mutableStateOf(false) }
     var editingSeatId by remember { mutableStateOf<Uuid?>(null) }
 
     val assistantsById = remember(settings.assistants) { settings.assistants.associateBy { it.id } }
@@ -155,22 +166,6 @@ fun GroupChatTemplateDetailPage(id: String) {
                             )
                         },
                         headlineContent = { Text(stringResource(R.string.group_chat_page_workspace)) },
-                    )
-                    item(
-                        onClick = { showSkillsSheet = true },
-                        supportingContent = {
-                            Text(
-                                text = if (template.enabledSkills.isEmpty()) {
-                                    stringResource(R.string.group_chat_page_skills_desc)
-                                } else {
-                                    template.enabledSkills.joinToString()
-                                },
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        },
-                        trailingContent = { Icon(HugeIcons.ArrowRight01, contentDescription = null) },
-                        headlineContent = { Text(stringResource(R.string.group_chat_page_skills)) },
                     )
                 }
             }
@@ -315,45 +310,6 @@ fun GroupChatTemplateDetailPage(id: String) {
         }
     }
 
-    if (showSkillsSheet) {
-        ModalBottomSheet(onDismissRequest = { showSkillsSheet = false }) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 16.dp)
-                    .padding(bottom = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(stringResource(R.string.group_chat_page_skills), style = MaterialTheme.typography.titleLarge)
-                Text(
-                    text = stringResource(R.string.group_chat_page_skills_desc),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                CardGroup {
-                    vm.skills.forEach { skill ->
-                        item(
-                            headlineContent = { Text(skill.name) },
-                            supportingContent = {
-                                if (skill.description.isNotBlank()) Text(skill.description)
-                            },
-                            trailingContent = {
-                                Switch(
-                                    checked = skill.name in template.enabledSkills,
-                                    onCheckedChange = { checked ->
-                                        val next = template.enabledSkills.toMutableSet()
-                                        if (checked) next.add(skill.name) else next.remove(skill.name)
-                                        vm.update(template.copy(enabledSkills = next))
-                                    },
-                                )
-                            },
-                        )
-                    }
-                }
-            }
-        }
-    }
-
     if (editingSeat != null) {
         SeatEditorSheet(
             template = template,
@@ -361,6 +317,8 @@ fun GroupChatTemplateDetailPage(id: String) {
             assistants = settings.assistants,
             providers = settings.providers,
             mcpServers = settings.mcpServers,
+            lorebooks = settings.lorebooks,
+            modeInjections = settings.modeInjections,
             displayName = seatNames[editingSeat.id].orEmpty().ifBlank { defaultAssistantName },
             onUpdate = vm::update,
             onDismiss = { editingSeatId = null },
@@ -375,12 +333,20 @@ private fun SeatEditorSheet(
     assistants: List<Assistant>,
     providers: List<me.rerere.ai.provider.ProviderSetting>,
     mcpServers: List<me.rerere.rikkahub.data.ai.mcp.McpServerConfig>,
+    lorebooks: List<Lorebook>,
+    modeInjections: List<PromptInjection.ModeInjection>,
     displayName: String,
     onUpdate: (GroupChatTemplate) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val selected = assistants.find { it.id == seat.assistantId } ?: assistants.firstOrNull()
+    val skillManager: SkillManager = koinInject()
+    var skills by remember { mutableStateOf<List<SkillMetadata>>(emptyList()) }
+    LaunchedEffect(Unit) {
+        skills = skillManager.listSkills()
+    }
     var showPromptEditor by remember { mutableStateOf(false) }
+    var picker by remember { mutableStateOf<SeatPicker?>(null) }
     fun patch(transform: (GroupChatSeat) -> GroupChatSeat) {
         onUpdate(template.copy(seats = template.seats.map { if (it.id == seat.id) transform(it) else it }))
     }
@@ -388,6 +354,8 @@ private fun SeatEditorSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .fillMaxHeight(0.92f)
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp, vertical = 16.dp)
                 .padding(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -439,9 +407,20 @@ private fun SeatEditorSheet(
                     headlineContent = { Text(stringResource(R.string.assistant_page_memory)) },
                     trailingContent = {
                         Switch(
-                            checked = seat.overrides.enableMemory ?: (selected?.enableMemory == true),
+                            checked = seat.overrides.enableMemory == true,
                             onCheckedChange = { enabled ->
                                 patch { it.copy(overrides = it.overrides.copy(enableMemory = enabled)) }
+                            },
+                        )
+                    },
+                )
+                item(
+                    headlineContent = { Text(stringResource(R.string.assistant_page_session_memory)) },
+                    trailingContent = {
+                        Switch(
+                            checked = seat.overrides.enableSessionMemory == true,
+                            onCheckedChange = { enabled ->
+                                patch { it.copy(overrides = it.overrides.copy(enableSessionMemory = enabled)) }
                             },
                         )
                     },
@@ -450,15 +429,39 @@ private fun SeatEditorSheet(
                     headlineContent = { Text(stringResource(R.string.use_web_search)) },
                     trailingContent = {
                         Switch(
-                            checked = seat.overrides.enableWebSearch ?: (selected?.enableWebSearch == true),
+                            checked = seat.overrides.enableWebSearch == true,
                             onCheckedChange = { enabled ->
                                 patch { it.copy(overrides = it.overrides.copy(enableWebSearch = enabled)) }
                             },
                         )
                     },
                 )
+                item(
+                    onClick = { picker = SeatPicker.ModeInjections },
+                    headlineContent = { Text(stringResource(R.string.extension_selector_tab_mode_injections)) },
+                    supportingContent = {
+                        Text(seatListSummary(seat.overrides.modeInjectionIds.size))
+                    },
+                    trailingContent = { Icon(HugeIcons.ArrowRight01, contentDescription = null) },
+                )
+                item(
+                    onClick = { picker = SeatPicker.Lorebooks },
+                    headlineContent = { Text(stringResource(R.string.extension_selector_tab_lorebooks)) },
+                    supportingContent = {
+                        Text(seatListSummary(seat.overrides.lorebookIds.size))
+                    },
+                    trailingContent = { Icon(HugeIcons.ArrowRight01, contentDescription = null) },
+                )
+                item(
+                    onClick = { picker = SeatPicker.Skills },
+                    headlineContent = { Text(stringResource(R.string.group_chat_page_skills)) },
+                    supportingContent = {
+                        Text(seatListSummary(seat.overrides.enabledSkills.size))
+                    },
+                    trailingContent = { Icon(HugeIcons.ArrowRight01, contentDescription = null) },
+                )
             }
-            val enabledIds = seat.overrides.mcpServers ?: selected?.mcpServers.orEmpty()
+            val enabledIds = seat.overrides.mcpServers.orEmpty()
             val enabledServers = mcpServers.filter { it.commonOptions.enable }
             if (enabledServers.isNotEmpty()) {
                 CardGroup(title = { Text(stringResource(R.string.mcp_picker_title)) }) {
@@ -526,5 +529,79 @@ private fun SeatEditorSheet(
                 }
             },
         )
+    }
+    if (picker != null) {
+        ModalBottomSheet(onDismissRequest = { picker = null }) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.75f)
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+            ) {
+                Text(
+                    text = when (picker) {
+                        SeatPicker.ModeInjections -> stringResource(R.string.extension_selector_tab_mode_injections)
+                        SeatPicker.Lorebooks -> stringResource(R.string.extension_selector_tab_lorebooks)
+                        SeatPicker.Skills -> stringResource(R.string.group_chat_page_skills)
+                        null -> ""
+                    },
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
+                when (picker) {
+                    SeatPicker.ModeInjections -> ModeInjectionsContent(
+                        modifier = Modifier.weight(1f),
+                        modeInjections = modeInjections,
+                        selectedIds = seat.overrides.modeInjectionIds,
+                        onToggle = { id, checked ->
+                            val next = if (checked) {
+                                seat.overrides.modeInjectionIds + id
+                            } else {
+                                seat.overrides.modeInjectionIds - id
+                            }
+                            patch { it.copy(overrides = it.overrides.copy(modeInjectionIds = next)) }
+                        },
+                    )
+                    SeatPicker.Lorebooks -> LorebooksContent(
+                        modifier = Modifier.weight(1f),
+                        lorebooks = lorebooks,
+                        selectedIds = seat.overrides.lorebookIds,
+                        onToggle = { id, checked ->
+                            val next = if (checked) {
+                                seat.overrides.lorebookIds + id
+                            } else {
+                                seat.overrides.lorebookIds - id
+                            }
+                            patch { it.copy(overrides = it.overrides.copy(lorebookIds = next)) }
+                        },
+                    )
+                    SeatPicker.Skills -> SkillsContent(
+                        modifier = Modifier.weight(1f),
+                        skills = skills,
+                        enabledSkills = seat.overrides.enabledSkills,
+                        onToggle = { name, checked ->
+                            val next = if (checked) {
+                                seat.overrides.enabledSkills + name
+                            } else {
+                                seat.overrides.enabledSkills - name
+                            }
+                            patch { it.copy(overrides = it.overrides.copy(enabledSkills = next)) }
+                        },
+                    )
+                    null -> Unit
+                }
+            }
+        }
+    }
+}
+
+private enum class SeatPicker { ModeInjections, Lorebooks, Skills }
+
+@Composable
+private fun seatListSummary(count: Int): String {
+    return if (count == 0) {
+        stringResource(R.string.group_chat_page_seat_none)
+    } else {
+        stringResource(R.string.group_chat_page_seat_selected, count)
     }
 }

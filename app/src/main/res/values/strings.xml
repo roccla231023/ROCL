@@ -1550,7 +1550,8 @@
   <string name="group_chat_page_override_prompt_default">Using assistant prompt</string>
   <string name="group_chat_page_override_prompt_restore">Restore</string>
   <string name="group_chat_page_skills">Skills</string>
-  <string name="group_chat_page_skills_desc">Shared by every seat in this group. Empty means no skills.</string>
+  <string name="group_chat_page_seat_none">Off in this group</string>
+  <string name="group_chat_page_seat_selected">%d selected</string>
   <string name="group_chat_mention_members">Members</string>
   <string name="group_chat_mention_files">Files</string>
   <string name="group_chat_mention_members_desc">Mention a seat</string>

@@ -1,6 +1,5 @@
 package me.rerere.rikkahub.ui.components.ui
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.pager.HorizontalPager
@@ -15,7 +14,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
@@ -46,6 +44,9 @@ fun ExtensionSelector(
     onNavigateToQuickMessages: () -> Unit = {},
     onNavigateToPrompts: () -> Unit = {},
     onNavigateToSkills: () -> Unit = {},
+    selectedQuickMessageIds: Set<kotlin.uuid.Uuid>? = null,
+    onUpdateQuickMessageIds: ((Set<kotlin.uuid.Uuid>) -> Unit)? = null,
+    quickMessagesOnly: Boolean = false,
 ) {
     val skillManager: SkillManager = koinInject()
     var skills by remember { mutableStateOf<List<SkillMetadata>>(emptyList()) }
@@ -69,46 +70,49 @@ fun ExtensionSelector(
         assistant.lorebookIds
     }
 
-    val pagerState = rememberPagerState { 4 }
+    val currentQuickMessageIds = selectedQuickMessageIds ?: assistant.quickMessageIds
+    val pagerState = rememberPagerState { if (quickMessagesOnly) 1 else 4 }
     val scope = rememberCoroutineScope()
 
     Column(
         modifier = modifier
     ) {
-        SecondaryScrollableTabRow(
-            selectedTabIndex = pagerState.currentPage,
-            containerColor = Color.Transparent,
-            modifier = Modifier.fillMaxWidth(),
-            edgePadding = 4.dp,
-        ) {
-            Tab(
-                selected = pagerState.currentPage == 0,
-                onClick = {
-                    scope.launch { pagerState.animateScrollToPage(0) }
-                },
-                text = { Text(stringResource(R.string.extension_selector_tab_quick_messages)) }
-            )
-            Tab(
-                selected = pagerState.currentPage == 1,
-                onClick = {
-                    scope.launch { pagerState.animateScrollToPage(1) }
-                },
-                text = { Text(stringResource(R.string.extension_selector_tab_mode_injections)) }
-            )
-            Tab(
-                selected = pagerState.currentPage == 2,
-                onClick = {
-                    scope.launch { pagerState.animateScrollToPage(2) }
-                },
-                text = { Text(stringResource(R.string.extension_selector_tab_lorebooks)) }
-            )
-            Tab(
-                selected = pagerState.currentPage == 3,
-                onClick = {
-                    scope.launch { pagerState.animateScrollToPage(3) }
-                },
-                text = { Text(stringResource(R.string.extension_selector_tab_skills)) }
-            )
+        if (!quickMessagesOnly) {
+            SecondaryScrollableTabRow(
+                selectedTabIndex = pagerState.currentPage,
+                containerColor = Color.Transparent,
+                modifier = Modifier.fillMaxWidth(),
+                edgePadding = 4.dp,
+            ) {
+                Tab(
+                    selected = pagerState.currentPage == 0,
+                    onClick = {
+                        scope.launch { pagerState.animateScrollToPage(0) }
+                    },
+                    text = { Text(stringResource(R.string.extension_selector_tab_quick_messages)) }
+                )
+                Tab(
+                    selected = pagerState.currentPage == 1,
+                    onClick = {
+                        scope.launch { pagerState.animateScrollToPage(1) }
+                    },
+                    text = { Text(stringResource(R.string.extension_selector_tab_mode_injections)) }
+                )
+                Tab(
+                    selected = pagerState.currentPage == 2,
+                    onClick = {
+                        scope.launch { pagerState.animateScrollToPage(2) }
+                    },
+                    text = { Text(stringResource(R.string.extension_selector_tab_lorebooks)) }
+                )
+                Tab(
+                    selected = pagerState.currentPage == 3,
+                    onClick = {
+                        scope.launch { pagerState.animateScrollToPage(3) }
+                    },
+                    text = { Text(stringResource(R.string.extension_selector_tab_skills)) }
+                )
+            }
         }
 
         HorizontalPager(
@@ -122,14 +126,18 @@ fun ExtensionSelector(
                     if (settings.quickMessages.isNotEmpty()) {
                         QuickMessagesContent(
                             quickMessages = settings.quickMessages,
-                            selectedIds = assistant.quickMessageIds,
+                            selectedIds = currentQuickMessageIds,
                             onToggle = { id, checked ->
                                 val newIds = if (checked) {
-                                    assistant.quickMessageIds + id
+                                    currentQuickMessageIds + id
                                 } else {
-                                    assistant.quickMessageIds - id
+                                    currentQuickMessageIds - id
                                 }
-                                onUpdate(assistant.copy(quickMessageIds = newIds))
+                                if (onUpdateQuickMessageIds != null) {
+                                    onUpdateQuickMessageIds(newIds)
+                                } else {
+                                    onUpdate(assistant.copy(quickMessageIds = newIds))
+                                }
                             },
                             onManage = onNavigateToQuickMessages,
                         )

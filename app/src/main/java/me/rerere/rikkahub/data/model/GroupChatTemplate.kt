@@ -10,7 +10,7 @@ data class GroupChatTemplate(
     val name: String = "",
     val intro: String = "",
     val workspaceId: Uuid? = null,
-    val enabledSkills: Set<String> = emptySet(),
+    val quickMessageIds: Set<Uuid> = emptySet(),
     val seats: List<GroupChatSeat> = emptyList(),
 )
 
@@ -31,7 +31,11 @@ data class GroupChatSeatOverrides(
     val maxTokens: Int? = null,
     val enableWebSearch: Boolean? = null,
     val enableMemory: Boolean? = null,
+    val enableSessionMemory: Boolean? = null,
     val mcpServers: Set<Uuid>? = null,
+    val enabledSkills: Set<String> = emptySet(),
+    val lorebookIds: Set<Uuid> = emptySet(),
+    val modeInjectionIds: Set<Uuid> = emptySet(),
 )
 
 fun GroupChatTemplate.ensureSeatInstanceNumbers(): GroupChatTemplate {
@@ -92,10 +96,19 @@ fun Assistant.applyGroupSeat(
         systemPrompt = overrides.systemPrompt ?: systemPrompt,
         reasoningLevel = overrides.reasoningLevel ?: reasoningLevel,
         maxTokens = overrides.maxTokens ?: maxTokens,
-        enableWebSearch = overrides.enableWebSearch ?: enableWebSearch,
-        enableMemory = overrides.enableMemory ?: enableMemory,
-        mcpServers = overrides.mcpServers ?: mcpServers,
+        enableWebSearch = overrides.enableWebSearch ?: false,
+        enableMemory = overrides.enableMemory ?: false,
+        enableSessionMemory = overrides.enableSessionMemory ?: false,
+        useGlobalMemory = false,
+        enableRecentChatsReference = false,
+        enableTimeReminder = false,
+        mcpServers = overrides.mcpServers ?: emptySet(),
         workspaceId = template.workspaceId ?: workspaceId,
-        enabledSkills = template.enabledSkills,
+        enabledSkills = overrides.enabledSkills,
+        lorebookIds = overrides.lorebookIds,
+        modeInjectionIds = overrides.modeInjectionIds,
+        allowConversationPromptInjection = false,
+        allowConversationSystemPrompt = false,
+        quickMessageIds = emptySet(),
     )
 }

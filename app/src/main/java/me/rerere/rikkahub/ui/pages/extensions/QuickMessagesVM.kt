@@ -51,7 +51,12 @@ class QuickMessagesVM(
                         assistant.copy(
                             quickMessageIds = assistant.quickMessageIds.filter { it in validIds }.toSet()
                         )
-                    }
+                    },
+                    groupChatTemplates = settings.groupChatTemplates.map { template ->
+                        template.copy(
+                            quickMessageIds = template.quickMessageIds.filter { it in validIds }.toSet()
+                        )
+                    },
                 )
             }
         }
