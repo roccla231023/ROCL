@@ -54,7 +54,7 @@ import me.rerere.ai.provider.ModelType
 import me.rerere.rikkahub.R
 import me.rerere.rikkahub.data.datastore.Settings
 import me.rerere.rikkahub.data.datastore.findModelById
-import me.rerere.rikkahub.data.db.entity.MemoryType
+
 import me.rerere.rikkahub.data.model.Assistant
 import me.rerere.rikkahub.data.model.AssistantMemory
 import me.rerere.rikkahub.data.model.MemoryRetrievalMode
@@ -197,13 +197,10 @@ private fun AssistantMemoryContent(
                         minLines = 2,
                         maxLines = 8
                     )
-                    Text(
-                        text = stringResource(R.string.assistant_page_memory_type),
-                        style = MaterialTheme.typography.labelMedium,
-                    )
-                    MemoryMetaChips(
-                        memory = memory,
-                        onUpdate = update,
+                    FilterChip(
+                        selected = memory.pinned,
+                        onClick = { update(memory.copy(pinned = !memory.pinned)) },
+                        label = { Text(stringResource(R.string.assistant_page_memory_pinned_badge)) },
                     )
                 }
             },
@@ -239,66 +236,70 @@ private fun AssistantMemoryContent(
     ) {
         CardGroup {
             item(
+                headlineContent = { Text(memoryModeTitle(assistant)) },
+                supportingContent = { Text(memoryModeDescription(assistant)) },
+            )
+        }
+
+        CardGroup {
+            item(
                 headlineContent = { Text(stringResource(R.string.assistant_page_memory)) },
                 supportingContent = {
-                    Text(
-                        text = stringResource(R.string.assistant_page_memory_desc),
-                    )
+                    Text(text = stringResource(R.string.assistant_page_memory_desc))
                 },
                 trailingContent = {
                     Switch(
                         checked = assistant.enableMemory,
                         onCheckedChange = {
-                            onUpdateAssistant(
-                                assistant.copy(
-                                    enableMemory = it
-                                )
-                            )
+                            onUpdateAssistant(assistant.copy(enableMemory = it))
                         }
                     )
                 }
             )
             item(
-                headlineContent = { Text(stringResource(R.string.assistant_page_global_memory)) },
+                headlineContent = { Text(stringResource(R.string.assistant_page_session_memory)) },
                 supportingContent = {
-                    Text(
-                        text = stringResource(R.string.assistant_page_global_memory_desc),
-                    )
+                    Text(text = stringResource(R.string.assistant_page_session_memory_desc))
                 },
                 trailingContent = {
                     Switch(
-                        checked = assistant.useGlobalMemory,
+                        checked = assistant.enableSessionMemory,
                         onCheckedChange = {
-                            onUpdateAssistant(
-                                assistant.copy(
-                                    useGlobalMemory = it
-                                )
-                            )
-                        },
-                        enabled = assistant.enableMemory
-                    )
-                }
-            )
-            item(
-                headlineContent = { Text(stringResource(R.string.assistant_page_recent_chats)) },
-                supportingContent = {
-                    Text(
-                        text = stringResource(R.string.assistant_page_recent_chats_desc),
-                    )
-                },
-                trailingContent = {
-                    Switch(
-                        checked = assistant.enableRecentChatsReference,
-                        onCheckedChange = {
-                            onUpdateAssistant(
-                                assistant.copy(
-                                    enableRecentChatsReference = it
-                                )
-                            )
+                            onUpdateAssistant(assistant.copy(enableSessionMemory = it))
                         }
                     )
                 }
             )
+            if (assistant.enableMemory) {
+                item(
+                    headlineContent = { Text(stringResource(R.string.assistant_page_global_memory)) },
+                    supportingContent = {
+                        Text(text = stringResource(R.string.assistant_page_global_memory_desc))
+                    },
+                    trailingContent = {
+                        Switch(
+                            checked = assistant.useGlobalMemory,
+                            onCheckedChange = {
+                                onUpdateAssistant(assistant.copy(useGlobalMemory = it))
+                            },
+                        )
+                    }
+                )
+                item(
+                    headlineContent = { Text(stringResource(R.string.assistant_page_recent_chats)) },
+                    supportingContent = {
+                        Text(text = stringResource(R.string.assistant_page_recent_chats_desc))
+                    },
+                    trailingContent = {
+                        Switch(
+                            checked = assistant.enableRecentChatsReference,
+                            onCheckedChange = {
+                                onUpdateAssistant(assistant.copy(enableRecentChatsReference = it))
+                            }
+                        )
+                    }
+                )
+            }
         }
 
         CardGroup {
@@ -335,13 +336,13 @@ private fun AssistantMemoryContent(
             }
         }
 
-        MemoryRetrievalSettings(
-            assistant = assistant,
-            settings = settings,
-            onUpdateAssistant = onUpdateAssistant,
-        )
-
-        Box(
+        if (assistant.enableMemory) {
+            MemoryRetrievalSettings(
+                assistant = assistant,
+                settings = settings,
+                onUpdateAssistant = onUpdateAssistant,
+            )
+            Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 8.dp)
@@ -382,6 +383,7 @@ private fun AssistantMemoryContent(
                     }
                 )
             }
+        }
         }
     }
 
@@ -547,62 +549,6 @@ private fun MemoryRetrievalSettings(
                 )
             }
         }
-
-        HorizontalDivider()
-        FormItem(
-            modifier = Modifier.padding(8.dp),
-            label = { Text(stringResource(R.string.assistant_page_rag_include_core)) },
-            description = { Text(stringResource(R.string.assistant_page_rag_include_core_desc)) },
-            tail = {
-                Switch(
-                    checked = assistant.ragIncludeCore,
-                    onCheckedChange = {
-                        onUpdateAssistant(assistant.copy(ragIncludeCore = it))
-                    }
-                )
-            }
-        )
-        HorizontalDivider()
-        FormItem(
-            modifier = Modifier.padding(8.dp),
-            label = { Text(stringResource(R.string.assistant_page_rag_include_episodic)) },
-            description = { Text(stringResource(R.string.assistant_page_rag_include_episodic_desc)) },
-            tail = {
-                Switch(
-                    checked = assistant.ragIncludeEpisodes,
-                    onCheckedChange = {
-                        onUpdateAssistant(assistant.copy(ragIncludeEpisodes = it))
-                    }
-                )
-            }
-        )
-    }
-}
-
-@Composable
-private fun MemoryMetaChips(
-    memory: AssistantMemory,
-    onUpdate: (AssistantMemory) -> Unit,
-) {
-    FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(0.dp),
-    ) {
-        FilterChip(
-            selected = memory.type != MemoryType.EPISODIC,
-            onClick = { onUpdate(memory.copy(type = MemoryType.CORE)) },
-            label = { Text(stringResource(R.string.assistant_page_badge_core)) },
-        )
-        FilterChip(
-            selected = memory.type == MemoryType.EPISODIC,
-            onClick = { onUpdate(memory.copy(type = MemoryType.EPISODIC)) },
-            label = { Text(stringResource(R.string.assistant_page_badge_episodic)) },
-        )
-        FilterChip(
-            selected = memory.pinned,
-            onClick = { onUpdate(memory.copy(pinned = !memory.pinned)) },
-            label = { Text(stringResource(R.string.assistant_page_memory_pinned_badge)) },
-        )
     }
 }
 
@@ -636,15 +582,6 @@ private fun MemoryItem(
                         Tag(type = TagType.WARNING) {
                             Text(stringResource(R.string.assistant_page_memory_pinned_badge))
                         }
-                    }
-                    Tag(type = if (memory.type == MemoryType.CORE) TagType.INFO else TagType.SUCCESS) {
-                        Text(
-                            if (memory.type == MemoryType.CORE) {
-                                stringResource(R.string.assistant_page_badge_core)
-                            } else {
-                                stringResource(R.string.assistant_page_badge_episodic)
-                            }
-                        )
                     }
                 }
                 Text(
@@ -699,6 +636,37 @@ private fun memoryRetrievalModeDescription(mode: MemoryRetrievalMode): String {
             MemoryRetrievalMode.KEYWORD -> R.string.assistant_page_memory_retrieval_mode_desc_keyword
             MemoryRetrievalMode.VECTOR -> R.string.assistant_page_memory_retrieval_mode_desc_vector
             MemoryRetrievalMode.HYBRID -> R.string.assistant_page_memory_retrieval_mode_desc_hybrid
+        }
+    )
+}
+
+@Composable
+private fun memoryModeTitle(assistant: Assistant): String {
+    return stringResource(
+        R.string.assistant_page_memory_mode_format,
+        stringResource(
+            when {
+                !assistant.enableMemory -> R.string.assistant_page_memory_mode_off_name
+                assistant.effectiveMemoryRetrievalMode() == MemoryRetrievalMode.KEYWORD ->
+                    R.string.assistant_page_memory_mode_keyword_name
+                assistant.effectiveMemoryRetrievalMode() == MemoryRetrievalMode.OFF ->
+                    R.string.assistant_page_memory_mode_basic_name
+                else -> R.string.assistant_page_memory_mode_rag_name
+            }
+        ),
+    )
+}
+
+@Composable
+private fun memoryModeDescription(assistant: Assistant): String {
+    return stringResource(
+        when {
+            !assistant.enableMemory -> R.string.assistant_page_memory_mode_off_desc
+            assistant.effectiveMemoryRetrievalMode() == MemoryRetrievalMode.KEYWORD ->
+                R.string.assistant_page_memory_mode_keyword_desc
+            assistant.effectiveMemoryRetrievalMode() == MemoryRetrievalMode.OFF ->
+                R.string.assistant_page_memory_mode_basic_desc
+            else -> R.string.assistant_page_memory_mode_rag_desc
         }
     )
 }

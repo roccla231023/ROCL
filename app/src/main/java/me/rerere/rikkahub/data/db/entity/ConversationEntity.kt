@@ -32,6 +32,8 @@ data class ConversationEntity(
     val workspaceCwd: String = "",
     @ColumnInfo("sticky_speaker_seat_id", defaultValue = "")
     val stickySpeakerSeatId: String = "",
+    @ColumnInfo(name = "session_memories", defaultValue = "[]")
+    val sessionMemories: String = "[]",
     @ColumnInfo("folder_id", defaultValue = "")
     val folderId: String = "",
 )

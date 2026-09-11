@@ -69,6 +69,7 @@ fun GroupChatTemplateDetailPage(id: String) {
     var pendingDelete by remember { mutableStateOf(false) }
     var showIntroEditor by remember { mutableStateOf(false) }
     var showAddMember by remember { mutableStateOf(false) }
+    var showSkillsSheet by remember { mutableStateOf(false) }
     var editingSeatId by remember { mutableStateOf<Uuid?>(null) }
 
     val assistantsById = remember(settings.assistants) { settings.assistants.associateBy { it.id } }
@@ -154,6 +155,22 @@ fun GroupChatTemplateDetailPage(id: String) {
                             )
                         },
                         headlineContent = { Text(stringResource(R.string.group_chat_page_workspace)) },
+                    )
+                    item(
+                        onClick = { showSkillsSheet = true },
+                        supportingContent = {
+                            Text(
+                                text = if (template.enabledSkills.isEmpty()) {
+                                    stringResource(R.string.group_chat_page_skills_desc)
+                                } else {
+                                    template.enabledSkills.joinToString()
+                                },
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        },
+                        trailingContent = { Icon(HugeIcons.ArrowRight01, contentDescription = null) },
+                        headlineContent = { Text(stringResource(R.string.group_chat_page_skills)) },
                     )
                 }
             }
@@ -298,6 +315,45 @@ fun GroupChatTemplateDetailPage(id: String) {
         }
     }
 
+    if (showSkillsSheet) {
+        ModalBottomSheet(onDismissRequest = { showSkillsSheet = false }) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 16.dp)
+                    .padding(bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(stringResource(R.string.group_chat_page_skills), style = MaterialTheme.typography.titleLarge)
+                Text(
+                    text = stringResource(R.string.group_chat_page_skills_desc),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                CardGroup {
+                    vm.skills.forEach { skill ->
+                        item(
+                            headlineContent = { Text(skill.name) },
+                            supportingContent = {
+                                if (skill.description.isNotBlank()) Text(skill.description)
+                            },
+                            trailingContent = {
+                                Switch(
+                                    checked = skill.name in template.enabledSkills,
+                                    onCheckedChange = { checked ->
+                                        val next = template.enabledSkills.toMutableSet()
+                                        if (checked) next.add(skill.name) else next.remove(skill.name)
+                                        vm.update(template.copy(enabledSkills = next))
+                                    },
+                                )
+                            },
+                        )
+                    }
+                }
+            }
+        }
+    }
+
     if (editingSeat != null) {
         SeatEditorSheet(
             template = template,
@@ -324,6 +380,7 @@ private fun SeatEditorSheet(
     onDismiss: () -> Unit,
 ) {
     val selected = assistants.find { it.id == seat.assistantId } ?: assistants.firstOrNull()
+    var showPromptEditor by remember { mutableStateOf(false) }
     fun patch(transform: (GroupChatSeat) -> GroupChatSeat) {
         onUpdate(template.copy(seats = template.seats.map { if (it.id == seat.id) transform(it) else it }))
     }
@@ -364,6 +421,20 @@ private fun SeatEditorSheet(
                 },
             )
             CardGroup {
+                item(
+                    onClick = { showPromptEditor = true },
+                    headlineContent = { Text(stringResource(R.string.group_chat_page_override_prompt)) },
+                    supportingContent = {
+                        Text(
+                            if (seat.overrides.systemPrompt != null) {
+                                stringResource(R.string.group_chat_page_override_prompt_active)
+                            } else {
+                                stringResource(R.string.group_chat_page_override_prompt_default)
+                            }
+                        )
+                    },
+                    trailingContent = { Icon(HugeIcons.ArrowRight01, contentDescription = null) },
+                )
                 item(
                     headlineContent = { Text(stringResource(R.string.assistant_page_memory)) },
                     trailingContent = {
@@ -420,5 +491,40 @@ private fun SeatEditorSheet(
                 )
             }
         }
+    }
+    if (showPromptEditor) {
+        val basePrompt = selected?.systemPrompt.orEmpty()
+        var draft by remember(seat.id, seat.overrides.systemPrompt, basePrompt) {
+            mutableStateOf(seat.overrides.systemPrompt ?: basePrompt)
+        }
+        AlertDialog(
+            onDismissRequest = { showPromptEditor = false },
+            title = { Text(stringResource(R.string.group_chat_page_override_prompt)) },
+            text = {
+                OutlinedTextField(
+                    value = draft,
+                    onValueChange = { draft = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 8,
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val normalized = draft.takeIf { it != basePrompt }
+                        patch { it.copy(overrides = it.overrides.copy(systemPrompt = normalized)) }
+                        showPromptEditor = false
+                    }
+                ) { Text(stringResource(R.string.assistant_page_save)) }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { draft = basePrompt },
+                    enabled = draft != basePrompt,
+                ) {
+                    Text(stringResource(R.string.group_chat_page_override_prompt_restore))
+                }
+            },
+        )
     }
 }

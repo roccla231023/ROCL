@@ -792,6 +792,15 @@ class ChatService(
                     assistant = assistant,
                     model = model,
                     workspaceCwd = conversation.workspaceCwd,
+                    sessionMemories = if (assistant.enableSessionMemory) conversation.sessionMemories else emptyList(),
+                    onSessionMemoriesChanged = if (assistant.enableSessionMemory) {
+                        { updated ->
+                            val current = getConversationFlow(conversationId).value
+                            updateConversation(conversationId, current.copy(sessionMemories = updated))
+                        }
+                    } else {
+                        null
+                    },
                 )
             } catch (error: InvalidMcpServerNamesException) {
                 sessions[conversationId]?.messageQueue?.pause()
@@ -835,6 +844,13 @@ class ChatService(
                     query = query,
                     settings = settings,
                 ),
+                sessionMemories = {
+                    if (assistant.enableSessionMemory) {
+                        getConversationFlow(conversationId).value.sessionMemories
+                    } else {
+                        emptyList()
+                    }
+                },
                 inputTransformers = buildList {
                     addAll(inputTransformers)
                     add(templateTransformer)
@@ -992,10 +1008,20 @@ class ChatService(
             }
         }
 
-        val sticky = GroupChatEngine.nextStickySeatId(
-            speakerSeatIds = speakers.map { it.id },
-            previousSticky = liveConversation.stickySpeakerSeatId,
-        )
+        val sticky = if (forcedSpeakerSeatIds != null) {
+            liveConversation.stickySpeakerSeatId
+        } else {
+            val mentionedCount = GroupChatEngine.resolveEnabledMentionedSeatIds(
+                userText = userText,
+                template = template,
+                assistantsById = settings.assistants.associateBy { it.id },
+            ).size
+            GroupChatEngine.nextStickySeatId(
+                speakerSeatIds = speakers.map { it.id },
+                previousSticky = liveConversation.stickySpeakerSeatId,
+                clearAfterMultiMention = mentionedCount >= 2,
+            )
+        }
         val finalConversation = getConversationFlow(conversationId).value.copy(
             stickySpeakerSeatId = sticky,
             updateAt = Instant.now(),
@@ -1044,6 +1070,15 @@ class ChatService(
                 assistant = seatAssistant,
                 model = model,
                 workspaceCwd = conversation.workspaceCwd,
+                sessionMemories = if (seatAssistant.enableSessionMemory) conversation.sessionMemories else emptyList(),
+                onSessionMemoriesChanged = if (seatAssistant.enableSessionMemory) {
+                    { updated ->
+                        val current = getConversationFlow(conversationId).value
+                        updateConversation(conversationId, current.copy(sessionMemories = updated))
+                    }
+                } else {
+                    null
+                },
             )
         } catch (error: InvalidMcpServerNamesException) {
             session.messageQueue.pause()
@@ -1076,7 +1111,11 @@ class ChatService(
             settings = settings,
             model = model,
             processingStatus = session.processingStatus,
-            messages = conversation.currentMessages,
+            messages = GroupChatEngine.messagesForNewSeatTurn(
+                messages = conversation.currentMessages,
+                seatId = seat.id,
+                modelId = model.id,
+            ),
             assistant = promptAssistant,
             conversationId = conversationId,
             conversationSystemPrompt = conversation.customSystemPrompt,
@@ -1088,6 +1127,13 @@ class ChatService(
                 query = query,
                 settings = settings,
             ),
+            sessionMemories = {
+                if (seatAssistant.enableSessionMemory) {
+                    getConversationFlow(conversationId).value.sessionMemories
+                } else {
+                    emptyList()
+                }
+            },
             inputTransformers = buildList {
                 addAll(inputTransformers)
                 add(templateTransformer)

@@ -18,13 +18,14 @@ class GroupChatMentionCompletionProvider(
         val names = template.buildSeatDisplayNames(assistantsById)
         val query = mention.query.lowercase()
         val items = template.seats.mapNotNull { seat ->
+            if (!seat.defaultEnabled) return@mapNotNull null
             val name = names[seat.id] ?: return@mapNotNull null
             if (query.isNotBlank() && !name.lowercase().contains(query)) return@mapNotNull null
             ChatCompletionItem(
                 label = "@$name",
                 insertText = "@$name ",
                 detail = assistantsById[seat.assistantId]?.name,
-                sortScore = if (name.lowercase().startsWith(query)) 100 else 50,
+                sortScore = if (name.lowercase().startsWith(query)) 10_000 else 9_000,
             )
         }
         if (items.isEmpty()) return null

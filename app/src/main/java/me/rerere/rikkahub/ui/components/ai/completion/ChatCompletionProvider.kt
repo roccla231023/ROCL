@@ -23,10 +23,13 @@ data class ChatCompletionItem(
     val detail: String? = null,
     val icon: ImageVector? = null,
     val sortScore: Int = 0,
+    val action: String? = null,
 )
 
 interface ChatCompletionProvider {
     val id: String
 
     suspend fun complete(context: ChatCompletionContext): ChatCompletionList?
+
+    fun handleCompletionItem(item: ChatCompletionItem): Boolean = false
 }

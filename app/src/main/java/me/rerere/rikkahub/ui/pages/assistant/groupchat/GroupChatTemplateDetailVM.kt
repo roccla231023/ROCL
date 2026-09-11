@@ -11,6 +11,7 @@ import me.rerere.rikkahub.data.datastore.Settings
 import me.rerere.rikkahub.data.datastore.SettingsStore
 import me.rerere.rikkahub.data.db.entity.WorkspaceEntity
 import me.rerere.rikkahub.data.model.GroupChatTemplate
+import me.rerere.rikkahub.data.files.SkillManager
 import me.rerere.rikkahub.data.model.ensureSeatInstanceNumbers
 import me.rerere.rikkahub.data.repository.WorkspaceRepository
 import kotlin.uuid.Uuid
@@ -19,6 +20,7 @@ class GroupChatTemplateDetailVM(
     private val id: String,
     private val settingsStore: SettingsStore,
     workspaceRepository: WorkspaceRepository,
+    skillManager: SkillManager,
 ) : ViewModel() {
     private val templateId = Uuid.parse(id)
 
@@ -34,6 +36,8 @@ class GroupChatTemplateDetailVM(
     val workspaces: StateFlow<List<WorkspaceEntity>> = workspaceRepository
         .listFlow()
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    val skills = skillManager.listSkills()
 
     fun update(template: GroupChatTemplate) {
         viewModelScope.launch {

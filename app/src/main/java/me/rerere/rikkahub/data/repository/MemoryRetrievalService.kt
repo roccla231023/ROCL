@@ -24,11 +24,7 @@ class MemoryRetrievalService(
             assistant.id.toString()
         }
         val embeddingOwnerId = assistant.id.toString()
-        val all = MemoryRetrieval.filterByType(
-            memories = memoryRepository.getMemoriesOfAssistant(memoryOwnerId),
-            includeCore = assistant.ragIncludeCore,
-            includeEpisodes = assistant.ragIncludeEpisodes,
-        )
+        val all = memoryRepository.getMemoriesOfAssistant(memoryOwnerId)
         if (all.isEmpty()) return emptyList()
 
         val hasEmbeddingModel = embeddingService.getEmbeddingModelId(embeddingOwnerId) != null
