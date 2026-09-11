@@ -28,6 +28,7 @@ import me.rerere.rikkahub.data.db.dao.UsageStatsDAO
 import me.rerere.rikkahub.data.files.FilesManager
 import me.rerere.rikkahub.data.model.Conversation
 import me.rerere.rikkahub.data.model.MessageNode
+import me.rerere.rikkahub.data.model.SessionMemory
 import me.rerere.rikkahub.utils.JsonInstant
 import java.time.Instant
 import java.time.LocalDate
@@ -380,6 +381,7 @@ class ConversationRepository(
             lorebookIds = JsonInstant.encodeToString(conversation.lorebookIds),
             workspaceCwd = conversation.workspaceCwd ?: "",
             stickySpeakerSeatId = conversation.stickySpeakerSeatId?.toString() ?: "",
+            sessionMemories = JsonInstant.encodeToString(conversation.sessionMemories),
             folderId = conversation.folderId?.toString() ?: "",
         )
     }
@@ -402,6 +404,11 @@ class ConversationRepository(
             lorebookIds = JsonInstant.decodeFromString(conversationEntity.lorebookIds),
             workspaceCwd = conversationEntity.workspaceCwd.ifEmpty { null },
             stickySpeakerSeatId = conversationEntity.stickySpeakerSeatId.ifEmpty { null }?.let { Uuid.parse(it) },
+            sessionMemories = runCatching {
+                JsonInstant.decodeFromString<List<SessionMemory>>(
+                    conversationEntity.sessionMemories,
+                )
+            }.getOrDefault(emptyList()),
             folderId = conversationEntity.folderId.ifEmpty { null }?.let { Uuid.parse(it) },
         )
     }

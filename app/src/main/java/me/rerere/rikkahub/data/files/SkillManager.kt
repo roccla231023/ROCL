@@ -67,7 +67,14 @@ class SkillManager(
                         } else {
                             assistant
                         }
-                    }
+                    },
+                    groupChatTemplates = settings.groupChatTemplates.map { template ->
+                        if (name in template.enabledSkills) {
+                            template.copy(enabledSkills = template.enabledSkills - name)
+                        } else {
+                            template
+                        }
+                    },
                 )
             }
         }
@@ -94,7 +101,16 @@ class SkillManager(
                     assistant
                 }
             }
-            if (changed) settings.copy(assistants = newAssistants) else settings
+            val newTemplates = settings.groupChatTemplates.map { template ->
+                val pruned = template.enabledSkills.filterTo(LinkedHashSet()) { it in existing }
+                if (pruned.size != template.enabledSkills.size) {
+                    changed = true
+                    template.copy(enabledSkills = pruned)
+                } else {
+                    template
+                }
+            }
+            if (changed) settings.copy(assistants = newAssistants, groupChatTemplates = newTemplates) else settings
         }
         skills
     }

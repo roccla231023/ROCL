@@ -6,6 +6,7 @@ import me.rerere.ai.ui.UIMessagePart
 import me.rerere.rikkahub.data.model.Assistant
 import me.rerere.rikkahub.data.model.GroupChatSeat
 import me.rerere.rikkahub.data.model.GroupChatTemplate
+import me.rerere.rikkahub.data.model.applyGroupSeat
 import me.rerere.rikkahub.data.model.buildSeatDisplayNames
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -83,6 +84,88 @@ class GroupChatEngineTest {
     }
 
     @Test
+    fun mentionsFollowAppearanceOrderAndDedupe() {
+        val speakers = GroupChatEngine.resolveSpeakerSeatIds(
+            userText = "@Claude then @GPT then @Claude again",
+            template = template,
+            assistantsById = assistants,
+            stickySeatId = null,
+        )
+        assertEquals(listOf(claudeSeat.id, gptSeat.id), speakers)
+    }
+
+    @Test
+    fun multiMentionClearsSticky() {
+        val sticky = GroupChatEngine.nextStickySeatId(
+            speakerSeatIds = listOf(gptSeat.id, claudeSeat.id),
+            previousSticky = gptSeat.id,
+            clearAfterMultiMention = true,
+        )
+        assertEquals(null, sticky)
+    }
+
+    @Test
+    fun singleMentionKeepsStickyOnThatSeat() {
+        val sticky = GroupChatEngine.nextStickySeatId(
+            speakerSeatIds = listOf(claudeSeat.id),
+            previousSticky = gptSeat.id,
+            clearAfterMultiMention = false,
+        )
+        assertEquals(claudeSeat.id, sticky)
+    }
+
+    @Test
+    fun disabledMentionIsIgnoredAndDoesNotCountAsMultiMention() {
+        val disabledGpt = gptSeat.copy(defaultEnabled = false)
+        val group = template.copy(seats = listOf(disabledGpt, claudeSeat))
+        val mentioned = GroupChatEngine.resolveEnabledMentionedSeatIds(
+            text = "@GPT @Claude review",
+            template = group,
+            assistantsById = assistants,
+        )
+        assertEquals(listOf(claudeSeat.id), mentioned)
+        val speakers = GroupChatEngine.resolveSpeakerSeatIds(
+            userText = "@GPT @Claude review",
+            template = group,
+            assistantsById = assistants,
+            stickySeatId = null,
+        )
+        assertEquals(listOf(claudeSeat.id), speakers)
+        assertEquals(
+            claudeSeat.id,
+            GroupChatEngine.nextStickySeatId(
+                speakerSeatIds = speakers,
+                previousSticky = null,
+                clearAfterMultiMention = mentioned.size >= 2,
+            ),
+        )
+    }
+
+    @Test
+    fun newSeatTurnReusesSameSeatAssistantBubble() {
+        val claudeReply = UIMessage.assistant("draft").copy(speakerSeatId = claudeSeat.id)
+        val reused = GroupChatEngine.messagesForNewSeatTurn(
+            messages = listOf(UIMessage.user("@Claude again"), claudeReply),
+            seatId = claudeSeat.id,
+        )
+        assertEquals(2, reused.size)
+        assertEquals(claudeReply.id, reused.last().id)
+    }
+
+    @Test
+    fun newSeatTurnOpensAFreshAssistantMessage() {
+        val gptReply = UIMessage.assistant("done").copy(speakerSeatId = gptSeat.id)
+        val opened = GroupChatEngine.messagesForNewSeatTurn(
+            messages = listOf(UIMessage.user("@Claude review"), gptReply),
+            seatId = claudeSeat.id,
+        )
+        assertEquals(3, opened.size)
+        assertEquals(MessageRole.ASSISTANT, opened.last().role)
+        assertEquals(claudeSeat.id, opened.last().speakerSeatId)
+        assertTrue(opened.last().parts.isEmpty())
+    }
+
+    @Test
     fun otherSeatToolOutputIsLabelledUserNote() {
         val names = template.buildSeatDisplayNames(assistants)
         val gptReply = UIMessage(
@@ -115,6 +198,67 @@ class GroupChatEngineTest {
         assertTrue(text.contains("[Tool output from GPT]"))
         assertTrue(text.contains("src/App.kt") || text.contains("fun main"))
         assertTrue(rewritten.none { it.role == MessageRole.ASSISTANT && it.speakerSeatId == gptSeat.id })
+    }
+
+    @Test
+    fun applyGroupSeatUsesTemplateSkillsAndOverridePrompt() {
+        val overrideSeat = gptSeat.copy(
+            overrides = gptSeat.overrides.copy(systemPrompt = "Reviewer only."),
+        )
+        val group = template.copy(
+            enabledSkills = setOf("workspace-python"),
+            seats = listOf(overrideSeat, claudeSeat),
+        )
+        val seated = gpt.copy(enabledSkills = setOf("solo-skill"), systemPrompt = "Original")
+            .applyGroupSeat(group, overrideSeat)
+        assertEquals("Reviewer only.", seated.systemPrompt)
+        assertEquals(setOf("workspace-python"), seated.enabledSkills)
+    }
+
+    @Test
+    fun applyGroupSeatEmptySkillsDoNotFallBackToAssistant() {
+        val seated = gpt.copy(enabledSkills = setOf("solo-skill"))
+            .applyGroupSeat(template, gptSeat)
+        assertEquals(emptySet<String>(), seated.enabledSkills)
+    }
+
+    @Test
+    fun applyGroupSeatEmptyOverrideClearsAssistantPrompt() {
+        val seat = gptSeat.copy(overrides = gptSeat.overrides.copy(systemPrompt = ""))
+        val seated = gpt.copy(systemPrompt = "Original").applyGroupSeat(template, seat)
+        assertEquals("", seated.systemPrompt)
+    }
+
+    @Test
+    fun clearedMultiMentionStickyFallsToFirstEnabledSeat() {
+        val speakers = GroupChatEngine.resolveSpeakerSeatIds(
+            userText = "hello everyone",
+            template = template,
+            assistantsById = assistants,
+            stickySeatId = null,
+        )
+        assertEquals(listOf(gptSeat.id), speakers)
+        assertEquals(
+            gptSeat.id,
+            GroupChatEngine.nextStickySeatId(speakers, previousSticky = null),
+        )
+    }
+
+    @Test
+    fun rewriteLeavesSyntheticSessionMemoryAlone() {
+        val names = template.buildSeatDisplayNames(assistants)
+        val synthetic = UIMessage.user("## Session Memories").copy(isSynthetic = true)
+        val rewritten = GroupChatEngine.rewritePromptMessagesForSeat(
+            messages = listOf(synthetic, UIMessage.user("hi")),
+            seat = claudeSeat,
+            selfAssistantId = claude.id,
+            seatDisplayNames = names,
+            assistantsById = assistants,
+            userName = "Roc",
+        )
+        assertEquals("## Session Memories", rewritten.first().toText())
+        assertTrue(rewritten.first().isSynthetic)
+        assertTrue(rewritten.last().toText().contains("[Message from Roc (user)]"))
     }
 
     @Test

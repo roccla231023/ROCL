@@ -104,6 +104,7 @@ import me.rerere.rikkahub.ui.components.ai.completion.ChatCompletionContext
 import me.rerere.rikkahub.ui.components.ai.completion.ChatCompletionItem
 import me.rerere.rikkahub.ui.components.ai.completion.ChatCompletionList
 import me.rerere.rikkahub.ui.components.ai.completion.ChatCompletionProvider
+import me.rerere.rikkahub.ui.components.ai.completion.GroupChatMentionCoordinator
 import me.rerere.rikkahub.ui.components.ui.KeepScreenOn
 import me.rerere.rikkahub.ui.components.ui.permission.PermissionManager
 import me.rerere.rikkahub.ui.components.ui.permission.PermissionRecordAudio
@@ -501,6 +502,7 @@ private fun TextInputRow(
         var isFocused by remember { mutableStateOf(false) }
         var isFullScreen by remember { mutableStateOf(false) }
         var completionList by remember { mutableStateOf<ChatCompletionList?>(null) }
+        var completionEpoch by remember { mutableStateOf(0) }
         val receiveContentListener = remember(
             settings.displaySetting.pasteLongTextAsFile, settings.displaySetting.pasteLongTextThreshold
         ) {
@@ -538,7 +540,7 @@ private fun TextInputRow(
             }
         }
 
-        LaunchedEffect(completionProviders, isFocused) {
+        LaunchedEffect(completionProviders, isFocused, completionEpoch) {
             if (!isFocused || completionProviders.isEmpty()) {
                 completionList = null
                 return@LaunchedEffect
@@ -560,20 +562,7 @@ private fun TextInputRow(
                         null
                     }
                 }
-                val primary = lists.firstOrNull()
-                completionList = primary?.let { list ->
-                    val mergedItems = lists
-                        .filter { it.replacementRange == list.replacementRange }
-                        .flatMap { it.items }
-                        .distinctBy { it.label to it.insertText }
-                        .sortedWith(
-                            compareByDescending<ChatCompletionItem> { it.sortScore }
-                                .thenBy { it.label.length }
-                                .thenBy { it.label.lowercase() }
-                        )
-                        .take(8)
-                    list.copy(items = mergedItems)
-                }
+                completionList = GroupChatMentionCoordinator.mergeLists(lists)
             }
         }
 
@@ -581,8 +570,13 @@ private fun TextInputRow(
             CompletionPopup(
                 completionList = list,
                 onItemClick = { item ->
-                    state.applyCompletion(list.replacementRange, item)
-                    completionList = null
+                    val consumed = completionProviders.any { it.handleCompletionItem(item) }
+                    if (consumed) {
+                        completionEpoch++
+                    } else {
+                        state.applyCompletion(list.replacementRange, item)
+                        completionList = null
+                    }
                 },
             )
         }

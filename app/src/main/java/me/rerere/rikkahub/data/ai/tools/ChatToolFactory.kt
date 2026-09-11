@@ -11,6 +11,7 @@ import me.rerere.rikkahub.data.ai.tools.local.LocalTools
 import me.rerere.rikkahub.data.datastore.Settings
 import me.rerere.rikkahub.data.files.SkillManager
 import me.rerere.rikkahub.data.model.Assistant
+import me.rerere.rikkahub.data.model.SessionMemory
 import me.rerere.rikkahub.data.repository.ConversationRepository
 import me.rerere.rikkahub.data.repository.MemoryRepository
 import me.rerere.rikkahub.data.repository.WorkspaceRepository
@@ -40,69 +41,86 @@ class ChatToolFactory(
         assistant: Assistant,
         model: Model,
         workspaceCwd: String? = null,
-    ): List<Tool> = buildList {
-        if (assistant.enableMemory) {
-            val memoryAssistantId = if (assistant.useGlobalMemory) {
-                MemoryRepository.GLOBAL_MEMORY_ID
-            } else {
-                assistant.id.toString()
+        sessionMemories: List<SessionMemory> = emptyList(),
+        onSessionMemoriesChanged: (suspend (List<SessionMemory>) -> Unit)? = null,
+    ): List<Tool> {
+        var currentSessionMemories = sessionMemories
+        return buildList {
+            if (assistant.enableMemory) {
+                val memoryAssistantId = if (assistant.useGlobalMemory) {
+                    MemoryRepository.GLOBAL_MEMORY_ID
+                } else {
+                    assistant.id.toString()
+                }
+                addAll(
+                    buildMemoryTools(
+                        json = json,
+                        onCreation = { content ->
+                            memoryRepository.addMemory(
+                                assistantId = memoryAssistantId,
+                                content = content,
+                                embeddingAssistantId = assistant.id.toString(),
+                            )
+                        },
+                        onUpdate = { id, content ->
+                            memoryRepository.updateContent(
+                                id = id,
+                                content = content,
+                                embeddingAssistantId = assistant.id.toString(),
+                            )
+                        },
+                        onDelete = { id -> memoryRepository.deleteMemory(id) },
+                    )
+                )
             }
-            addAll(
-                buildMemoryTools(
-                    json = json,
-                    onCreation = { content ->
-                        memoryRepository.addMemory(
-                            assistantId = memoryAssistantId,
-                            content = content,
-                            embeddingAssistantId = assistant.id.toString(),
-                        )
-                    },
-                    onUpdate = { id, content ->
-                        memoryRepository.updateContent(
-                            id = id,
-                            content = content,
-                            embeddingAssistantId = assistant.id.toString(),
-                        )
-                    },
-                    onDelete = { id -> memoryRepository.deleteMemory(id) },
+            if (shouldUseExternalWebSearch(assistant, model)) {
+                addAll(createSearchTools(settings))
+            }
+            addAll(localTools.getTools(assistant.localTools))
+            if (assistant.enableSessionMemory && onSessionMemoriesChanged != null) {
+                addAll(
+                    buildSessionMemoryTools(
+                        json = json,
+                        getMemories = { currentSessionMemories },
+                        onChange = { updated ->
+                            currentSessionMemories = updated
+                            onSessionMemoriesChanged(updated)
+                        },
+                    )
                 )
-            )
-        }
-        if (shouldUseExternalWebSearch(assistant, model)) {
-            addAll(createSearchTools(settings))
-        }
-        addAll(localTools.getTools(assistant.localTools))
-        if (assistant.enableRecentChatsReference) {
-            addAll(createConversationTools(conversationRepository, assistant.id))
-        }
-        addAll(createWorkspaceToolsIfReady(assistant.workspaceId?.toString(), workspaceCwd))
-        if (assistant.enabledSkills.isNotEmpty()) {
-            addAll(
-                createSkillTools(
-                    enabledSkills = assistant.enabledSkills,
-                    allSkills = skillManager.listSkills(),
+            }
+            if (assistant.enableRecentChatsReference) {
+                addAll(createConversationTools(conversationRepository, assistant.id))
+            }
+            addAll(createWorkspaceToolsIfReady(assistant.workspaceId?.toString(), workspaceCwd))
+            if (assistant.enabledSkills.isNotEmpty()) {
+                addAll(
+                    createSkillTools(
+                        enabledSkills = assistant.enabledSkills,
+                        allSkills = skillManager.listSkills(),
+                    )
                 )
-            )
-        }
+            }
 
-        val mcpTools = mcpManager.getAllAvailableTools()
-        val invalidNames = mcpTools
-            .map { it.second }
-            .distinct()
-            .filter { name -> name.isEmpty() || !name.all { it in 'a'..'z' || it in 'A'..'Z' || it in '0'..'9' } }
-        if (invalidNames.isNotEmpty()) {
-            throw InvalidMcpServerNamesException(invalidNames)
-        }
-        mcpTools.forEach { (serverId, serverName, tool) ->
-            add(
-                Tool(
-                    name = "mcp__${serverName}__${tool.name}",
-                    description = tool.description ?: "",
-                    parameters = { tool.inputSchema },
-                    needsApproval = { tool.needsApproval },
-                    execute = { mcpManager.callTool(serverId, tool.name, it.jsonObject) },
+            val mcpTools = mcpManager.getAllAvailableTools()
+            val invalidNames = mcpTools
+                .map { it.second }
+                .distinct()
+                .filter { name -> name.isEmpty() || !name.all { it in 'a'..'z' || it in 'A'..'Z' || it in '0'..'9' } }
+            if (invalidNames.isNotEmpty()) {
+                throw InvalidMcpServerNamesException(invalidNames)
+            }
+            mcpTools.forEach { (serverId, serverName, tool) ->
+                add(
+                    Tool(
+                        name = "mcp__${serverName}__${tool.name}",
+                        description = tool.description ?: "",
+                        parameters = { tool.inputSchema },
+                        needsApproval = { tool.needsApproval },
+                        execute = { mcpManager.callTool(serverId, tool.name, it.jsonObject) },
+                    )
                 )
-            )
+            }
         }
     }
 

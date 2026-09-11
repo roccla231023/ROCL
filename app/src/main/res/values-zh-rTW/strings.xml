@@ -1408,4 +1408,26 @@
   <string name="workspace_detail_compatibility_mode">相容模式</string>
   <string name="workspace_detail_compatibility_mode_desc">如果終端機無法啟動，請嘗試啟用此選項。這可能會降低效能。適用於新的終端機分頁和後續指令。</string>
   <string name="workspace_detail_settings_save_failed">儲存設定失敗</string>
+  <string name="assistant_page_session_memory">会话记忆</string>
+  <string name="assistant_page_session_memory_desc">让助手记录只在当前会话生效的重要细节，例如设定、大纲和要求。</string>
+  <string name="assistant_page_memory_mode_format">记忆模式：%1$s</string>
+  <string name="assistant_page_memory_mode_off_name">关闭</string>
+  <string name="assistant_page_memory_mode_off_desc">记忆功能已禁用</string>
+  <string name="assistant_page_memory_mode_basic_name">基础</string>
+  <string name="assistant_page_memory_mode_basic_desc">每次对话都会发送所有记忆给模型</string>
+  <string name="assistant_page_memory_mode_keyword_name">基础 + 关键词</string>
+  <string name="assistant_page_memory_mode_keyword_desc">根据关键词匹配记忆</string>
+  <string name="assistant_page_memory_mode_rag_name">基础 + RAG</string>
+  <string name="assistant_page_memory_mode_rag_desc">基于对话上下文的智能记忆检索</string>
+  <string name="group_chat_page_override_prompt">覆写提示词</string>
+  <string name="group_chat_page_override_prompt_desc">仅在本群覆盖该成员原来的系统提示词</string>
+  <string name="group_chat_page_override_prompt_active">已覆写</string>
+  <string name="group_chat_page_override_prompt_default">使用助手原提示词</string>
+  <string name="group_chat_page_override_prompt_restore">还原</string>
+  <string name="group_chat_page_skills">Skills</string>
+  <string name="group_chat_page_skills_desc">这个群所有成员共用。空表示本群不启用任何 skill。</string>
+  <string name="group_chat_mention_members">成员</string>
+  <string name="group_chat_mention_files">文件</string>
+  <string name="group_chat_mention_members_desc">点名一个席位</string>
+  <string name="group_chat_mention_files_desc">引用工作区文件</string>
 </resources>

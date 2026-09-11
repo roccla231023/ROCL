@@ -1533,4 +1533,26 @@
   <string name="storage_toast_history_cleared">History files cleared</string>
   <string name="storage_files_open_failed">Failed to open file: %1$s</string>
 
+  <string name="assistant_page_session_memory">Session Memory</string>
+  <string name="assistant_page_session_memory_desc">Let the assistant keep important details active only in the current conversation, such as settings, outlines, and requirements.</string>
+  <string name="assistant_page_memory_mode_format">Memory Mode: %1$s</string>
+  <string name="assistant_page_memory_mode_off_name">Off</string>
+  <string name="assistant_page_memory_mode_off_desc">Memory is disabled</string>
+  <string name="assistant_page_memory_mode_basic_name">Basic</string>
+  <string name="assistant_page_memory_mode_basic_desc">All memories are sent to the model in every conversation</string>
+  <string name="assistant_page_memory_mode_keyword_name">Basic + Keywords</string>
+  <string name="assistant_page_memory_mode_keyword_desc">Memory retrieval based on matching keywords</string>
+  <string name="assistant_page_memory_mode_rag_name">Basic + RAG</string>
+  <string name="assistant_page_memory_mode_rag_desc">Smart memory retrieval based on conversation context</string>
+  <string name="group_chat_page_override_prompt">Override prompt</string>
+  <string name="group_chat_page_override_prompt_desc">Replace this seat\'s original system prompt in this group only</string>
+  <string name="group_chat_page_override_prompt_active">Overridden</string>
+  <string name="group_chat_page_override_prompt_default">Using assistant prompt</string>
+  <string name="group_chat_page_override_prompt_restore">Restore</string>
+  <string name="group_chat_page_skills">Skills</string>
+  <string name="group_chat_page_skills_desc">Shared by every seat in this group. Empty means no skills.</string>
+  <string name="group_chat_mention_members">Members</string>
+  <string name="group_chat_mention_files">Files</string>
+  <string name="group_chat_mention_members_desc">Mention a seat</string>
+  <string name="group_chat_mention_files_desc">Mention a workspace file</string>
 </resources>
