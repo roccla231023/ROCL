@@ -1012,7 +1012,7 @@ class ChatService(
             liveConversation.stickySpeakerSeatId
         } else {
             val mentionedCount = GroupChatEngine.resolveEnabledMentionedSeatIds(
-                userText = userText,
+                text = userText,
                 template = template,
                 assistantsById = settings.assistants.associateBy { it.id },
             ).size
