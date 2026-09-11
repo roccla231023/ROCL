@@ -1425,7 +1425,8 @@
   <string name="group_chat_page_override_prompt_default">使用助手原提示词</string>
   <string name="group_chat_page_override_prompt_restore">还原</string>
   <string name="group_chat_page_skills">Skills</string>
-  <string name="group_chat_page_skills_desc">这个群所有成员共用。空表示本群不启用任何 skill。</string>
+  <string name="group_chat_page_seat_none">本群未开</string>
+  <string name="group_chat_page_seat_selected">已選 %d 項</string>
   <string name="group_chat_mention_members">成员</string>
   <string name="group_chat_mention_files">文件</string>
   <string name="group_chat_mention_members_desc">点名一个席位</string>

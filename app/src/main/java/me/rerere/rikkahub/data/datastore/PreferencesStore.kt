@@ -418,6 +418,28 @@ class SettingsStore(
                 modeInjections = settings.modeInjections.distinctBy { it.id },
                 lorebooks = settings.lorebooks.distinctBy { it.id },
                 quickMessages = settings.quickMessages.distinctBy { it.id },
+                groupChatTemplates = settings.groupChatTemplates.map { template ->
+                    template.copy(
+                        quickMessageIds = template.quickMessageIds.filter { id ->
+                            id in validQuickMessageIds
+                        }.toSet(),
+                        seats = template.seats.map { seat ->
+                            seat.copy(
+                                overrides = seat.overrides.copy(
+                                    mcpServers = seat.overrides.mcpServers?.filter { serverId ->
+                                        serverId in validMcpServerIds
+                                    }?.toSet(),
+                                    lorebookIds = seat.overrides.lorebookIds.filter { id ->
+                                        id in validLorebookIds
+                                    }.toSet(),
+                                    modeInjectionIds = seat.overrides.modeInjectionIds.filter { id ->
+                                        id in validModeInjectionIds
+                                    }.toSet(),
+                                )
+                            )
+                        },
+                    )
+                },
             )
         }
         .onEach {
@@ -722,7 +744,10 @@ fun Settings.getGroupChatTemplate(id: Uuid): GroupChatTemplate? {
 fun Settings.isGroupChat(id: Uuid): Boolean = getGroupChatTemplate(id) != null
 
 fun Settings.getQuickMessagesOfAssistant(assistant: Assistant) =
-    quickMessages.filter { it.id in assistant.quickMessageIds }
+    getQuickMessages(assistant.quickMessageIds)
+
+fun Settings.getQuickMessages(ids: Set<Uuid>) =
+    quickMessages.filter { it.id in ids }
 
 fun Settings.getSelectedTTSProvider(): TTSProviderSetting? {
     return selectedTTSProviderId?.let { id ->
