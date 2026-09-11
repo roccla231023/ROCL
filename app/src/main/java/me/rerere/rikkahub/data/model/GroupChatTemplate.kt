@@ -10,6 +10,7 @@ data class GroupChatTemplate(
     val name: String = "",
     val intro: String = "",
     val workspaceId: Uuid? = null,
+    val enabledSkills: Set<String> = emptySet(),
     val seats: List<GroupChatSeat> = emptyList(),
 )
 
@@ -95,5 +96,6 @@ fun Assistant.applyGroupSeat(
         enableMemory = overrides.enableMemory ?: enableMemory,
         mcpServers = overrides.mcpServers ?: mcpServers,
         workspaceId = template.workspaceId ?: workspaceId,
+        enabledSkills = template.enabledSkills,
     )
 }

@@ -44,7 +44,7 @@ import me.rerere.rikkahub.utils.JsonInstant
         UsageStatsEntity::class,
         DailyActivityEntity::class,
     ],
-    version = 28,
+    version = 29,
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
         AutoMigration(from = 2, to = 3),

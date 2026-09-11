@@ -51,6 +51,7 @@ val viewModelModule = module {
             id = it.get(),
             settingsStore = get(),
             workspaceRepository = get(),
+            skillManager = get(),
         )
     }
     viewModel<AssistantDetailVM> {

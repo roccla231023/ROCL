@@ -27,10 +27,3 @@ data class MemoryEntity(
     @ColumnInfo(name = "updated_at", defaultValue = "NULL")
     val updatedAt: Long? = null,
 )
-
-object MemoryType {
-    const val CORE = 0
-    const val EPISODIC = 1
-    const val TOOL_RESULT = 2
-    const val TOOL_RESULT_CHUNK = 3
-}

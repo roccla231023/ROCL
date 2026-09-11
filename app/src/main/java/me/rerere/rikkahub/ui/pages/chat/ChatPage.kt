@@ -80,6 +80,7 @@ import me.rerere.rikkahub.ui.components.ai.ChatInput
 import me.rerere.rikkahub.ui.components.ai.FilesPicker
 import me.rerere.rikkahub.ui.components.ai.SearchMode
 import me.rerere.rikkahub.ui.components.ai.completion.GroupChatMentionCompletionProvider
+import me.rerere.rikkahub.ui.components.ai.completion.GroupChatMentionCoordinator
 import me.rerere.rikkahub.ui.components.ai.completion.WorkspaceCompletionProvider
 import me.rerere.rikkahub.ui.components.ai.rememberChatAttachmentPickerActions
 import me.rerere.rikkahub.ui.context.LocalNavController
@@ -299,6 +300,10 @@ private fun ChatPageContent(
     val allowAudioVideoAttachments =
         setting.getCurrentChatModel()?.findProvider(setting.providers) is ProviderSetting.Google
 
+    val membersLabel = stringResource(R.string.group_chat_mention_members)
+    val filesLabel = stringResource(R.string.group_chat_mention_files)
+    val membersDetail = stringResource(R.string.group_chat_mention_members_desc)
+    val filesDetail = stringResource(R.string.group_chat_mention_files_desc)
     val completionProviders = remember(
         assistant.workspaceId,
         groupTemplate?.id,
@@ -306,25 +311,36 @@ private fun ChatPageContent(
         conversation.workspaceCwd,
         workspaceRepository,
         setting.assistants,
+        membersLabel,
+        filesLabel,
+        membersDetail,
+        filesDetail,
     ) {
         buildList {
             val workspaceId = groupTemplate?.workspaceId ?: assistant.workspaceId
-            if (workspaceId != null) {
-                add(
-                    WorkspaceCompletionProvider(
-                        workspaceId = workspaceId.toString(),
-                        repository = workspaceRepository,
-                        currentCwd = conversation.workspaceCwd,
-                    )
+            val files = workspaceId?.let { id ->
+                WorkspaceCompletionProvider(
+                    workspaceId = id.toString(),
+                    repository = workspaceRepository,
+                    currentCwd = conversation.workspaceCwd,
                 )
             }
             if (groupTemplate != null) {
                 add(
-                    GroupChatMentionCompletionProvider(
-                        template = groupTemplate,
-                        assistantsById = setting.assistants.associateBy { it.id },
+                    GroupChatMentionCoordinator(
+                        members = GroupChatMentionCompletionProvider(
+                            template = groupTemplate,
+                            assistantsById = setting.assistants.associateBy { it.id },
+                        ),
+                        files = files,
+                        membersLabel = membersLabel,
+                        filesLabel = filesLabel,
+                        membersDetail = membersDetail,
+                        filesDetail = filesDetail,
                     )
                 )
+            } else if (files != null) {
+                add(files)
             }
         }
     }

@@ -43,6 +43,7 @@ import me.rerere.rikkahub.data.datastore.Settings
 import me.rerere.rikkahub.data.datastore.findProvider
 import me.rerere.rikkahub.data.model.Assistant
 import me.rerere.rikkahub.data.model.AssistantMemory
+import me.rerere.rikkahub.data.model.SessionMemory
 import java.io.File
 import java.io.IOException
 import java.net.ConnectException
@@ -81,6 +82,7 @@ class GenerationLoop(
         outputTransformers: List<OutputMessageTransformer> = emptyList(),
         assistant: Assistant,
         memories: List<AssistantMemory>? = null,
+        sessionMemories: () -> List<SessionMemory> = { emptyList() },
         tools: List<Tool> = emptyList(),
         maxSteps: Int = 256,
         processingStatus: MutableStateFlow<String?> = MutableStateFlow(null),
@@ -138,6 +140,7 @@ class GenerationLoop(
                     provider = provider,
                     tools = tools,
                     memories = memories ?: emptyList(),
+                    sessionMemories = sessionMemories(),
                     stream = assistant.streamOutput,
                     processingStatus = processingStatus,
                     conversationSystemPrompt = conversationSystemPrompt,
@@ -338,6 +341,7 @@ class GenerationLoop(
         provider: ProviderSetting,
         tools: List<Tool>,
         memories: List<AssistantMemory>,
+        sessionMemories: List<SessionMemory>,
         stream: Boolean,
         processingStatus: MutableStateFlow<String?> = MutableStateFlow(null),
         conversationSystemPrompt: String? = null,
@@ -347,32 +351,23 @@ class GenerationLoop(
         workspaceCwd: String? = null,
     ): String? {
         val internalMessages = buildList {
-            val system = buildString {
-                val effectiveSystemPrompt =
-                    if (assistant.allowConversationSystemPrompt && !conversationSystemPrompt.isNullOrBlank()) {
-                        conversationSystemPrompt
-                    } else {
-                        assistant.systemPrompt
-                    }
-                if (effectiveSystemPrompt.isNotBlank()) {
-                    append(effectiveSystemPrompt)
+            val effectiveSystemPrompt =
+                if (assistant.allowConversationSystemPrompt && !conversationSystemPrompt.isNullOrBlank()) {
+                    conversationSystemPrompt
+                } else {
+                    assistant.systemPrompt
                 }
-
-                // 记忆
-                if (assistant.enableMemory) {
-                    appendLine()
-                    append(buildMemoryPrompt(memories = memories))
-                }
-                // 工具prompt
-                tools.forEach { tool ->
-                    appendLine()
-                    append(tool.systemPrompt(model, messages))
-                }
-            }
-            if (system.isNotBlank()) {
-                add(UIMessage.system(prompt = system).copy(isSynthetic = true))
-            }
-            addAll(messages.limitContext(assistant.contextMessageLimit))
+            addAll(
+                MemoryAssembler.assemble(
+                    history = messages.limitContext(assistant.contextMessageLimit),
+                    systemPrompt = effectiveSystemPrompt,
+                    enableMemory = assistant.enableMemory,
+                    enableSessionMemory = assistant.enableSessionMemory,
+                    memories = memories,
+                    sessionMemories = sessionMemories,
+                    toolPrompts = tools.map { it.systemPrompt(model, messages) },
+                )
+            )
         }.transforms(
             transformers = transformers,
             context = context,

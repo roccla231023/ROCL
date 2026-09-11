@@ -46,6 +46,17 @@ object GroupChatEngine {
         return result
     }
 
+    fun resolveEnabledMentionedSeatIds(
+        text: String,
+        template: GroupChatTemplate,
+        assistantsById: Map<Uuid, Assistant>,
+        defaultName: String = "Assistant",
+    ): List<Uuid> {
+        val enabled = template.seats.filter { it.defaultEnabled }.map { it.id }.toSet()
+        return resolveMentionedSeatIds(text, template, assistantsById, defaultName)
+            .filter { it in enabled }
+    }
+
     fun resolveSpeakerSeatIds(
         userText: String,
         template: GroupChatTemplate,
@@ -64,8 +75,28 @@ object GroupChatEngine {
         return enabledSeats.firstOrNull()?.id?.let { listOf(it) }.orEmpty()
     }
 
-    fun nextStickySeatId(speakerSeatIds: List<Uuid>, previousSticky: Uuid?): Uuid? {
-        return speakerSeatIds.lastOrNull() ?: previousSticky
+    fun nextStickySeatId(
+        speakerSeatIds: List<Uuid>,
+        previousSticky: Uuid?,
+        clearAfterMultiMention: Boolean = false,
+    ): Uuid? {
+        if (clearAfterMultiMention) return null
+        return speakerSeatIds.singleOrNull() ?: previousSticky
+    }
+
+    fun messagesForNewSeatTurn(
+        messages: List<UIMessage>,
+        seatId: Uuid,
+        modelId: Uuid? = null,
+    ): List<UIMessage> {
+        val last = messages.lastOrNull() ?: return messages
+        if (last.role == MessageRole.ASSISTANT && last.speakerSeatId == seatId) return messages
+        return messages + UIMessage(
+            role = MessageRole.ASSISTANT,
+            parts = emptyList(),
+            modelId = modelId,
+            speakerSeatId = seatId,
+        )
     }
 
     fun rewritePromptMessagesForSeat(
@@ -80,6 +111,7 @@ object GroupChatEngine {
             return listOf(UIMessage.user("Please reply."))
         }
         val transformed = messages.mapNotNull { message ->
+            if (message.isSynthetic) return@mapNotNull message
             when (message.role) {
                 MessageRole.ASSISTANT -> rewriteAssistantMessage(
                     message = message,

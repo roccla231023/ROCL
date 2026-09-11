@@ -14,6 +14,7 @@ class WorkspaceCompletionProvider(
     private val workspaceId: String?,
     private val repository: WorkspaceRepository,
     private val currentCwd: String? = null,
+    private val suppressBlankQuery: Boolean = false,
 ) : ChatCompletionProvider {
     override val id: String = "workspace_files"
     private val relativeCwd = currentCwd.toWorkspaceRelativePath()
@@ -25,6 +26,7 @@ class WorkspaceCompletionProvider(
         if (workspaceId.isNullOrBlank() || context.hasSelection) return null
         val mention = findWorkspaceMention(context.text, context.cursor) ?: return null
         val query = mention.query.normalizeWorkspaceQuery()
+        if (suppressBlankQuery && query.isBlank()) return null
         val absoluteQuery = mention.query.isWorkspaceAbsoluteQuery()
         val entries = loadEntries()
 
