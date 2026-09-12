@@ -295,7 +295,10 @@ class RouteActivity : ComponentActivity() {
                 )
                 TTSController()
                 val appearance = settings.advancedAppearanceSetting
-                val isGlobalBgActive = appearance.enableGlobalBackground && !appearance.globalBackground.isNullOrBlank()
+                val isChatScreen = backStack.lastOrNull() is Screen.Chat
+                val isGlobalBgActive = appearance.enableGlobalBackground &&
+                    !appearance.globalBackground.isNullOrBlank() &&
+                    !isChatScreen
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
