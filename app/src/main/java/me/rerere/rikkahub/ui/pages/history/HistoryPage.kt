@@ -53,6 +53,7 @@ import me.rerere.rikkahub.Screen
 import me.rerere.rikkahub.data.model.Conversation
 import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.context.LocalNavController
+import me.rerere.rikkahub.ui.theme.CustomColors
 import me.rerere.rikkahub.utils.navigateToChatPage
 import me.rerere.rikkahub.utils.plus
 import me.rerere.rikkahub.utils.toLocalDateTime
@@ -229,6 +230,7 @@ private fun ConversationItem(
 ) {
     Surface(
         onClick = onClick,
+        color = CustomColors.overlayContainerColor,
         tonalElevation = 2.dp,
         shape = RoundedCornerShape(25),
         modifier = modifier

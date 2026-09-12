@@ -42,6 +42,7 @@ import me.rerere.rikkahub.ui.components.webview.WebView
 import me.rerere.rikkahub.ui.components.webview.WebViewContentCache
 import me.rerere.rikkahub.ui.components.webview.rememberWebViewState
 import me.rerere.rikkahub.ui.theme.JetbrainsMono
+import me.rerere.rikkahub.ui.theme.CustomColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -115,7 +116,8 @@ fun WebViewPage(url: String, contentId: String) {
 
                         DropdownMenu(
                             expanded = showDropdown,
-                            onDismissRequest = { showDropdown = false }
+                            onDismissRequest = { showDropdown = false },
+                            containerColor = CustomColors.overlayContainerColor,
                         ) {
                             DropdownMenuItem(
                                 text = { Text("Open in Browser") },

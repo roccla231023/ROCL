@@ -31,6 +31,7 @@ import androidx.compose.ui.window.Dialog
 import me.rerere.hugeicons.HugeIcons
 import me.rerere.hugeicons.stroke.AlertCircle
 import me.rerere.rikkahub.R
+import me.rerere.rikkahub.ui.theme.CustomColors
 
 /**
  * 权限请求说明对话框
@@ -53,7 +54,7 @@ internal fun PermissionRationaleDialog(
                 .padding(16.dp),
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
+                containerColor = CustomColors.overlayContainerColor
             )
         ) {
             Column(

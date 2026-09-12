@@ -49,6 +49,7 @@ import me.rerere.hugeicons.stroke.Fullscreen
 import me.rerere.rikkahub.R
 import me.rerere.rikkahub.ui.context.LocalToaster
 import me.rerere.rikkahub.ui.modifier.onClick
+import me.rerere.rikkahub.ui.theme.CustomColors
 
 /**
  * A multi-line text input component with a header and file import functionality.
@@ -209,7 +210,8 @@ private fun FullScreenTextEditor(
                 modifier = Modifier
                     .widthIn(max = 800.dp)
                     .fillMaxHeight(0.9f),
-                shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+                shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+                color = CustomColors.overlayContainerColor,
             ) {
                 Column(
                     modifier = Modifier

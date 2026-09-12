@@ -21,10 +21,21 @@ class GlobalGlassThemeTest {
         assertEquals(0.74f, alphas.surfaceDim, 0.0001f)
         assertEquals(0.48f, alphas.surfaceContainerLowest, 0.0001f)
         assertEquals(1f, alphas.surfaceContainerLow, 0f)
-        assertEquals(0.72f, alphas.surfaceContainerHigh, 0.0001f)
-        assertEquals(0.76f, alphas.surfaceContainerHighest, 0.0001f)
+        assertEquals(1f, alphas.surfaceContainerHigh, 0f)
+        assertEquals(1f, alphas.surfaceContainerHighest, 0f)
         assertEquals(0.46f, alphas.outline, 0f)
         assertEquals(0.30f, alphas.outlineVariant, 0f)
+    }
+
+    @Test
+    fun overlayTokensStayOpaqueAgainstPageContent() {
+        val alphas = resolveGlobalGlassAlphas(active = true, surfaceOpacity = 0.68f)!!
+        assertEquals(1f, alphas.surfaceContainerHigh, 0f)
+        assertEquals(1f, alphas.surfaceContainerHighest, 0f)
+        val low = resolveGlobalGlassAlphas(active = true, surfaceOpacity = 0.35f)!!
+        assertEquals(1f, low.surfaceContainerHigh, 0f)
+        assertEquals(1f, low.surfaceContainerHighest, 0f)
+        assertEquals(1f, resolveOpaqueSurfaceAlpha(), 0f)
     }
 
     @Test

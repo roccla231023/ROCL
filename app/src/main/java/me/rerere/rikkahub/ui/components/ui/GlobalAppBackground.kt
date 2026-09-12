@@ -100,22 +100,26 @@ internal data class GlobalGlassAlphas(
     val outlineVariant: Float,
 )
 
+internal fun resolveOpaqueSurfaceAlpha(): Float = 1f
+
 internal fun resolveGlobalGlassAlphas(
     active: Boolean,
     surfaceOpacity: Float,
 ): GlobalGlassAlphas? {
     if (!active) return null
     val safeSurfaceOpacity = surfaceOpacity.coerceIn(0.35f, 1f)
+    val overlayAlpha = resolveOpaqueSurfaceAlpha()
     return GlobalGlassAlphas(
         background = 0.06f,
         surface = safeSurfaceOpacity,
         surfaceDim = (safeSurfaceOpacity + 0.06f).coerceAtMost(1f),
         surfaceBright = safeSurfaceOpacity,
         surfaceContainerLowest = (safeSurfaceOpacity - 0.20f).coerceAtLeast(0.24f),
-        surfaceContainerLow = 1f,
+        surfaceContainerLow = overlayAlpha,
         surfaceContainer = safeSurfaceOpacity,
-        surfaceContainerHigh = (safeSurfaceOpacity + 0.04f).coerceAtMost(1f),
-        surfaceContainerHighest = (safeSurfaceOpacity + 0.08f).coerceAtMost(1f),
+        // AlertDialog / menus / elevated overlays sit on top of page content.
+        surfaceContainerHigh = overlayAlpha,
+        surfaceContainerHighest = overlayAlpha,
         surfaceVariant = safeSurfaceOpacity,
         outline = 0.46f,
         outlineVariant = 0.30f,

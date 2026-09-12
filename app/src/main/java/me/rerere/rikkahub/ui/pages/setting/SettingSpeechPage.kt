@@ -525,7 +525,8 @@ private fun AddASRProviderButton(onAdd: (ASRProviderSetting) -> Unit) {
         }
         DropdownMenu(
             expanded = showTypeMenu,
-            onDismissRequest = { showTypeMenu = false }
+            onDismissRequest = { showTypeMenu = false },
+            containerColor = CustomColors.overlayContainerColor,
         ) {
             DropdownMenuItem(
                 text = { Text("OpenAI Realtime") },
