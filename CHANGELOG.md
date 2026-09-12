@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.26
+
+更新内容:
+- 群聊 MCP 按座位开关生效，不再误用当前/第一助手的 MCP
+- 群聊页不再改任何助手（模型 / 思考 / 搜索 / 工作区 / MCP）；这些在成员设置里改
+- 群聊顶栏模型与座位覆写一致
+- 续写去掉与原文末尾重叠的重复段落
+- 记忆检索不再提供「混合」选项（向量超时会退回关键词，以前就是这样）
+- 高级外观：全局背景图、透明度/虚化；聊天页单独开关；进出聊天不丢草稿；玻璃主题下弹层和滑动删除卡不透底
+- 输入框材质和气泡样式改成分段按钮；偏好图标对齐
+
+Updates:
+- Group chat MCP now follows seat toggles instead of the current or first assistant
+- The group chat page no longer changes any assistant (model / reasoning / search / workspace / MCP); set those in member settings
+- The group chat top bar uses the seat model override
+- Continue strips overlapping restated prefixes
+- Memory retrieval no longer offers a Hybrid option (vector still falls back to keyword on timeout)
+- Advanced appearance: global wallpaper with opacity/blur, a separate chat-page switch, chat transitions keep drafts, and glass dialogs or swipe-dismiss cards stay opaque
+- Composer and bubble materials use segmented buttons; preference icons match the rest of Settings
+
 ## 1.257
 
 - 群聊 MCP 按座位开关生效，不再误用当前/第一助手的 MCP
