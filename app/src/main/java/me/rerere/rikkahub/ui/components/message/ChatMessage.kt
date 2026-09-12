@@ -324,10 +324,8 @@ private fun MessagePartsBlock(
     } else {
         null
     }
-    val bubbleHazeStyle = remember {
-        HazeBlurStyle.Material3 {
-            blurRadius(16.dp)
-        }
+    val bubbleHazeStyle = HazeBlurStyle.Material3 {
+        blurRadius(16.dp)
     }
     val userBubbleColor = when (bubbleStyle) {
         ChatBubbleStyle.DEFAULT -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = bubbleOpacity)
