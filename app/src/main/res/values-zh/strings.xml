@@ -1568,7 +1568,7 @@ mDNS 地址：使用 .local 主机名，同一网络中的其他设备可通过�
   <string name="setting_advanced_appearance_page_surface_opacity">页面表面透光度</string>
   <string name="setting_advanced_appearance_page_surface_opacity_desc">控制页面容器和卡片的透明度，数值越小底图越明显</string>
   <string name="setting_advanced_appearance_page_surface_opacity_value">%1$d%%</string>
-  <string name="setting_advanced_appearance_chat_input_section">聊天输入���</string>
+  <string name="setting_advanced_appearance_chat_input_section">聊天输入框</string>
   <string name="setting_advanced_appearance_composer_material">输入框材质</string>
   <string name="setting_advanced_appearance_composer_material_translucent">半透明</string>
   <string name="setting_advanced_appearance_composer_material_frosted">磨砂玻璃</string>

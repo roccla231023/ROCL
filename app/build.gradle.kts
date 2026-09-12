@@ -37,8 +37,8 @@ android {
         applicationId = "me.rerere.rocl"
         minSdk = 26
         targetSdk = 37
-        versionCode = 192
-        versionName = "1.251"
+        versionCode = 193
+        versionName = "1.252"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
