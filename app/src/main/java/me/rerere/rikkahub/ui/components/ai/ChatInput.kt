@@ -37,6 +37,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.material3.BasicAlertDialog
+import me.rerere.rikkahub.data.datastore.ChatComposerMaterial
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -150,9 +151,15 @@ fun ChatInput(
 ) {
     val toaster = LocalToaster.current
     val assistant = settings.getCurrentAssistant()
+    val appearance = settings.advancedAppearanceSetting
+    val isFrosted = appearance.composerMaterial == ChatComposerMaterial.FROSTED && settings.displaySetting.enableBlurEffect
+    val composerBlur = appearance.composerBlurRadius.coerceIn(0f, 30f).dp
+    val composerOpacity = appearance.composerOpacity.coerceIn(0.2f, 1f)
     val hazeTintColor = MaterialTheme.colorScheme.surfaceContainerLow
-    val inputHazeStyle = HazeBlurStyle.Material3 {
-        blurRadius(12.dp)
+    val inputHazeStyle = remember(composerBlur) {
+        HazeBlurStyle.Material3 {
+            blurRadius(composerBlur)
+        }
     }
 
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -231,7 +238,7 @@ fun ChatInput(
                     .fillMaxWidth()
                     .clip(containerShape)
                     .then(
-                        if (settings.displaySetting.enableBlurEffect) Modifier.hazeBlur(
+                        if (isFrosted && composerBlur > 0.dp) Modifier.hazeBlur(
                             input = HazeInput.Sources(hazeState),
                             style = inputHazeStyle,
                         )
@@ -240,7 +247,11 @@ fun ChatInput(
                 shape = containerShape,
                 tonalElevation = 0.dp,
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
-                color = if (settings.displaySetting.enableBlurEffect) Color.Transparent else hazeTintColor,
+                color = if (isFrosted) {
+                    hazeTintColor.copy(alpha = (composerOpacity * 0.7f).coerceIn(0.1f, 1f))
+                } else {
+                    hazeTintColor.copy(alpha = composerOpacity.coerceIn(0.1f, 1f))
+                },
             ) {
                 Column(
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),

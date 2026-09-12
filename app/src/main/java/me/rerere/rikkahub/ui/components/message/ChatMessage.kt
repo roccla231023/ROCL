@@ -18,6 +18,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.BorderStroke
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeInput
+import dev.chrisbanes.haze.blur.hazeBlur
+import dev.chrisbanes.haze.blur.HazeBlurStyle
+import dev.chrisbanes.haze.blur.material3.Material3
+import me.rerere.rikkahub.data.datastore.ChatBubbleStyle
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -102,6 +109,7 @@ fun ChatMessage(
     node: MessageNode,
     modifier: Modifier = Modifier,
     loading: Boolean = false,
+    hazeState: HazeState? = null,
     model: Model? = null,
     assistant: Assistant? = null,
     lastMessage: Boolean = false,
@@ -167,6 +175,7 @@ fun ChatMessage(
                 annotations = message.annotations,
                 loading = loading,
                 model = model,
+                hazeState = hazeState,
                 onToolApproval = onToolApproval,
                 onToolAnswer = onToolAnswer,
                 onUserMessageClick = if (message.role == MessageRole.USER) onEdit else null,
@@ -294,6 +303,7 @@ private fun MessagePartsBlock(
     parts: List<UIMessagePart>,
     annotations: List<UIMessageAnnotation>,
     loading: Boolean,
+    hazeState: HazeState? = null,
     onToolApproval: ((toolCallId: String, approved: Boolean, reason: String) -> Unit)? = null,
     onToolAnswer: ((toolCallId: String, answer: String) -> Unit)? = null,
     onUserMessageClick: (() -> Unit)? = null,
@@ -304,6 +314,55 @@ private fun MessagePartsBlock(
     // 消息输出HapticFeedback
     val hapticFeedback = LocalHapticFeedback.current
     val settings = LocalSettings.current
+    val globalSettings = LocalSettings.current
+    val appearance = globalSettings.advancedAppearanceSetting
+    val bubbleStyle = appearance.chatBubbleStyle
+    val bubbleOpacity = appearance.bubbleOpacity.coerceIn(0.1f, 1f)
+    val isFrosted = bubbleStyle == ChatBubbleStyle.FROSTED && settings.displaySetting.enableBlurEffect && hazeState != null
+    val bubbleBorder = if (bubbleStyle != ChatBubbleStyle.DEFAULT) {
+        BorderStroke(0.8.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+    } else {
+        null
+    }
+    val bubbleHazeStyle = remember {
+        HazeBlurStyle.Material3 {
+            blurRadius(16.dp)
+        }
+    }
+    val userBubbleColor = when (bubbleStyle) {
+        ChatBubbleStyle.DEFAULT -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = bubbleOpacity)
+        ChatBubbleStyle.OUTLINED -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = (bubbleOpacity * 0.45f).coerceIn(0.15f, 0.7f))
+        ChatBubbleStyle.FROSTED -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = (bubbleOpacity * 0.65f).coerceIn(0.2f, 0.85f))
+    }
+    val userBubbleModifier = Modifier
+        .animateContentSize()
+        .then(
+            if (isFrosted) {
+                Modifier.hazeBlur(
+                    input = HazeInput.Sources(hazeState!!),
+                    style = bubbleHazeStyle,
+                )
+            } else {
+                Modifier
+            }
+        )
+    val assistantBubbleColor = when (bubbleStyle) {
+        ChatBubbleStyle.DEFAULT -> MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = bubbleOpacity)
+        ChatBubbleStyle.OUTLINED -> MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = (bubbleOpacity * 0.45f).coerceIn(0.15f, 0.7f))
+        ChatBubbleStyle.FROSTED -> MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = (bubbleOpacity * 0.65f).coerceIn(0.2f, 0.85f))
+    }
+    val assistantBubbleModifier = Modifier
+        .animateContentSize()
+        .then(
+            if (isFrosted) {
+                Modifier.hazeBlur(
+                    input = HazeInput.Sources(hazeState!!),
+                    style = bubbleHazeStyle,
+                )
+            } else {
+                Modifier
+            }
+        )
     val partsState by rememberUpdatedState(parts)
 
     val handleClickCitation: (String) -> Unit = remember {
@@ -348,7 +407,7 @@ private fun MessagePartsBlock(
                         steps = block.steps,
                         collapsedAdaptiveWidth = isReasoningOnlyBlock,
                         cardColors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = settings.displaySetting.bubbleOpacity),
+                            containerColor = assistantBubbleColor,
                         ),
                     ) { step ->
                         when (step) {
@@ -391,9 +450,10 @@ private fun MessagePartsBlock(
                         val textContent = @Composable {
                             if (role == MessageRole.USER) {
                                 Surface(
-                                    modifier = Modifier.animateContentSize(),
+                                    modifier = userBubbleModifier,
                                     shape = RoundedCornerShape(16.dp),
-                                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = settings.displaySetting.bubbleOpacity),
+                                    color = userBubbleColor,
+                                    border = bubbleBorder,
                                     onClick = { onUserMessageClick?.invoke() },
                                 ) {
                                     Column(modifier = Modifier.padding(8.dp)) {
@@ -410,9 +470,10 @@ private fun MessagePartsBlock(
                             } else {
                                 if (settings.displaySetting.showAssistantBubble) {
                                     Surface(
-                                        modifier = Modifier.animateContentSize(),
+                                        modifier = assistantBubbleModifier,
                                         shape = RoundedCornerShape(16.dp),
-                                        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = settings.displaySetting.bubbleOpacity),
+                                        color = assistantBubbleColor,
+                                        border = bubbleBorder,
                                     ) {
                                         Column(modifier = Modifier.padding(8.dp)) {
                                             MarkdownBlock(

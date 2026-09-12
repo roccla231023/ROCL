@@ -83,6 +83,7 @@ class SettingsStore(
         val THEME_ID = stringPreferencesKey("theme_id")
         val CUSTOM_THEMES = stringPreferencesKey("custom_themes")
         val DISPLAY_SETTING = stringPreferencesKey("display_setting")
+        val ADVANCED_APPEARANCE_SETTING = stringPreferencesKey("advanced_appearance_setting")
         val NETWORK_SETTING = stringPreferencesKey("network_setting")
         val DEVELOPER_MODE = booleanPreferencesKey("developer_mode")
 
@@ -171,6 +172,7 @@ class SettingsStore(
                 preferences[CUSTOM_THEMES] = JsonInstant.encodeToString(settings.customThemes)
                 preferences[DEVELOPER_MODE] = settings.developerMode
                 preferences[DISPLAY_SETTING] = JsonInstant.encodeToString(settings.displaySetting)
+                preferences[ADVANCED_APPEARANCE_SETTING] = JsonInstant.encodeToString(settings.advancedAppearanceSetting)
                 preferences[NETWORK_SETTING] = JsonInstant.encodeToString(settings.networkSetting)
 
                 preferences[FAVORITE_MODELS] = JsonInstant.encodeToString(settings.favoriteModels)
@@ -281,6 +283,9 @@ class SettingsStore(
                 } ?: emptyList(),
                 developerMode = preferences[DEVELOPER_MODE] == true,
                 displaySetting = JsonInstant.decodeFromString(preferences[DISPLAY_SETTING] ?: "{}"),
+                advancedAppearanceSetting = preferences[ADVANCED_APPEARANCE_SETTING]?.let {
+                    runCatching { JsonInstant.decodeFromString<AdvancedAppearanceSetting>(it) }.getOrNull()
+                } ?: AdvancedAppearanceSetting(),
                 networkSetting = JsonInstant.decodeFromString(preferences[NETWORK_SETTING] ?: "{}"),
                 searchServices = preferences[SEARCH_SERVICES]?.let {
                     JsonInstant.decodeFromString(it)
@@ -463,6 +468,12 @@ class SettingsStore(
         update(fn(settingsFlow.value))
     }
 
+    suspend fun updateAdvancedAppearance(fn: (AdvancedAppearanceSetting) -> AdvancedAppearanceSetting) {
+        update { settings ->
+            settings.copy(advancedAppearanceSetting = fn(settings.advancedAppearanceSetting))
+        }
+    }
+
     suspend fun updateAssistant(assistantId: Uuid) {
         dataStore.edit { preferences ->
             preferences[SELECT_ASSISTANT] = assistantId.toString()
@@ -558,6 +569,7 @@ data class Settings(
     val customThemes: List<CustomTheme> = emptyList(),
     val developerMode: Boolean = false,
     val displaySetting: DisplaySetting = DisplaySetting(),
+    val advancedAppearanceSetting: AdvancedAppearanceSetting = AdvancedAppearanceSetting(),
     val networkSetting: NetworkSetting = NetworkSetting(),
     val favoriteModels: List<Uuid> = emptyList(),
     val chatModelId: Uuid = Uuid.random(),
@@ -833,4 +845,34 @@ val DEFAULT_MODE_INJECTIONS = listOf(
         position = InjectionPosition.AFTER_SYSTEM_PROMPT,
         name = "Learning Mode"
     )
+)
+
+@Serializable
+enum class ChatComposerMaterial {
+    TRANSLUCENT,
+    FROSTED,
+}
+
+@Serializable
+enum class ChatBubbleStyle {
+    DEFAULT,
+    OUTLINED,
+    FROSTED,
+}
+
+@Serializable
+data class AdvancedAppearanceSetting(
+    val enableGlobalBackground: Boolean = false,
+    val globalBackground: String? = null,
+    val globalBackgroundOpacity: Float = 1f,
+    val globalBackgroundBlurRadius: Float = 20f,
+    val applyGlobalBackgroundToChat: Boolean = false,
+    val pageSurfaceOpacity: Float = 0.68f,
+
+    val composerMaterial: ChatComposerMaterial = ChatComposerMaterial.TRANSLUCENT,
+    val composerBlurRadius: Float = 12f,
+    val composerOpacity: Float = 0.65f,
+
+    val chatBubbleStyle: ChatBubbleStyle = ChatBubbleStyle.DEFAULT,
+    val bubbleOpacity: Float = 0.85f,
 )

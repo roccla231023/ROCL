@@ -334,6 +334,7 @@ private fun ChatListNormal(
                     ) {
                         ChatMessage(
                             node = node,
+                            hazeState = hazeState,
                             model = node.currentMessage.modelId?.let(modelById::get),
                             assistant = node.currentMessage.speakerAssistantId
                                 ?.let(settings::getAssistantById)
