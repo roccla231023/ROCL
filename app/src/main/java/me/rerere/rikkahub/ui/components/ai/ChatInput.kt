@@ -156,10 +156,8 @@ fun ChatInput(
     val composerBlur = appearance.composerBlurRadius.coerceIn(0f, 30f).dp
     val composerOpacity = appearance.composerOpacity.coerceIn(0.2f, 1f)
     val hazeTintColor = MaterialTheme.colorScheme.surfaceContainerLow
-    val inputHazeStyle = remember(composerBlur) {
-        HazeBlurStyle.Material3 {
-            blurRadius(composerBlur)
-        }
+    val inputHazeStyle = HazeBlurStyle.Material3 {
+        blurRadius(composerBlur)
     }
 
     val keyboardController = LocalSoftwareKeyboardController.current
