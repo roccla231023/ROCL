@@ -204,12 +204,12 @@ fun SettingPreferencesAdvancedAppearancePage(
                         label = { Text(stringResource(R.string.setting_advanced_appearance_composer_material)) }
                     ) {
                         Select(
-                            value = appearance.composerMaterial,
-                            onValueChange = { material ->
+                            options = ChatComposerMaterial.entries,
+                            selectedOption = appearance.composerMaterial,
+                            onOptionSelected = { material: ChatComposerMaterial ->
                                 vm.updateAdvancedAppearance { it.copy(composerMaterial = material) }
                             },
-                            values = ChatComposerMaterial.entries,
-                            valueToText = { material ->
+                            optionToString = { material: ChatComposerMaterial ->
                                 when (material) {
                                     ChatComposerMaterial.TRANSLUCENT -> stringResource(R.string.setting_advanced_appearance_composer_material_translucent)
                                     ChatComposerMaterial.FROSTED -> stringResource(R.string.setting_advanced_appearance_composer_material_frosted)
@@ -284,12 +284,12 @@ fun SettingPreferencesAdvancedAppearancePage(
                         label = { Text(stringResource(R.string.setting_advanced_appearance_bubble_style)) }
                     ) {
                         Select(
-                            value = appearance.chatBubbleStyle,
-                            onValueChange = { style ->
+                            options = ChatBubbleStyle.entries,
+                            selectedOption = appearance.chatBubbleStyle,
+                            onOptionSelected = { style: ChatBubbleStyle ->
                                 vm.updateAdvancedAppearance { it.copy(chatBubbleStyle = style) }
                             },
-                            values = ChatBubbleStyle.entries,
-                            valueToText = { style ->
+                            optionToString = { style: ChatBubbleStyle ->
                                 when (style) {
                                     ChatBubbleStyle.DEFAULT -> stringResource(R.string.setting_advanced_appearance_bubble_style_default)
                                     ChatBubbleStyle.OUTLINED -> stringResource(R.string.setting_advanced_appearance_bubble_style_outlined)
