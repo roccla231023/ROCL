@@ -18,7 +18,9 @@ import androidx.compose.ui.unit.dp
 import me.rerere.hugeicons.HugeIcons
 import me.rerere.hugeicons.stroke.Notification01
 import me.rerere.hugeicons.stroke.Internet
+import me.rerere.hugeicons.stroke.MagicWand01
 import me.rerere.hugeicons.stroke.PaintBoard
+import me.rerere.hugeicons.stroke.Quotes
 import me.rerere.hugeicons.stroke.Tools
 import me.rerere.hugeicons.stroke.Settings03
 import me.rerere.hugeicons.stroke.Sun01
@@ -86,13 +88,13 @@ fun SettingPreferencesPage() {
                     )
                     item(
                         onClick = { navController.navigate(Screen.SettingPreferencesAdvancedAppearance) },
-                        leadingContent = { Icon(HugeIcons.PaintBoard, null) },
+                        leadingContent = { Icon(HugeIcons.MagicWand01, null) },
                         headlineContent = { Text(stringResource(R.string.setting_advanced_appearance_entry)) },
                         supportingContent = { Text(stringResource(R.string.setting_advanced_appearance_entry_desc)) },
                     )
                     item(
                         onClick = { navController.navigate(Screen.SettingRpOptimizations) },
-                        leadingContent = { Icon(HugeIcons.PaintBoard, null) },
+                        leadingContent = { Icon(HugeIcons.Quotes, null) },
                         headlineContent = { Text(stringResource(R.string.setting_display_page_rp_optimizations_title)) },
                         supportingContent = { Text(stringResource(R.string.setting_display_page_rp_optimizations_desc)) },
                     )

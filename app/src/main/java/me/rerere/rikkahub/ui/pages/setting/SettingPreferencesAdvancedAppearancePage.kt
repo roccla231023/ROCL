@@ -9,6 +9,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -26,7 +29,6 @@ import me.rerere.rikkahub.data.datastore.ChatBubbleStyle
 import me.rerere.rikkahub.data.datastore.ChatComposerMaterial
 import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.ui.CardGroup
-import me.rerere.rikkahub.ui.components.ui.Select
 import me.rerere.rikkahub.ui.pages.assistant.detail.BackgroundPicker
 import me.rerere.rikkahub.ui.theme.CustomColors
 import me.rerere.rikkahub.utils.plus
@@ -183,20 +185,34 @@ fun SettingPreferencesAdvancedAppearancePage(
                     item(
                         headlineContent = { Text(stringResource(R.string.setting_advanced_appearance_composer_material)) },
                         supportingContent = {
-                            Select(
-                                options = ChatComposerMaterial.entries,
-                                selectedOption = appearance.composerMaterial,
-                                onOptionSelected = { material: ChatComposerMaterial ->
-                                    vm.updateAdvancedAppearance { it.copy(composerMaterial = material) }
-                                },
-                                optionToString = { material: ChatComposerMaterial ->
-                                    when (material) {
-                                        ChatComposerMaterial.TRANSLUCENT -> stringResource(R.string.setting_advanced_appearance_composer_material_translucent)
-                                        ChatComposerMaterial.FROSTED -> stringResource(R.string.setting_advanced_appearance_composer_material_frosted)
-                                    }
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                            )
+                            SingleChoiceSegmentedButtonRow(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp)
+                            ) {
+                                ChatComposerMaterial.entries.forEachIndexed { index, material ->
+                                    SegmentedButton(
+                                        selected = appearance.composerMaterial == material,
+                                        onClick = {
+                                            vm.updateAdvancedAppearance { it.copy(composerMaterial = material) }
+                                        },
+                                        shape = SegmentedButtonDefaults.itemShape(
+                                            index = index,
+                                            count = ChatComposerMaterial.entries.size
+                                        ),
+                                        icon = {},
+                                        label = {
+                                            Text(
+                                                text = when (material) {
+                                                    ChatComposerMaterial.TRANSLUCENT -> stringResource(R.string.setting_advanced_appearance_composer_material_translucent)
+                                                    ChatComposerMaterial.FROSTED -> stringResource(R.string.setting_advanced_appearance_composer_material_frosted)
+                                                },
+                                                maxLines = 1,
+                                            )
+                                        }
+                                    )
+                                }
+                            }
                         }
                     )
 
@@ -257,21 +273,35 @@ fun SettingPreferencesAdvancedAppearancePage(
                     item(
                         headlineContent = { Text(stringResource(R.string.setting_advanced_appearance_bubble_style)) },
                         supportingContent = {
-                            Select(
-                                options = ChatBubbleStyle.entries,
-                                selectedOption = appearance.chatBubbleStyle,
-                                onOptionSelected = { style: ChatBubbleStyle ->
-                                    vm.updateAdvancedAppearance { it.copy(chatBubbleStyle = style) }
-                                },
-                                optionToString = { style: ChatBubbleStyle ->
-                                    when (style) {
-                                        ChatBubbleStyle.DEFAULT -> stringResource(R.string.setting_advanced_appearance_bubble_style_default)
-                                        ChatBubbleStyle.OUTLINED -> stringResource(R.string.setting_advanced_appearance_bubble_style_outlined)
-                                        ChatBubbleStyle.FROSTED -> stringResource(R.string.setting_advanced_appearance_bubble_style_frosted)
-                                    }
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                            )
+                            SingleChoiceSegmentedButtonRow(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp)
+                            ) {
+                                ChatBubbleStyle.entries.forEachIndexed { index, style ->
+                                    SegmentedButton(
+                                        selected = appearance.chatBubbleStyle == style,
+                                        onClick = {
+                                            vm.updateAdvancedAppearance { it.copy(chatBubbleStyle = style) }
+                                        },
+                                        shape = SegmentedButtonDefaults.itemShape(
+                                            index = index,
+                                            count = ChatBubbleStyle.entries.size
+                                        ),
+                                        icon = {},
+                                        label = {
+                                            Text(
+                                                text = when (style) {
+                                                    ChatBubbleStyle.DEFAULT -> stringResource(R.string.setting_advanced_appearance_bubble_style_default)
+                                                    ChatBubbleStyle.OUTLINED -> stringResource(R.string.setting_advanced_appearance_bubble_style_outlined)
+                                                    ChatBubbleStyle.FROSTED -> stringResource(R.string.setting_advanced_appearance_bubble_style_frosted)
+                                                },
+                                                maxLines = 1,
+                                            )
+                                        }
+                                    )
+                                }
+                            }
                         }
                     )
 
