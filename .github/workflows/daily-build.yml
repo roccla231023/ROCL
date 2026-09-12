@@ -69,19 +69,6 @@ jobs:
             python3 .github/scripts/release-notes.py "$VERSION_NAME"
             echo "CHANGELOG_EOF"
           } >> "$GITHUB_OUTPUT"
-          git fetch origin --tags
-          PREV=$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || true)
-          if [ -n "$PREV" ]; then
-            RANGE="$PREV..HEAD"
-          else
-            RANGE="-20"
-          fi
-          {
-            echo "commits<<COMMITS_EOF"
-            git log --pretty=format:'- %s (`%h`)' $RANGE
-            echo
-            echo "COMMITS_EOF"
-          } >> "$GITHUB_OUTPUT"
 
       - name: Refuse duplicate stable tag
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.publish == 'stable'
@@ -146,9 +133,6 @@ jobs:
 
             ${{ steps.meta.outputs.notes }}
 
-            ### Commits
-            ${{ steps.meta.outputs.commits }}
-
             > ⚠️ 开发版本，可能不稳定，仅供测试。
           files: app/build/outputs/apk/release/*.apk
 
@@ -161,12 +145,5 @@ jobs:
           prerelease: false
           make_latest: true
           body: |
-            ROCL ${{ steps.meta.outputs.version }} (`versionCode` ${{ steps.meta.outputs.code }})
-
-            commit `${{ github.sha }}`
-
             ${{ steps.meta.outputs.notes }}
-
-            ### Commits
-            ${{ steps.meta.outputs.commits }}
           files: app/build/outputs/apk/release/*.apk
