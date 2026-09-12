@@ -102,7 +102,7 @@ class ChatToolFactory(
                 )
             }
 
-            val mcpTools = mcpManager.getAllAvailableTools()
+            val mcpTools = mcpManager.getAllAvailableTools(assistant.mcpServers)
             val invalidNames = mcpTools
                 .map { it.second }
                 .distinct()

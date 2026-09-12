@@ -24,7 +24,6 @@ import me.rerere.oauth.OAuthHttpClient
 import me.rerere.oauth.OAuthLoopbackCallbackServer
 import me.rerere.rikkahub.AppScope
 import me.rerere.rikkahub.data.datastore.SettingsStore
-import me.rerere.rikkahub.data.datastore.getCurrentAssistant
 import me.rerere.rikkahub.data.files.FilesManager
 import me.rerere.rikkahub.data.files.saveUploadFromBytes
 import me.rerere.rikkahub.utils.JsonInstant
@@ -103,16 +102,9 @@ class McpManager(
 
     fun getStatus(config: McpServerConfig): Flow<McpStatus> = sessionRegistry.getStatus(config.id)
 
-    fun getAllAvailableTools(): List<Triple<Uuid, String, McpTool>> {
+    fun getAllAvailableTools(mcpServerIds: Set<Uuid>): List<Triple<Uuid, String, McpTool>> {
         val settings = settingsStore.settingsFlow.value
-        val assistant = settings.getCurrentAssistant()
-        return settings.mcpServers
-            .filter { it.commonOptions.enable && it.id in assistant.mcpServers }
-            .flatMap { server ->
-                server.commonOptions.tools
-                    .filter { tool -> tool.enable }
-                    .map { tool -> Triple(server.id, server.commonOptions.name, tool) }
-            }
+        return filterAvailableMcpTools(settings.mcpServers, mcpServerIds)
     }
 
     suspend fun callTool(serverId: Uuid, toolName: String, args: JsonObject): List<UIMessagePart> {
@@ -162,4 +154,17 @@ class McpManager(
         )
         return UIMessagePart.Image(url = filesManager.getFile(entity).toUri().toString())
     }
+}
+
+internal fun filterAvailableMcpTools(
+    servers: List<McpServerConfig>,
+    mcpServerIds: Set<Uuid>,
+): List<Triple<Uuid, String, McpTool>> {
+    return servers
+        .filter { it.commonOptions.enable && it.id in mcpServerIds }
+        .flatMap { server ->
+            server.commonOptions.tools
+                .filter { tool -> tool.enable }
+                .map { tool -> Triple(server.id, server.commonOptions.name, tool) }
+        }
 }

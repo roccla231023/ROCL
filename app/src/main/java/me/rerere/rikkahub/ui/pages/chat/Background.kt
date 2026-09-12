@@ -17,7 +17,7 @@ import me.rerere.rikkahub.data.datastore.Settings
 import me.rerere.rikkahub.data.datastore.getCurrentAssistant
 
 @Composable
-fun AssistantBackground(setting: Settings, modifier: Modifier) {
+fun AssistantBackground(setting: Settings, isGroupChat: Boolean, modifier: Modifier) {
     val appearance = setting.advancedAppearanceSetting
     if (appearance.enableGlobalBackground && appearance.applyGlobalBackgroundToChat && !appearance.globalBackground.isNullOrBlank()) {
         val backgroundColor = MaterialTheme.colorScheme.background
@@ -59,6 +59,8 @@ fun AssistantBackground(setting: Settings, modifier: Modifier) {
         }
         return
     }
+
+    if (isGroupChat) return
 
     val assistant = setting.getCurrentAssistant()
     if (assistant.useGradientBackground) {
