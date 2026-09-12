@@ -149,9 +149,9 @@ fun ChatInput(
     onStopVoiceMode: () -> Unit = {},
     stickySeatLabel: String? = null,
     quickMessageIds: Set<Uuid>? = null,
+    groupMode: Boolean = false,
 ) {
     val toaster = LocalToaster.current
-    val assistant = settings.getCurrentAssistant()
     val appearance = settings.advancedAppearanceSetting
     val isFrosted = appearance.composerMaterial == ChatComposerMaterial.FROSTED && settings.displaySetting.enableBlurEffect
     val composerBlur = appearance.composerBlurRadius.coerceIn(0f, 30f).dp
@@ -166,7 +166,11 @@ fun ChatInput(
 
     val containerShape = MaterialTheme.shapes.largeIncreased
     val modelListState = rememberModelListState(
-        modelId = assistant.chatModelId ?: settings.chatModelId,
+        modelId = if (groupMode) {
+            settings.chatModelId
+        } else {
+            settings.getCurrentAssistant().chatModelId ?: settings.chatModelId
+        },
         providers = settings.providers,
         type = ModelType.CHAT,
     )
@@ -298,6 +302,7 @@ fun ChatInput(
                                 .horizontalScroll(rememberScrollState()),
                             horizontalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
+                            if (!groupMode) {
                             // Model Picker
                             ModelSelectorButton(
                                 state = modelListState,
@@ -332,6 +337,7 @@ fun ChatInput(
                             // Reasoning
                             val model = settings.getCurrentChatModel()
                             if (model?.abilities?.contains(ModelAbility.REASONING) == true) {
+                                val assistant = settings.getCurrentAssistant()
                                 ReasoningButton(
                                     reasoningLevel = assistant.reasoningLevel,
                                     onUpdateReasoningLevel = {
@@ -339,6 +345,7 @@ fun ChatInput(
                                     },
                                     onlyIcon = true,
                                 )
+                            }
                             }
 
                         }
@@ -400,10 +407,12 @@ fun ChatInput(
         }
     }
 
-    ModelListSheet(
-        state = modelListState,
-        onSelect = onUpdateChatModel,
-    )
+    if (!groupMode) {
+        ModelListSheet(
+            state = modelListState,
+            onSelect = onUpdateChatModel,
+        )
+    }
 }
 
 @Composable
@@ -481,8 +490,7 @@ private fun TextInputRow(
 ) {
     val settings = LocalSettings.current
     val filesManager: FilesManager = koinInject()
-    val assistant = settings.getCurrentAssistant()
-    val resolvedQuickMessageIds = quickMessageIds ?: assistant.quickMessageIds
+    val resolvedQuickMessageIds = quickMessageIds ?: settings.getCurrentAssistant().quickMessageIds
     val quickMessages = remember(settings.quickMessages, resolvedQuickMessageIds) {
         settings.getQuickMessages(resolvedQuickMessageIds)
     }

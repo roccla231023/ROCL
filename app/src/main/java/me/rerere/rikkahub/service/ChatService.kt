@@ -481,7 +481,7 @@ class ChatService(
                     settings.getAssistantById(currentConversation.assistantId)
                         ?: settings.getCurrentAssistant()
                 } else {
-                    settings.getCurrentAssistant()
+                    null
                 }
                 val processedContent = preprocessUserInputParts(content, assistant)
 
@@ -532,7 +532,7 @@ class ChatService(
         return job
     }
 
-    private fun preprocessUserInputParts(parts: List<UIMessagePart>, assistant: Assistant): List<UIMessagePart> {
+    private fun preprocessUserInputParts(parts: List<UIMessagePart>, assistant: Assistant?): List<UIMessagePart> {
         return parts.map { part ->
             when (part) {
                 is UIMessagePart.Text -> {
@@ -722,6 +722,10 @@ class ChatService(
                             buildHiddenContinuePrompt(message.toText()),
                         )
                     ),
+                    continuationDedupeConfig = ContinuationDedupeConfig(
+                        targetMessageId = message.id,
+                        originalText = message.toText().trim(),
+                    ),
                 )
                 _generationDoneFlow.emit(conversationId)
             } catch (e: Exception) {
@@ -739,6 +743,7 @@ class ChatService(
         extraInputTransformers: List<me.rerere.rikkahub.data.ai.transformers.InputMessageTransformer> = emptyList(),
         autoContinueAttemptsRemaining: Int = 1,
         forcedSpeakerSeatIds: List<Uuid>? = null,
+        continuationDedupeConfig: ContinuationDedupeConfig? = null,
     ) {
         val settings = settingsStore.settingsFlow.first()
         val initialConversation = getConversationFlow(conversationId).value
@@ -774,7 +779,7 @@ class ChatService(
             updateConversation(conversationId, initialConversation.copy(chatSuggestions = emptyList()))
 
             if (!model.abilities.contains(ModelAbility.TOOL)) {
-                if (useExternalWebSearch || mcpManager.getAllAvailableTools().isNotEmpty()) {
+                if (useExternalWebSearch || mcpManager.getAllAvailableTools(assistant.mcpServers).isNotEmpty()) {
                     addError(
                         IllegalStateException(context.getString(R.string.tools_warning)),
                         conversationId,
@@ -928,7 +933,11 @@ class ChatService(
             Logging.log(TAG, it.stackTraceToString())
         }.onSuccess {
             if (networkAutoContinueTriggered) return@onSuccess
-            val finalConversation = getConversationFlow(conversationId).value
+            var finalConversation = getConversationFlow(conversationId).value
+            if (continuationDedupeConfig != null) {
+                finalConversation = applyContinuationDedupe(finalConversation, continuationDedupeConfig)
+                updateConversation(conversationId, finalConversation)
+            }
             saveConversation(conversationId, finalConversation)
             recordGenerationUsage(quotaBaselineMessages, finalConversation.currentMessages)
 
@@ -1202,6 +1211,10 @@ class ChatService(
                 )
             ),
             autoContinueAttemptsRemaining = autoContinueAttemptsRemaining - 1,
+            continuationDedupeConfig = ContinuationDedupeConfig(
+                targetMessageId = candidate.message.id,
+                originalText = candidate.originalText,
+            ),
         )
         return true
     }
@@ -1657,8 +1670,12 @@ class ChatService(
 
         val currentConversation = getConversationFlow(conversationId).value
         val settings = settingsStore.settingsFlow.first()
-        val assistant = settings.getAssistantById(currentConversation.assistantId)
-            ?: settings.getCurrentAssistant()
+        val assistant = if (settings.isGroupChat(currentConversation.assistantId)) {
+            null
+        } else {
+            settings.getAssistantById(currentConversation.assistantId)
+                ?: settings.getCurrentAssistant()
+        }
         val processedParts = preprocessUserInputParts(parts, assistant)
         var edited = false
 

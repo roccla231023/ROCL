@@ -53,7 +53,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import me.rerere.ai.provider.BuiltInTools
 import me.rerere.ai.provider.Model
-import me.rerere.ai.provider.ProviderSetting
 import me.rerere.ai.ui.UIMessagePart
 import me.rerere.hugeicons.HugeIcons
 import me.rerere.hugeicons.stroke.Cancel01
@@ -73,7 +72,10 @@ import me.rerere.rikkahub.data.files.FilesManager
 import me.rerere.rikkahub.data.model.Assistant
 import me.rerere.rikkahub.data.model.Conversation
 import me.rerere.rikkahub.data.model.GroupChatTemplate
+import me.rerere.rikkahub.data.model.applyGroupSeat
 import me.rerere.rikkahub.data.model.buildSeatDisplayNames
+import me.rerere.rikkahub.data.model.resolveGroupChatDisplaySeat
+import me.rerere.rikkahub.data.model.resolveGroupChatModelId
 import me.rerere.rikkahub.data.repository.WorkspaceRepository
 import me.rerere.rikkahub.service.ChatError
 import me.rerere.rikkahub.ui.components.ai.ChatAttachmentPickerActions
@@ -291,15 +293,23 @@ private fun ChatPageContent(
     var previewMode by rememberSaveable { mutableStateOf(false) }
     val hazeState = rememberHazeState()
     val groupTemplate = setting.getGroupChatTemplate(conversation.assistantId)
-    val assistant = setting.getAssistantById(conversation.assistantId) ?: setting.getCurrentAssistant()
+    val assistant = if (groupTemplate != null) {
+        val seat = resolveGroupChatDisplaySeat(groupTemplate, conversation.stickySpeakerSeatId)
+        val seatAssistant = seat?.let { setting.getAssistantById(it.assistantId) }
+        if (seat != null && seatAssistant != null) {
+            seatAssistant.applyGroupSeat(groupTemplate, seat)
+        } else {
+            Assistant()
+        }
+    } else {
+        setting.getAssistantById(conversation.assistantId) ?: setting.getCurrentAssistant()
+    }
     var showFilesSheet by remember { mutableStateOf(false) }
     val attachmentPickerActions = rememberChatAttachmentPickerActions(
         inputState = inputState,
         setting = setting,
         onAttachmentAdded = { showFilesSheet = false },
     )
-    val allowAudioVideoAttachments =
-        setting.getCurrentChatModel()?.findProvider(setting.providers) is ProviderSetting.Google
 
     val membersLabel = stringResource(R.string.group_chat_mention_members)
     val filesLabel = stringResource(R.string.group_chat_mention_files)
@@ -352,7 +362,11 @@ private fun ChatPageContent(
         color = MaterialTheme.colorScheme.background,
         modifier = Modifier.fillMaxSize()
     ) {
-        AssistantBackground(setting = setting, modifier = Modifier.hazeSource(hazeState))
+        AssistantBackground(
+            setting = setting,
+            isGroupChat = groupTemplate != null,
+            modifier = Modifier.hazeSource(hazeState),
+        )
         Scaffold(
             topBar = {
                 TopBar(
@@ -395,11 +409,13 @@ private fun ChatPageContent(
                         conversation.stickySpeakerSeatId?.let { names[it] }
                     },
                     quickMessageIds = groupTemplate?.quickMessageIds,
+                    groupMode = groupTemplate != null,
                     onCancelClick = {
                         vm.stopGeneration()
                     },
                     enableSearch = enableWebSearch,
                     onUpdateSearchMode = { mode ->
+                        if (groupTemplate != null) return@ChatInput
                         val current = setting.getCurrentAssistant()
                         val model = setting.getCurrentChatModel()
                         vm.updateSettings(
@@ -463,9 +479,11 @@ private fun ChatPageContent(
                         inputState.clearInput()
                     },
                     onUpdateChatModel = {
+                        if (groupTemplate != null) return@ChatInput
                         vm.setChatModel(assistant = setting.getCurrentAssistant(), model = it)
                     },
                     onUpdateAssistant = {
+                        if (groupTemplate != null) return@ChatInput
                         vm.updateSettings(
                             setting.copy(
                                 assistants = setting.assistants.map { assistant ->
@@ -639,6 +657,7 @@ private fun ChatFilesPickerSheet(
                 vm.handleCompressContext(additionalPrompt, targetTokens, keepRecentMessages)
             },
             onUpdateAssistant = {
+                if (groupTemplate != null) return@FilesPicker
                 vm.updateSettings(
                     setting.copy(
                         assistants = setting.assistants.map { assistant ->
@@ -725,10 +744,14 @@ private fun TopBar(
                 Column {
                     val groupTemplate = settings.getGroupChatTemplate(conversation.assistantId)
                     val model = if (groupTemplate != null) {
-                        val stickySeat = groupTemplate.seats.find { it.id == conversation.stickySpeakerSeatId }
-                            ?: groupTemplate.seats.firstOrNull()
-                        val seatAssistant = stickySeat?.let { settings.getAssistantById(it.assistantId) }
-                        settings.findModelById(seatAssistant?.chatModelId ?: settings.chatModelId)
+                        settings.findModelById(
+                            resolveGroupChatModelId(
+                                template = groupTemplate,
+                                stickySpeakerSeatId = conversation.stickySpeakerSeatId,
+                                assistantsById = settings.assistants.associateBy { it.id },
+                                globalChatModelId = settings.chatModelId,
+                            )
+                        )
                     } else {
                         settings.getCurrentChatModel()
                     }
