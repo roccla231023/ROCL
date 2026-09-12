@@ -61,6 +61,7 @@ import me.rerere.rikkahub.ui.context.LocalToaster
 import me.rerere.rikkahub.utils.getText
 import org.koin.androidx.compose.koinViewModel
 import java.util.Locale
+import me.rerere.rikkahub.ui.theme.CustomColors
 
 @Composable
 fun TranslatorPage(vm: TranslatorVM = koinViewModel()) {
@@ -265,7 +266,8 @@ private fun LanguageSelector(
 
             ExposedDropdownMenu(
                 expanded = expanded,
-                onDismissRequest = { expanded = false }
+                onDismissRequest = { expanded = false },
+                containerColor = CustomColors.overlayContainerColor,
             ) {
                 Locales.forEach { language ->
                     DropdownMenuItem(

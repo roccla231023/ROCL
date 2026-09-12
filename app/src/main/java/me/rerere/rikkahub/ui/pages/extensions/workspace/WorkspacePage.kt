@@ -229,6 +229,7 @@ private fun WorkspaceCard(
                     DropdownMenu(
                         expanded = menuExpanded,
                         onDismissRequest = { menuExpanded = false },
+                        containerColor = CustomColors.overlayContainerColor,
                     ) {
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.common_rename)) },

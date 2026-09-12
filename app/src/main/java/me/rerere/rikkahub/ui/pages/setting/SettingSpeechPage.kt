@@ -533,7 +533,8 @@ private fun AddASRProviderButton(onAdd: (ASRProviderSetting) -> Unit) {
         }
         DropdownMenu(
             expanded = showTypeMenu,
-            onDismissRequest = { showTypeMenu = false }
+            onDismissRequest = { showTypeMenu = false },
+            containerColor = CustomColors.overlayContainerColor,
         ) {
             DropdownMenuItem(
                 text = { Text("OpenAI Realtime") },
@@ -757,7 +758,8 @@ private fun TTSProviderItem(
                     )
                     DropdownMenu(
                         expanded = showDropdownMenu,
-                        onDismissRequest = { showDropdownMenu = false }
+                        onDismissRequest = { showDropdownMenu = false },
+                        containerColor = CustomColors.overlayContainerColor,
                     ) {
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.edit)) },
@@ -877,7 +879,8 @@ private fun ASRProviderItem(
                     )
                     DropdownMenu(
                         expanded = showDropdownMenu,
-                        onDismissRequest = { showDropdownMenu = false }
+                        onDismissRequest = { showDropdownMenu = false },
+                        containerColor = CustomColors.overlayContainerColor,
                     ) {
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.edit)) },
