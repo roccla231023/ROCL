@@ -219,6 +219,7 @@ private fun QuickMessageCard(
                 DropdownMenu(
                     expanded = menuExpanded,
                     onDismissRequest = { menuExpanded = false },
+                    containerColor = CustomColors.overlayContainerColor,
                 ) {
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.edit)) },

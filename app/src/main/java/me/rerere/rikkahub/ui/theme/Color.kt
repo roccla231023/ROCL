@@ -188,4 +188,10 @@ object CustomColors {
 
     val listItemColors: ListItemColors
         @Composable get() = ListItemDefaults.colors(containerColor = colorScheme.surfaceBright)
+
+    val overlayContainerColor: Color
+        @Composable get() = colorScheme.surfaceContainerHigh.copy(alpha = 1f)
+
+    val opaqueCardColors: CardColors
+        @Composable get() = CardDefaults.cardColors(containerColor = overlayContainerColor)
 }

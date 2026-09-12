@@ -96,6 +96,7 @@ import me.rerere.rikkahub.utils.toDp
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 import kotlin.uuid.Uuid
+import me.rerere.rikkahub.ui.theme.CustomColors
 
 @Composable
 fun ChatDrawerContent(
@@ -364,7 +365,8 @@ fun ChatDrawerContent(
                     )
                     DropdownMenu(
                         expanded = showMenuPopup,
-                        onDismissRequest = { showMenuPopup = false }
+                        onDismissRequest = { showMenuPopup = false },
+                        containerColor = CustomColors.overlayContainerColor,
                     ) {
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.chat_page_menu_ai_translator)) },
@@ -828,6 +830,7 @@ private fun FolderBar(
                 DropdownMenu(
                     expanded = menuExpanded,
                     onDismissRequest = { menuExpanded = false },
+                    containerColor = CustomColors.overlayContainerColor,
                 ) {
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.chat_page_rename)) },

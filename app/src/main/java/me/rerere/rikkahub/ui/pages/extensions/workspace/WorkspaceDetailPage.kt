@@ -799,6 +799,7 @@ private fun WorkspaceFileCard(
                 DropdownMenu(
                     expanded = menuExpanded,
                     onDismissRequest = { menuExpanded = false },
+                    containerColor = CustomColors.overlayContainerColor,
                 ) {
                     if (!entry.isDirectory) {
                         DropdownMenuItem(

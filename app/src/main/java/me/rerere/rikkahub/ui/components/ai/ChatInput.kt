@@ -38,6 +38,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.material3.BasicAlertDialog
 import me.rerere.rikkahub.data.datastore.ChatComposerMaterial
+import me.rerere.rikkahub.ui.theme.CustomColors
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -748,7 +749,8 @@ private fun QuickMessageButton(
             expanded = expanded,
             onDismissRequest = { expanded = false },
             modifier = Modifier
-                .widthIn(min = 200.dp, max = 360.dp)
+                .widthIn(min = 200.dp, max = 360.dp),
+            containerColor = CustomColors.overlayContainerColor,
         ) {
             quickMessages.forEach { quickMessage ->
                 Surface(
@@ -804,7 +806,8 @@ private fun FullScreenEditor(
                 modifier = Modifier
                     .widthIn(max = 800.dp)
                     .fillMaxHeight(0.9f),
-                shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+                shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+                color = CustomColors.overlayContainerColor,
             ) {
                 Column(
                     modifier = Modifier

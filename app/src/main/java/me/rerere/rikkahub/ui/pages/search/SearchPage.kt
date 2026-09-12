@@ -265,6 +265,7 @@ private fun SortMenuButton(
         DropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
+            containerColor = CustomColors.overlayContainerColor,
         ) {
             MessageSearchSort.entries.forEach { sort ->
                 DropdownMenuItem(

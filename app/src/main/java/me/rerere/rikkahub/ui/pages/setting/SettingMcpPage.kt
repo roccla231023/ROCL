@@ -324,7 +324,7 @@ private fun McpServerItem(
     ) {
         Card(
             colors = CardDefaults.cardColors(
-                containerColor = CustomColors.listItemColors.containerColor
+                containerColor = CustomColors.overlayContainerColor
             )
         ) {
             Row(

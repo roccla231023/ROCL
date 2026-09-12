@@ -37,6 +37,7 @@ import androidx.compose.ui.util.fastForEach
 import me.rerere.hugeicons.HugeIcons
 import me.rerere.hugeicons.stroke.ArrowDown01
 import me.rerere.hugeicons.stroke.ArrowUp01
+import me.rerere.rikkahub.ui.theme.CustomColors
 
 @Composable
 fun <T> Select(
@@ -87,7 +88,8 @@ fun <T> Select(
             expanded = expanded,
             onDismissRequest = {
                 expanded = false
-            }
+            },
+            containerColor = CustomColors.overlayContainerColor,
         ) {
             options.fastForEach { option ->
                 DropdownMenuItem(
@@ -166,7 +168,8 @@ fun <T> SelectTextField(
             onDismissRequest = { expanded = false },
             modifier = Modifier
                 .width(with(density) { anchorWidth.toDp() })
-                .heightIn(max = 240.dp)
+                .heightIn(max = 240.dp),
+            containerColor = CustomColors.overlayContainerColor,
         ) {
             options.fastForEach { option ->
                 DropdownMenuItem(

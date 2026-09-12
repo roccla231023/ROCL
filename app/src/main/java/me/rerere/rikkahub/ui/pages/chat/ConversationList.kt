@@ -57,6 +57,7 @@ import me.rerere.rikkahub.utils.toLocalString
 import java.time.LocalDate
 import java.time.ZoneId
 import kotlin.uuid.Uuid
+import me.rerere.rikkahub.ui.theme.CustomColors
 
 /**
  * Represents different types of items in the conversation list
@@ -295,6 +296,7 @@ private fun ConversationItem(
             DropdownMenu(
                 expanded = showDropdownMenu,
                 onDismissRequest = { showDropdownMenu = false },
+                containerColor = CustomColors.overlayContainerColor,
             ) {
                 DropdownMenuItem(
                     text = {

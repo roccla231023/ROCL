@@ -289,6 +289,7 @@ private fun SkillCard(
                 DropdownMenu(
                     expanded = menuExpanded,
                     onDismissRequest = { menuExpanded = false },
+                    containerColor = CustomColors.overlayContainerColor,
                 ) {
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) },

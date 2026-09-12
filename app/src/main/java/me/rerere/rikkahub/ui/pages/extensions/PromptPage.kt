@@ -336,7 +336,7 @@ private fun ModeInjectionCard(
     ) {
         Card(
             colors = CardDefaults.cardColors(
-                containerColor = CustomColors.listItemColors.containerColor
+                containerColor = CustomColors.overlayContainerColor
             )
         ) {
             Row(
@@ -748,7 +748,7 @@ private fun LorebookCard(
     ) {
         Card(
             colors = CardDefaults.cardColors(
-                containerColor = CustomColors.listItemColors.containerColor
+                containerColor = CustomColors.overlayContainerColor
             )
         ) {
             Row(

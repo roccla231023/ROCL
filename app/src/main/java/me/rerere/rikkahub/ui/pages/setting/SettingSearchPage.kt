@@ -312,7 +312,8 @@ private fun SearchProviderCard(
                 )
                 DropdownMenu(
                     expanded = showMenu,
-                    onDismissRequest = { showMenu = false }
+                    onDismissRequest = { showMenu = false },
+                    containerColor = CustomColors.overlayContainerColor,
                 ) {
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.edit)) },
