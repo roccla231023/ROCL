@@ -85,6 +85,12 @@ fun SettingPreferencesPage() {
                         supportingContent = { Text(stringResource(R.string.setting_page_preferences_ui_desc)) },
                     )
                     item(
+                        onClick = { navController.navigate(Screen.SettingPreferencesAdvancedAppearance) },
+                        leadingContent = { Icon(HugeIcons.PaintBoard, null) },
+                        headlineContent = { Text(stringResource(R.string.setting_advanced_appearance_entry)) },
+                        supportingContent = { Text(stringResource(R.string.setting_advanced_appearance_entry_desc)) },
+                    )
+                    item(
                         onClick = { navController.navigate(Screen.SettingRpOptimizations) },
                         leadingContent = { Icon(HugeIcons.PaintBoard, null) },
                         headlineContent = { Text(stringResource(R.string.setting_display_page_rp_optimizations_title)) },

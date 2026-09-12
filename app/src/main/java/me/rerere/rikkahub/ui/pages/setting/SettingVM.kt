@@ -23,4 +23,10 @@ class SettingVM(
             settingsStore.update(settings)
         }
     }
+
+    fun updateAdvancedAppearance(fn: (me.rerere.rikkahub.data.datastore.AdvancedAppearanceSetting) -> me.rerere.rikkahub.data.datastore.AdvancedAppearanceSetting) {
+        viewModelScope.launch {
+            settingsStore.updateAdvancedAppearance(fn)
+        }
+    }
 }
