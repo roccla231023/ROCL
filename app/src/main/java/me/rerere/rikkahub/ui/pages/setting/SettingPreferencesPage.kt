@@ -17,10 +17,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import me.rerere.hugeicons.HugeIcons
 import me.rerere.hugeicons.stroke.Notification01
+import me.rerere.hugeicons.stroke.ColorPicker
 import me.rerere.hugeicons.stroke.Internet
 import me.rerere.hugeicons.stroke.MagicWand01
 import me.rerere.hugeicons.stroke.PaintBoard
-import me.rerere.hugeicons.stroke.Quotes
 import me.rerere.hugeicons.stroke.Tools
 import me.rerere.hugeicons.stroke.Settings03
 import me.rerere.hugeicons.stroke.Sun01
@@ -94,7 +94,7 @@ fun SettingPreferencesPage() {
                     )
                     item(
                         onClick = { navController.navigate(Screen.SettingRpOptimizations) },
-                        leadingContent = { Icon(HugeIcons.Quotes, null) },
+                        leadingContent = { Icon(HugeIcons.ColorPicker, null) },
                         headlineContent = { Text(stringResource(R.string.setting_display_page_rp_optimizations_title)) },
                         supportingContent = { Text(stringResource(R.string.setting_display_page_rp_optimizations_desc)) },
                     )
