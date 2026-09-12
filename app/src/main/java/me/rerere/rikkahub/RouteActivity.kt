@@ -115,6 +115,7 @@ import me.rerere.rikkahub.ui.pages.setting.SettingPreferencesUIPage
 import me.rerere.rikkahub.ui.pages.setting.SettingPreferencesAdvancedAppearancePage
 import me.rerere.rikkahub.ui.components.ui.GlobalAppBackground
 import me.rerere.rikkahub.ui.components.ui.GlobalGlassTheme
+import me.rerere.rikkahub.ui.components.ui.resolveGlobalBackgroundLayer
 import me.rerere.rikkahub.ui.pages.setting.SettingMessageToolbarPage
 import me.rerere.rikkahub.ui.pages.setting.SettingRpOptimizationsPage
 import me.rerere.rikkahub.ui.pages.setting.SettingThemePage
@@ -297,19 +298,16 @@ class RouteActivity : ComponentActivity() {
                 )
                 TTSController()
                 val appearance = settings.advancedAppearanceSetting
-                val hasGlobalBg = appearance.enableGlobalBackground && !appearance.globalBackground.isNullOrBlank()
-                val isChatScreen = backStack.lastOrNull() is Screen.Chat
-                val shouldShowGlobalBg = hasGlobalBg && !isChatScreen
+                val backgroundLayer = resolveGlobalBackgroundLayer(
+                    hasGlobalBackground = appearance.enableGlobalBackground && !appearance.globalBackground.isNullOrBlank(),
+                    isChatScreen = backStack.lastOrNull() is Screen.Chat,
+                    backgroundOpacity = appearance.globalBackgroundOpacity,
+                )
 
                 val animatedBgOpacity by animateFloatAsState(
-                    targetValue = if (shouldShowGlobalBg) appearance.globalBackgroundOpacity.coerceIn(0f, 1f) else 0f,
+                    targetValue = backgroundLayer.targetBackgroundOpacity,
                     animationSpec = tween(durationMillis = 260),
                     label = "global_bg_opacity",
-                )
-                val animatedSurfaceOpacity by animateFloatAsState(
-                    targetValue = if (shouldShowGlobalBg) appearance.pageSurfaceOpacity.coerceIn(0.35f, 1f) else 1f,
-                    animationSpec = tween(durationMillis = 260),
-                    label = "global_surface_opacity",
                 )
 
                 Box(
@@ -318,7 +316,7 @@ class RouteActivity : ComponentActivity() {
                         .semantics { testTagsAsResourceId = true }
                         .background(MaterialTheme.colorScheme.background)
                 ) {
-                    if (hasGlobalBg && animatedBgOpacity > 0.005f) {
+                    if (backgroundLayer.keepBackgroundMounted) {
                         GlobalAppBackground(
                             background = appearance.globalBackground!!,
                             opacity = animatedBgOpacity,
@@ -326,8 +324,8 @@ class RouteActivity : ComponentActivity() {
                         )
                     }
                     GlobalGlassTheme(
-                        active = animatedSurfaceOpacity < 0.995f,
-                        surfaceOpacity = animatedSurfaceOpacity,
+                        active = backgroundLayer.glassActive,
+                        surfaceOpacity = appearance.pageSurfaceOpacity,
                     ) {
                         NavDisplay(
                         backStack = backStack,
