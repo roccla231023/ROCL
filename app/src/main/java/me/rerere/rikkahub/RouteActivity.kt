@@ -110,6 +110,9 @@ import me.rerere.rikkahub.ui.pages.setting.SettingPreferencesNotificationPage
 import me.rerere.rikkahub.ui.pages.setting.SettingPreferencesGeneralPage
 import me.rerere.rikkahub.ui.pages.setting.SettingPreferencesNetworkPage
 import me.rerere.rikkahub.ui.pages.setting.SettingPreferencesUIPage
+import me.rerere.rikkahub.ui.pages.setting.SettingPreferencesAdvancedAppearancePage
+import me.rerere.rikkahub.ui.components.ui.GlobalAppBackground
+import me.rerere.rikkahub.ui.components.ui.GlobalGlassTheme
 import me.rerere.rikkahub.ui.pages.setting.SettingMessageToolbarPage
 import me.rerere.rikkahub.ui.pages.setting.SettingRpOptimizationsPage
 import me.rerere.rikkahub.ui.pages.setting.SettingThemePage
@@ -140,7 +143,6 @@ import kotlin.uuid.Uuid
 
 private const val TAG = "RouteActivity"
 private const val ACTION_TRANSLATE = "me.rerere.rikkahub.action.TRANSLATE"
-private const val ACTION_IMAGE_GEN = "me.rerere.rikkahub.action.IMAGE_GEN"
 
 class RouteActivity : ComponentActivity() {
     private val okHttpClient by inject<OkHttpClient>()
@@ -222,7 +224,6 @@ class RouteActivity : ComponentActivity() {
         }
         val destination = when (intent.action) {
             ACTION_TRANSLATE -> Screen.Translator
-            ACTION_IMAGE_GEN -> Screen.ImageGen
             Intent.ACTION_SEND -> Screen.ShareHandler(
                 text = intent.getStringExtra(Intent.EXTRA_TEXT).orEmpty(),
                 streamUri = intent.getStringExtra(Intent.EXTRA_STREAM),
@@ -293,13 +294,29 @@ class RouteActivity : ComponentActivity() {
                     showCloseButton = true,
                 )
                 TTSController()
+                val appearance = settings.advancedAppearanceSetting
+                val isChatScreen = backStack.lastOrNull() is Screen.Chat
+                val isGlobalBgActive = appearance.enableGlobalBackground &&
+                    !appearance.globalBackground.isNullOrBlank() &&
+                    !isChatScreen
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .semantics { testTagsAsResourceId = true }
                         .background(MaterialTheme.colorScheme.background)
                 ) {
-                    NavDisplay(
+                    if (isGlobalBgActive) {
+                        GlobalAppBackground(
+                            background = appearance.globalBackground!!,
+                            opacity = appearance.globalBackgroundOpacity,
+                            blurRadius = appearance.globalBackgroundBlurRadius,
+                        )
+                    }
+                    GlobalGlassTheme(
+                        active = isGlobalBgActive,
+                        surfaceOpacity = appearance.pageSurfaceOpacity,
+                    ) {
+                        NavDisplay(
                         backStack = backStack,
                         entryDecorators = listOf(
                             rememberSaveableStateHolderNavEntryDecorator(),
@@ -432,6 +449,10 @@ class RouteActivity : ComponentActivity() {
 
                             entry<Screen.SettingPreferencesUI> {
                                 SettingPreferencesUIPage()
+                            }
+
+                            entry<Screen.SettingPreferencesAdvancedAppearance> {
+                                SettingPreferencesAdvancedAppearancePage()
                             }
 
                             entry<Screen.SettingRpOptimizations> {
@@ -595,6 +616,7 @@ class RouteActivity : ComponentActivity() {
                             }
                         }
                     }
+                    }
                 }
             }
         }
@@ -681,6 +703,9 @@ sealed interface Screen : NavKey {
 
     @Serializable
     data object SettingPreferencesUI : Screen
+
+    @Serializable
+    data object SettingPreferencesAdvancedAppearance : Screen
 
     @Serializable
     data object SettingRpOptimizations : Screen
