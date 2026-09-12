@@ -8,6 +8,8 @@ import me.rerere.rikkahub.data.model.GroupChatSeat
 import me.rerere.rikkahub.data.model.GroupChatTemplate
 import me.rerere.rikkahub.data.model.applyGroupSeat
 import me.rerere.rikkahub.data.model.buildSeatDisplayNames
+import me.rerere.rikkahub.data.model.resolveGroupChatDisplaySeat
+import me.rerere.rikkahub.data.model.resolveGroupChatModelId
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -323,5 +325,34 @@ class GroupChatEngineTest {
             userName = "Roc",
         )
         assertTrue(rewritten.any { it.role == MessageRole.ASSISTANT && it.speakerSeatId == claudeSeat.id })
+    }
+
+    @Test
+    fun displaySeatFallsToFirstEnabledWhenStickyDisabled() {
+        val disabledGpt = gptSeat.copy(defaultEnabled = false)
+        val group = template.copy(seats = listOf(disabledGpt, claudeSeat))
+        assertEquals(claudeSeat.id, resolveGroupChatDisplaySeat(group, gptSeat.id)?.id)
+        assertEquals(claudeSeat.id, resolveGroupChatDisplaySeat(group, null)?.id)
+    }
+
+    @Test
+    fun displayModelUsesSeatOverrideNotBareAssistantModel() {
+        val overrideModel = Uuid.parse("77777777-7777-7777-7777-777777777777")
+        val globalModel = Uuid.parse("88888888-8888-8888-8888-888888888888")
+        val seat = gptSeat.copy(overrides = gptSeat.overrides.copy(chatModelId = overrideModel))
+        val group = template.copy(seats = listOf(seat, claudeSeat))
+        val settled = mapOf(
+            gpt.id to gpt.copy(chatModelId = globalModel),
+            claude.id to claude,
+        )
+        assertEquals(
+            overrideModel,
+            resolveGroupChatModelId(
+                template = group,
+                stickySpeakerSeatId = seat.id,
+                assistantsById = settled,
+                globalChatModelId = globalModel,
+            ),
+        )
     }
 }

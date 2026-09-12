@@ -86,6 +86,26 @@ fun GroupChatTemplate.buildSeatDisplayNames(
     }
 }
 
+fun resolveGroupChatDisplaySeat(
+    template: GroupChatTemplate,
+    stickySpeakerSeatId: Uuid?,
+): GroupChatSeat? {
+    val enabledSeats = template.seats.filter { it.defaultEnabled }
+    return stickySpeakerSeatId?.let { sticky -> enabledSeats.find { it.id == sticky } }
+        ?: enabledSeats.firstOrNull()
+}
+
+fun resolveGroupChatModelId(
+    template: GroupChatTemplate,
+    stickySpeakerSeatId: Uuid?,
+    assistantsById: Map<Uuid, Assistant>,
+    globalChatModelId: Uuid,
+): Uuid {
+    val seat = resolveGroupChatDisplaySeat(template, stickySpeakerSeatId) ?: return globalChatModelId
+    val assistant = assistantsById[seat.assistantId] ?: return globalChatModelId
+    return assistant.applyGroupSeat(template, seat).chatModelId ?: globalChatModelId
+}
+
 fun Assistant.applyGroupSeat(
     template: GroupChatTemplate,
     seat: GroupChatSeat,

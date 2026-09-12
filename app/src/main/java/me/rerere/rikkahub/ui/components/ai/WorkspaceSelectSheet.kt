@@ -31,12 +31,12 @@ import me.rerere.hugeicons.stroke.Codesandbox
 import me.rerere.hugeicons.stroke.Tick02
 import me.rerere.rikkahub.R
 import me.rerere.rikkahub.data.db.entity.WorkspaceEntity
-import me.rerere.rikkahub.data.model.Assistant
 import me.rerere.rikkahub.ui.pages.extensions.workspace.toShellStatusLabel
+import kotlin.uuid.Uuid
 
 @Composable
 internal fun WorkspaceSelectSheet(
-    assistant: Assistant,
+    selectedWorkspaceId: Uuid?,
     workspaces: List<WorkspaceEntity>,
     onSelect: (String?) -> Unit,
     onManage: () -> Unit,
@@ -71,14 +71,14 @@ internal fun WorkspaceSelectSheet(
                 // 不绑定
                 WorkspaceSelectRow(
                     title = stringResource(R.string.workspace_no_binding),
-                    selected = assistant.workspaceId == null,
+                    selected = selectedWorkspaceId == null,
                     onClick = { onSelect(null) },
                 )
                 workspaces.forEach { workspace ->
                     WorkspaceSelectRow(
                         title = workspace.name,
                         status = workspace.shellStatus.toShellStatusLabel(),
-                        selected = workspace.id == assistant.workspaceId?.toString(),
+                        selected = workspace.id == selectedWorkspaceId?.toString(),
                         onClick = { onSelect(workspace.id) },
                     )
                 }

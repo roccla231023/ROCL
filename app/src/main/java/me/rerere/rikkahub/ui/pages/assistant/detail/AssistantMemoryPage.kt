@@ -438,6 +438,7 @@ private fun MemoryRetrievalSettings(
     onUpdateAssistant: (Assistant) -> Unit,
 ) {
     val mode = assistant.effectiveMemoryRetrievalMode()
+    val selectedMode = if (mode == MemoryRetrievalMode.HYBRID) MemoryRetrievalMode.VECTOR else mode
     val hasEmbeddingModel = settings.findModelById(
         uuid = assistant.embeddingModelId,
         fallback = settings.embeddingModelId,
@@ -449,24 +450,23 @@ private fun MemoryRetrievalSettings(
         FormItem(
             modifier = Modifier.padding(8.dp),
             label = { Text(stringResource(R.string.assistant_page_memory_retrieval_mode_title)) },
-            description = { Text(memoryRetrievalModeDescription(mode)) },
+            description = { Text(memoryRetrievalModeDescription(selectedMode)) },
         ) {
             Select(
-                options = MemoryRetrievalMode.entries.toList(),
-                selectedOption = mode,
+                options = MemoryRetrievalMode.entries.filter { it != MemoryRetrievalMode.HYBRID },
+                selectedOption = selectedMode,
                 onOptionSelected = { selected ->
                     onUpdateAssistant(
                         assistant.copy(
                             memoryRetrievalMode = selected,
-                            useRagMemoryRetrieval = selected == MemoryRetrievalMode.VECTOR ||
-                                selected == MemoryRetrievalMode.HYBRID,
+                            useRagMemoryRetrieval = selected == MemoryRetrievalMode.VECTOR,
                         )
                     )
                 },
                 modifier = Modifier.fillMaxWidth(),
                 optionToString = { memoryRetrievalModeLabel(it) },
             )
-            if (mode.requiresEmbedding && !hasEmbeddingModel) {
+            if (selectedMode.requiresEmbedding && !hasEmbeddingModel) {
                 Text(
                     text = stringResource(R.string.assistant_page_memory_retrieval_fallback_keyword),
                     color = MaterialTheme.colorScheme.error,
@@ -497,7 +497,7 @@ private fun MemoryRetrievalSettings(
             )
         }
 
-        if (mode.requiresEmbedding) {
+        if (selectedMode.requiresEmbedding) {
             HorizontalDivider()
             val threshold = assistant.ragSimilarityThreshold.coerceIn(0f, 1f)
             var thresholdSlider by remember(assistant.id, threshold) {
@@ -541,7 +541,7 @@ private fun MemoryRetrievalSettings(
             }
         }
 
-        if (mode != MemoryRetrievalMode.OFF) {
+        if (selectedMode != MemoryRetrievalMode.OFF) {
             HorizontalDivider()
             val limit = assistant.ragLimit.coerceIn(1, 50)
             var topKSlider by remember(assistant.id, limit) {

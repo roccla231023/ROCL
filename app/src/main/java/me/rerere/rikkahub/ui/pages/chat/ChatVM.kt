@@ -31,7 +31,6 @@ import me.rerere.rikkahub.R
 import me.rerere.rikkahub.data.datastore.Settings
 import me.rerere.rikkahub.data.datastore.SettingsStore
 import me.rerere.rikkahub.data.datastore.findModelById
-import me.rerere.rikkahub.data.datastore.getAssistantById
 import me.rerere.rikkahub.data.datastore.getCurrentAssistant
 import me.rerere.rikkahub.data.datastore.getCurrentChatModel
 import me.rerere.rikkahub.data.datastore.getGroupChatTemplate
@@ -40,6 +39,7 @@ import me.rerere.rikkahub.data.model.Assistant
 import me.rerere.rikkahub.data.model.Avatar
 import me.rerere.rikkahub.data.model.Conversation
 import me.rerere.rikkahub.data.model.MessageNode
+import me.rerere.rikkahub.data.model.resolveGroupChatModelId
 import me.rerere.rikkahub.data.model.NodeFavoriteTarget
 import me.rerere.rikkahub.data.repository.ConversationRepository
 import me.rerere.rikkahub.data.repository.FavoriteRepository
@@ -115,18 +115,26 @@ class ChatVM(
         settingsStore.settingsFlow.stateIn(viewModelScope, SharingStarted.Eagerly, Settings.dummy())
 
     // 网络搜索(每个助手独立)
-    val enableWebSearch = settings.map {
-        it.getCurrentAssistant().enableWebSearch
+    val enableWebSearch = combine(settings, conversation) { currentSettings, currentConversation ->
+        if (currentSettings.getGroupChatTemplate(currentConversation.assistantId) != null) {
+            false
+        } else {
+            currentSettings.getCurrentAssistant().enableWebSearch
+        }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     // 当前模型
     val currentChatModel = combine(settings, conversation) { currentSettings, currentConversation ->
         val group = currentSettings.getGroupChatTemplate(currentConversation.assistantId)
         if (group != null) {
-            val stickySeat = group.seats.find { it.id == currentConversation.stickySpeakerSeatId }
-                ?: group.seats.firstOrNull()
-            val seatAssistant = stickySeat?.let { currentSettings.getAssistantById(it.assistantId) }
-            currentSettings.findModelById(seatAssistant?.chatModelId ?: currentSettings.chatModelId)
+            currentSettings.findModelById(
+                resolveGroupChatModelId(
+                    template = group,
+                    stickySpeakerSeatId = currentConversation.stickySpeakerSeatId,
+                    assistantsById = currentSettings.assistants.associateBy { it.id },
+                    globalChatModelId = currentSettings.chatModelId,
+                )
+            )
         } else {
             currentSettings.getCurrentChatModel()
         }

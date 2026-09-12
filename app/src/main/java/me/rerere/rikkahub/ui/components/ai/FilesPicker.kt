@@ -153,11 +153,23 @@ internal fun FilesPicker(
 
         if (workspaces.isNotEmpty()) {
             WorkspacePickerListItem(
-                assistant = assistant,
-                conversation = conversation,
+                workspaceId = groupTemplate?.workspaceId ?: assistant.workspaceId,
                 workspaces = workspaces,
-                onUpdateAssistant = onUpdateAssistant,
-                onUpdateConversation = onUpdateConversation,
+                onBindWorkspace = { newId ->
+                    if (groupTemplate != null) {
+                        if (newId != groupTemplate.workspaceId) {
+                            onUpdateGroupTemplate?.invoke(groupTemplate.copy(workspaceId = newId))
+                            if (conversation.workspaceCwd != null) {
+                                onUpdateConversation(conversation.copy(workspaceCwd = null))
+                            }
+                        }
+                    } else if (newId != assistant.workspaceId) {
+                        onUpdateAssistant(assistant.copy(workspaceId = newId))
+                        if (conversation.workspaceCwd != null) {
+                            onUpdateConversation(conversation.copy(workspaceCwd = null))
+                        }
+                    }
+                },
                 onNavigateToDetail = { id ->
                     onDismiss()
                     navController.navigate(Screen.WorkspaceDetail(id))
@@ -173,7 +185,7 @@ internal fun FilesPicker(
             )
         }
 
-        if (settings.mcpServers.isNotEmpty()) {
+        if (groupTemplate == null && settings.mcpServers.isNotEmpty()) {
             McpPickerListItem(
                 assistant = assistant,
                 servers = settings.mcpServers,
@@ -255,8 +267,9 @@ internal fun FilesPicker(
         )
 
         // Workspace CWD
-        val boundWorkspace = remember(workspaces, assistant.workspaceId) {
-            workspaces.find { it.id == assistant.workspaceId?.toString() }
+        val boundWorkspaceId = groupTemplate?.workspaceId ?: assistant.workspaceId
+        val boundWorkspace = remember(workspaces, boundWorkspaceId) {
+            workspaces.find { it.id == boundWorkspaceId?.toString() }
         }
         if (boundWorkspace != null && boundWorkspace.shellStatus == WorkspaceShellStatus.READY.name) {
             var showCwdSheet by remember { mutableStateOf(false) }
@@ -318,18 +331,16 @@ internal fun FilesPicker(
 
 @Composable
 private fun WorkspacePickerListItem(
-    assistant: Assistant,
-    conversation: Conversation,
+    workspaceId: Uuid?,
     workspaces: List<WorkspaceEntity>,
-    onUpdateAssistant: (Assistant) -> Unit,
-    onUpdateConversation: (Conversation) -> Unit,
+    onBindWorkspace: (Uuid?) -> Unit,
     onNavigateToDetail: (String) -> Unit,
     onNavigateToTerminal: (String) -> Unit,
     onNavigateToManage: () -> Unit,
 ) {
     var showSheet by remember { mutableStateOf(false) }
-    val boundWorkspace = remember(workspaces, assistant.workspaceId) {
-        workspaces.find { it.id == assistant.workspaceId?.toString() }
+    val boundWorkspace = remember(workspaces, workspaceId) {
+        workspaces.find { it.id == workspaceId?.toString() }
     }
 
     ListItem(
@@ -381,16 +392,11 @@ private fun WorkspacePickerListItem(
 
     if (showSheet) {
         WorkspaceSelectSheet(
-            assistant = assistant,
+            selectedWorkspaceId = workspaceId,
             workspaces = workspaces,
-            onSelect = { workspaceId ->
-                val newId = workspaceId?.let { Uuid.parse(it) }
-                if (newId != assistant.workspaceId) {
-                    onUpdateAssistant(assistant.copy(workspaceId = newId))
-                    if (conversation.workspaceCwd != null) {
-                        onUpdateConversation(conversation.copy(workspaceCwd = null))
-                    }
-                }
+            onSelect = { selectedId ->
+                val newId = selectedId?.let { Uuid.parse(it) }
+                onBindWorkspace(newId)
                 showSheet = false
             },
             onManage = {
