@@ -28,7 +28,12 @@ fun GlobalAppBackground(
     val safeBlurRadius = blurRadius.coerceIn(0f, 50f)
     val backgroundColor = MaterialTheme.colorScheme.background.copy(alpha = 1f)
 
-    Box(modifier = modifier.fillMaxSize().clipToBounds()) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .clipToBounds()
+            .alpha(safeOpacity)
+    ) {
         AsyncImage(
             model = background,
             contentDescription = null,
@@ -44,8 +49,7 @@ fun GlobalAppBackground(
                     } else {
                         Modifier
                     }
-                )
-                .alpha(safeOpacity),
+                ),
         )
         // 渐变可读性遮罩，保证高反差壁纸下文字与图标依然清晰
         Box(

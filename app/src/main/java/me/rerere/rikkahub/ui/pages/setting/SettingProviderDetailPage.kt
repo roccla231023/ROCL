@@ -40,6 +40,7 @@ import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FloatingToolbarDefaults.ScreenOffset
 import androidx.compose.material3.FloatingToolbarDefaults.floatingToolbarVerticalNestedScroll
@@ -1290,7 +1291,11 @@ private fun ModelCard(
         gesturesEnabled = true,
         modifier = modifier
     ) {
-        OutlinedCard {
+        OutlinedCard(
+            colors = CardDefaults.outlinedCardColors(
+                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 1f)
+            )
+        ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
