@@ -9,6 +9,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -295,26 +297,37 @@ class RouteActivity : ComponentActivity() {
                 )
                 TTSController()
                 val appearance = settings.advancedAppearanceSetting
+                val hasGlobalBg = appearance.enableGlobalBackground && !appearance.globalBackground.isNullOrBlank()
                 val isChatScreen = backStack.lastOrNull() is Screen.Chat
-                val isGlobalBgActive = appearance.enableGlobalBackground &&
-                    !appearance.globalBackground.isNullOrBlank() &&
-                    !isChatScreen
+                val shouldShowGlobalBg = hasGlobalBg && !isChatScreen
+
+                val animatedBgOpacity by animateFloatAsState(
+                    targetValue = if (shouldShowGlobalBg) appearance.globalBackgroundOpacity.coerceIn(0f, 1f) else 0f,
+                    animationSpec = tween(durationMillis = 260),
+                    label = "global_bg_opacity",
+                )
+                val animatedSurfaceOpacity by animateFloatAsState(
+                    targetValue = if (shouldShowGlobalBg) appearance.pageSurfaceOpacity.coerceIn(0.35f, 1f) else 1f,
+                    animationSpec = tween(durationMillis = 260),
+                    label = "global_surface_opacity",
+                )
+
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .semantics { testTagsAsResourceId = true }
                         .background(MaterialTheme.colorScheme.background)
                 ) {
-                    if (isGlobalBgActive) {
+                    if (hasGlobalBg && animatedBgOpacity > 0.005f) {
                         GlobalAppBackground(
                             background = appearance.globalBackground!!,
-                            opacity = appearance.globalBackgroundOpacity,
+                            opacity = animatedBgOpacity,
                             blurRadius = appearance.globalBackgroundBlurRadius,
                         )
                     }
                     GlobalGlassTheme(
-                        active = isGlobalBgActive,
-                        surfaceOpacity = appearance.pageSurfaceOpacity,
+                        active = animatedSurfaceOpacity < 0.995f,
+                        surfaceOpacity = animatedSurfaceOpacity,
                     ) {
                         NavDisplay(
                         backStack = backStack,
