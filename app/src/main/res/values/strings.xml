@@ -1608,10 +1608,10 @@
   <string name="subagent_title_failed">Sub-agent · failed · %1$d steps</string>
   <string name="subagent_title_aborted">Sub-agent · stopped · %1$d steps</string>
   <string name="subagent_title_unavailable">Sub-agent · not run</string>
-  <string name="subagent_legacy_title">Sub-agent (older record)</string>
-  <string name="subagent_legacy_body">This record predates 1.265, so it has no structured evidence. Only the output recorded back then is available.</string>
+  <string name="subagent_legacy_title">Sub-agent · earlier record</string>
+  <string name="subagent_legacy_body">This record has no structured evidence. Only its recorded output is available.</string>
   <string name="subagent_request_title">Requested (what it asked for)</string>
-  <string name="subagent_summary_title">Report (written by the model)</string>
+  <string name="subagent_summary_title">Report</string>
   <string name="subagent_preview_running_body">The sub-agent is running. Completed steps appear as they finish.</string>
   <string name="subagent_preview_unfinished_title">Sub-agent · unfinished</string>
   <string name="subagent_preview_unfinished_body">This dispatch left no result summary: it may still be waiting on the model, or the outer generation was stopped.</string>
