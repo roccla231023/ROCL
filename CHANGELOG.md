@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.263
+
+更新内容:
+- 子代理改成「指定才启用」：默认模型设置页可分别选子代理模型和思考深度，清空即关闭
+- 未选择子代理模型时，主模型完全看不到子代理工具（不是报错，是工具不存在）
+- 删掉硬编码开关，子代理默认关闭这件事不再依赖「记得改代码」
+- 子代理改用你指定的模型和思考深度（原先跟随聊天模型、思考写死关闭）；步数上限 5 -> 10
+- 仍是预览：子代理暂时没有目录/内容检索工具，也还不能执行命令
+
+Updates:
+- Sub-agent is now opt-in: pick its model and thinking depth in Settings - Default model; clearing the field turns it off
+- While no sub-agent model is selected the main model never sees the sub-agent tool at all, instead of seeing it and failing
+- Removed the hardcoded switch, so "off by default" no longer depends on remembering to flip a flag
+- The sub-agent now runs on the model and thinking depth you picked (it used to follow the chat model with thinking hardwired off); step cap raised from 5 to 10
+- Still a preview: no directory/content search tools and no command execution yet
+
+
 ## 1.262
 
 更新内容:

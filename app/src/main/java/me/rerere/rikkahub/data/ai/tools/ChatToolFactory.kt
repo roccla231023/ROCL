@@ -7,12 +7,13 @@ import me.rerere.ai.core.Tool
 import me.rerere.ai.provider.BuiltInTools
 import me.rerere.ai.provider.Model
 import me.rerere.rikkahub.data.ai.mcp.McpManager
-import me.rerere.rikkahub.data.ai.subagent.SUBAGENT_ENABLED
 import me.rerere.rikkahub.data.ai.subagent.SubAgentEngine
 import me.rerere.rikkahub.data.ai.subagent.buildSubAgentTool
 import me.rerere.rikkahub.data.ai.subagent.filterSubAgentTools
 import me.rerere.rikkahub.data.ai.tools.local.LocalTools
 import me.rerere.rikkahub.data.datastore.Settings
+import me.rerere.rikkahub.data.datastore.findModelById
+import me.rerere.rikkahub.data.datastore.findProvider
 import me.rerere.rikkahub.data.files.SkillManager
 import me.rerere.rikkahub.data.model.Assistant
 import me.rerere.rikkahub.data.model.SessionMemory
@@ -127,14 +128,31 @@ class ChatToolFactory(
                 )
             }
         }
-        if (!SUBAGENT_ENABLED) return assembled
+        // 门控：没在设置里选子代理模型 = 完全不暴露 dispatch_subagent（schema 都不挂）。
+        // 不是「暴露了再报错」，是结构上不存在。
+        val subAgentModelId = settings.subAgentModelId ?: return assembled
+        val subAgentModel = settings.providers.findModelById(subAgentModelId)
+        // findModelById 不看 provider.enabled，只看 id。provider 被禁用时也要按未配置处理，
+        // 否则会挂上一个调用时才失败的 dispatch_subagent。
+        // checkOverwrite=false：带 providerOverwrite 的模型会返回一份 models 被清空的副本，
+        // 那份副本上的 enabled 不能用来判断真实 provider。
+        val subAgentProvider = subAgentModel?.findProvider(settings.providers, checkOverwrite = false)
+            ?.takeIf { it.enabled }
+        if (subAgentModel == null || subAgentProvider == null) {
+            Log.w(
+                TAG,
+                "createTools: sub-agent model $subAgentModelId not usable, sub-agent disabled"
+            )
+            return assembled
+        }
         val subTools = filterSubAgentTools(assembled)
         if (subTools.isEmpty()) return assembled
         return assembled + buildSubAgentTool(
             engine = subAgentEngine,
-            model = model,
+            model = subAgentModel,
             settings = settings,
             tools = subTools,
+            reasoningLevel = settings.subAgentReasoningLevel,
         )
     }
 

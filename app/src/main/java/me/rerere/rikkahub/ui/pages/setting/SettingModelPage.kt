@@ -129,6 +129,21 @@ private fun ModelSettingsPage(settings: Settings, vm: SettingVM, contentPadding:
             )
         }
         item {
+            // 子代理：未选择模型 = 不启用（dispatch_subagent 完全不挂）
+            ModelSettingItem(
+                title = stringResource(R.string.setting_model_page_subagent_model),
+                description = stringResource(R.string.setting_model_page_subagent_model_desc),
+                modelId = settings.subAgentModelId,
+                providers = settings.providers,
+                onSelect = { vm.updateSettings(settings.copy(subAgentModelId = it.id)) },
+                onClear = { vm.updateSettings(settings.copy(subAgentModelId = null)) },
+                reasoningLevel = settings.subAgentReasoningLevel,
+                onUpdateReasoningLevel = {
+                    vm.updateSettings(settings.copy(subAgentReasoningLevel = it))
+                },
+            )
+        }
+        item {
             SuggestionSettingItem(
                 settings = settings,
                 vm = vm,
@@ -203,6 +218,7 @@ private fun ModelSettingItem(
     onSelect: (Model) -> Unit,
     reasoningLevel: ReasoningLevel? = null,
     onUpdateReasoningLevel: ((ReasoningLevel) -> Unit)? = null,
+    onClear: (() -> Unit)? = null,
     modelType: ModelType = ModelType.CHAT,
 ) {
     val state = rememberModelListState(
@@ -245,6 +261,14 @@ private fun ModelSettingItem(
                             reasoningLevel = reasoningLevel,
                             onUpdateReasoningLevel = onUpdateReasoningLevel,
                         )
+                    },
+                )
+            }
+            if (modelId != null && onClear != null) {
+                item(
+                    onClick = onClear,
+                    headlineContent = {
+                        Text(stringResource(R.string.setting_model_page_clear_model))
                     },
                 )
             }
