@@ -107,6 +107,13 @@ object SubAgentToolUI : ToolUIRenderer {
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+                run != null && run.steps.isEmpty() -> {
+                    Text(
+                        text = run.summary,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 run != null -> {
                     EngineLedgerLine(run.steps)
                     val shown = run.steps.takeLast(SUMMARY_STEP_LIMIT)
@@ -156,7 +163,7 @@ object SubAgentToolUI : ToolUIRenderer {
                 run != null -> LivePreview(
                     title = previewTitle(run),
                     steps = run.steps,
-                    report = run.summary.takeIf { run.status != STATUS_UNAVAILABLE },
+                    report = run.summary.takeIf { it.isNotBlank() },
                     stop = null,
                     pendingToolName = null,
                 )

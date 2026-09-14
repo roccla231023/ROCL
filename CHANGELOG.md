@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.27
+
+更新内容:
+- 新增子代理：在默认模型设置里单独选模型和思考深度才启用，不选就不出现这个工具
+- 子代理能读文件、列目录、按内容检索，也能跑命令测试（工作区把「执行命令」设免确认后才有），但不能改文件
+- 子代理卡片一张脸：跑着显示「进行中」，完成显示步数；时间线按实际步骤走，折叠路径只留最后两截
+- 列目录显示请求的目录，搜索显示搜索词；「要的是」只在读文件请求和结果不一致时出现
+- 列目录、按内容检索有自己的卡片：条数和是否被砍进人话，不再铺 JSON
+- 点进去底下一个「报告」；引擎账本（几步、成败）在时间线前面
+- 群聊成员可单独设置思考深度；未覆写时跟随该座位助手，不改助手本身
+
+Updates:
+- New sub-agent: pick its model and thinking depth in Settings; leave empty and the tool does not appear
+- The sub-agent can read files, list directories, search contents, and run commands (only if Execute Command is set to no-approval in that workspace); it cannot change files
+- One card: running is "in progress", done shows the step count; the timeline is the actual steps, collapsed paths keep the last two segments
+- Listing a directory shows the requested directory, search shows the query; "asked for" only appears when a read requested A but the result was B
+- Directory listing and content search have their own cards: counts and truncation in plain language, not JSON
+- Opening the card shows a report at the bottom, with an engine ledger (steps / success) above the timeline
+- Group chat seats can override thinking depth; otherwise they follow that seat's assistant and do not write back to it
+
 ## 1.267
 
 更新内容:
