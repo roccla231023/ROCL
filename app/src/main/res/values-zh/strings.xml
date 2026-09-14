@@ -1277,6 +1277,7 @@ mDNS 地址：使用 .local 主机名，同一网络中的其他设备可通过�
   <string name="workspace_detail_tool_edit_file">编辑文件</string>
   <string name="workspace_detail_tool_delete_file">删除文件</string>
   <string name="workspace_detail_tool_move_file">移动文件</string>
+  <string name="workspace_detail_tool_grep">搜索内容</string>
   <string name="workspace_detail_tool_shell">执行命令</string>
   <string name="workspace_detail_install_rootfs_desc">将下载 tar.gz 并解压到 %s 的 Linux 目录。</string>
   <string name="workspace_detail_download_url">tar.gz 下载链接</string>
@@ -1595,4 +1596,9 @@ mDNS 地址：使用 .local 主机名，同一网络中的其他设备可通过�
   <string name="subagent_stop">停止子代理</string>
   <string name="subagent_preview_title">子代理 · %1$d 步 · %2$s</string>
   <string name="subagent_step">第 %1$d 步 · %2$s</string>
+  <string name="subagent_summary_more">…还有 %1$d 步（展开看全部）</string>
+  <string name="subagent_evidence_path">路径</string>
+  <string name="subagent_evidence_command">命令</string>
+  <string name="subagent_evidence_query">搜索词</string>
+  <string name="subagent_evidence_url">链接</string>
 </resources>
