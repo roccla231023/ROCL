@@ -52,16 +52,10 @@ object SubAgentToolUI : ToolUIRenderer {
 
     @Composable
     override fun title(context: ToolUIContext): String {
-        val registry: SubAgentRunRegistry = koinInject()
-        val progress by registry.active.collectAsStateWithLifecycle()
         val run = context.tool.subAgentRun()
         val running = context.loading && !context.tool.isExecuted
         return when {
-            running && progress != null -> stringResource(
-                R.string.subagent_title_running,
-                progress!!.step,
-                progress!!.total,
-            )
+            running -> stringResource(R.string.subagent_title_running)
             run != null -> when (run.status) {
                 STATUS_COMPLETED -> if (run.steps.isEmpty()) {
                     stringResource(R.string.subagent_title_no_tools)
@@ -89,6 +83,7 @@ object SubAgentToolUI : ToolUIRenderer {
         ) {
             when {
                 running -> {
+                    EngineLedgerLine(progress?.steps.orEmpty())
                     val shown = progress?.steps.orEmpty().takeLast(SUMMARY_STEP_LIMIT)
                     shown.forEach { step -> TimelineRow(step = step, oneLine = true) }
                     val pending = progress?.pendingToolName
@@ -167,11 +162,7 @@ object SubAgentToolUI : ToolUIRenderer {
                 )
                 running -> LivePreview(
                     title = if (progress != null) {
-                        stringResource(
-                            R.string.subagent_title_running,
-                            progress!!.step,
-                            progress!!.total,
-                        )
+                        stringResource(R.string.subagent_title_running)
                     } else {
                         stringResource(R.string.subagent_title_default)
                     },
@@ -194,8 +185,6 @@ private const val STATUS_ABORTED = "aborted"
 private const val STATUS_UNAVAILABLE = "unavailable"
 
 private const val SUMMARY_STEP_LIMIT = 3
-
-private const val EVIDENCE_PATH_MAX = 48
 
 private const val EVIDENCE_TEXT_MAX = 72
 
@@ -285,7 +274,7 @@ private fun EngineLedgerLine(steps: List<SubAgentStep>) {
 @Composable
 private fun TimelineRow(step: SubAgentStep, oneLine: Boolean) {
     val verb = stringResource(step.verbRes())
-    val target = step.displayTarget()
+    val target = step.displayTarget(compact = oneLine)
     val failed = step.success == false
     Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -316,15 +305,17 @@ private fun TimelineRow(step: SubAgentStep, oneLine: Boolean) {
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        if (!oneLine) {
+        // “要的是”只用于 read_file 请求路径和实际结果路径不一致的异常情况。
+        // ls 的结果本来就是目录下的子项，grep 的结果本来就是命中文件，不能误报。
+        if (!oneLine && step.toolName == "workspace_read_file") {
             val asked = step.path?.takeIf { it.isNotBlank() }
             val got = step.resultPaths.firstOrNull()
-            if (asked != null && got != null && asked != got) {
+            if (asked != null && got != null && asked.trimEnd('/') != got.trimEnd('/')) {
                 Text(
-                    text = stringResource(R.string.subagent_asked, asked.shortenPath()),
+                    text = stringResource(R.string.subagent_asked, asked.displayPath(compact = false)),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
@@ -398,22 +389,38 @@ private fun verbRes(toolName: String): Int = when (toolName) {
     else -> R.string.subagent_verb_other
 }
 
-private fun SubAgentStep.displayTarget(): String {
-    val result = resultPaths.firstOrNull()
-    val raw = command ?: query ?: url ?: result ?: path ?: inputPreview
-    return if (command == null && query == null && url == null) {
-        raw.shortenPath()
-    } else {
-        raw.shortenText()
+private fun SubAgentStep.displayTarget(compact: Boolean): String = when (toolName) {
+    // ls 的结果路径是目录里的条目，主目标必须是请求的目录。
+    "workspace_ls" -> path?.displayPath(compact) ?: inputPreview.shortenText()
+
+    // grep 的结果路径是命中文件，主目标必须是搜索词。
+    "workspace_grep" -> (query ?: path ?: inputPreview).shortenText()
+
+    // read_file 的结果路径代表实际读到的文件，优先保留引擎事实。
+    "workspace_read_file" -> {
+        val result = resultPaths.firstOrNull()
+        when {
+            result != null -> result.displayPath(compact)
+            path != null -> path.displayPath(compact)
+            else -> inputPreview.shortenText()
+        }
     }
+
+    "workspace_shell" -> (command ?: inputPreview).shortenText()
+    "search_web" -> (query ?: inputPreview).shortenText()
+    "scrape_web" -> (url ?: inputPreview).shortenText()
+    else -> (command ?: query ?: url ?: path ?: inputPreview).shortenText()
 }
 
-private fun String.shortenPath(): String {
-    val trimmed = removePrefix("/workspace/").removePrefix("/workspace")
+private fun String.displayPath(compact: Boolean): String {
+    val normalized = removePrefix("/workspace/")
+        .removePrefix("/workspace")
+        .trim('/')
         .ifBlank { this }
-    if (trimmed.length <= EVIDENCE_PATH_MAX) return trimmed
-    val keep = (EVIDENCE_PATH_MAX / 2 - 1).coerceAtLeast(4)
-    return trimmed.take(keep) + "…" + trimmed.takeLast(keep)
+    if (!compact) return this
+
+    val parts = normalized.split('/').filter { it.isNotEmpty() }
+    return if (parts.size <= 2) normalized else parts.takeLast(2).joinToString("/")
 }
 
 private fun String.shortenText(): String =

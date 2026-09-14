@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.267
+
+更新内容:
+- 子代理跑着的标题改成「进行中」，不再带循环轮次 /10，避免和工具步数打架
+- 列目录显示请求的目录，搜索显示搜索词，不再把结果里的第一个文件当成标题
+- 「要的是」只在读文件请求了 A、工具结果却是 B 时出现；列目录和搜索不再误报
+- 折叠时间线的路径只留最后两截，点进去再看完整路径
+
+Updates:
+- The running sub-agent title is now "in progress" instead of a loop count like 4/10, so it no longer fights the tool-step ledger
+- Listing a directory shows the requested directory, and search shows the query, instead of the first result file
+- "asked for" only appears when a read requested A but the tool result was B; directory listing and search no longer false-alarm
+- Collapsed timeline paths keep only the last two segments; the full path stays in the open sheet
+
 ## 1.266
 
 更新内容:
