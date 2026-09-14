@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.265
+
+更新内容:
+- 子代理能查文件了：新增「列目录」和「按内容检索」两个只读工具（主对话同样可用），读文件改成分段读，长文件不再只能看到开头
+- 这两个工具不再依赖 shell，也不假设工作区里装了什么；查询范围限定在 /workspace、/skills、/tmp
+- 卡片把「请求」和「结果」分开显示：请求是模型说要做什么，结果是从工具返回里记下来的、它真的碰到了什么
+- 跑完的卡片现在能看到实际读了哪些文件、哪一步失败了，失败原因直接显示
+- 失败 / 中止 / 没执行各有各的状态，不再都显示成「跑完了」
+- 修正内层工具输出截断：以前是硬切字符，会把结果 JSON 切坏、还可能正好切掉「还能继续读」的提示
+- 读文件传了超出文件末尾的 offset 时，如实回显请求值并说明，而不是悄悄改成文件末行
+
+Updates:
+- The sub-agent can search files now: two read-only tools that list directories and search contents (available to the main chat too), and reading a file is windowed so long files no longer collapse to their head
+- Those two tools no longer depend on shell or on anything installed inside the workspace, and queries are limited to /workspace, /skills and /tmp
+- The card separates "requested" from "result": requested is what the model said it wanted, result is what was recorded from the tool's actual return value
+- A finished card shows which files were really touched and which step failed, with the failure reason inline
+- Failed, stopped and never-run now have their own states instead of all looking finished
+- Fixed truncation of inner tool output: it used to cut raw characters, which broke the result JSON and could cut away the "you can keep reading" hint
+- Passing an offset past the end of a file now echoes the requested value and says so, instead of silently clamping to the last line
+
+
 ## 1.264
 
 更新内容:
