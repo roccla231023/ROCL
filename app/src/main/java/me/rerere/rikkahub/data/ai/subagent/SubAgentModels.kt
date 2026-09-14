@@ -2,8 +2,7 @@ package me.rerere.rikkahub.data.ai.subagent
 
 import kotlinx.serialization.Serializable
 
-const val SUBAGENT_ENABLED = true
-const val SUBAGENT_MAX_STEPS = 5
+const val SUBAGENT_MAX_STEPS = 10
 const val SUBAGENT_TOOL_OUTPUT_CHARS = 4000
 const val SUBAGENT_SUMMARY_CHARS = 2000
 const val SUBAGENT_PREVIEW_CHARS = 200

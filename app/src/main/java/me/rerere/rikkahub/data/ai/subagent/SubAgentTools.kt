@@ -7,6 +7,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import me.rerere.ai.core.InputSchema
+import me.rerere.ai.core.ReasoningLevel
 import me.rerere.ai.core.Tool
 import me.rerere.ai.provider.Model
 import me.rerere.rikkahub.data.datastore.Settings
@@ -30,6 +31,7 @@ fun buildSubAgentTool(
     model: Model,
     settings: Settings,
     tools: List<Tool>,
+    reasoningLevel: ReasoningLevel = ReasoningLevel.AUTO,
 ): Tool {
     val providerSetting = model.findProvider(settings.providers)
     return Tool(
@@ -40,7 +42,7 @@ fun buildSubAgentTool(
             include every path, question, constraint, and fact it needs.
             Use ONLY when the work needs multiple unknown-file reads or iterative web research.
             Do NOT use for a single known-path read, a simple rewrite, or a yes/no check.
-            The sub-agent is read-only. It cannot write files or run shell.
+            The sub-agent cannot modify files (no write/edit tools).
         """.trimIndent(),
         parameters = {
             InputSchema.Obj(
@@ -61,6 +63,7 @@ fun buildSubAgentTool(
                 model = model,
                 providerSetting = providerSetting,
                 tools = tools,
+                reasoningLevel = reasoningLevel,
             )
         },
     )
