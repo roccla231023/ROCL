@@ -2,6 +2,10 @@ package me.rerere.rikkahub.data.ai.subagent
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -24,12 +28,55 @@ data class SubAgentStep(
     /**
      * 结构化证据, 不经过 SUBAGENT_PREVIEW_CHARS 裁剪, 供卡片展开态展示。
      * 全部可空且带默认值: 旧历史里的步骤没有这些字段, 反序列化后自然是 null。
+     *
+     * 注意: path/command/url/query 是**模型请求的入参**, 只能证明"它要做什么"。
      */
     val path: String? = null,
     val command: String? = null,
     val url: String? = null,
     val query: String? = null,
+    /**
+     * 工具**实际执行结果**: 下面这三个才是"做成了什么"(引擎观测)。
+     * 卡片必须把请求和结果分开显示, 不要把请求当成既成事实。
+     */
+    val success: Boolean? = null,
+    val error: String? = null,
+    val resultPaths: List<String> = emptyList(),
 )
+
+/** 结果里最多记这么多条路径, 再多卡片也读不过来 */
+private const val SUBAGENT_RESULT_PATHS_CAP = 50
+
+/** 失败原因保留的字符数 */
+internal const val SUBAGENT_ERROR_CHARS = 200
+
+/**
+ * 从工具**返回**里抽出它实际碰过的路径 —— 这是"做成了什么"。
+ *
+ * 和 parseSubAgentEvidence 的区别在于输入: 那个吃的是模型入参, 只能证明"要求做什么";
+ * 这个吃的是工具输出, 才能证明"真的看到了什么"。同样全程容错, 结构不对就当没有。
+ */
+internal fun parseSubAgentResultPaths(json: Json, toolName: String, output: String): List<String> {
+    val root = runCatching { json.parseToJsonElement(output) as? JsonObject }.getOrNull()
+        ?: return emptyList()
+    val collected = mutableListOf<String>()
+    fun addPath(element: JsonElement?) {
+        val text = runCatching { (element as? JsonPrimitive)?.contentOrNull }.getOrNull()
+        if (!text.isNullOrBlank()) collected += text
+    }
+    runCatching {
+        when (toolName) {
+            "workspace_read_file" -> addPath(root["path"])
+            "workspace_ls" -> root["entries"]?.jsonArray?.forEach { entry ->
+                addPath(runCatching { entry.jsonObject["path"] }.getOrNull())
+            }
+            "workspace_grep" -> root["matches"]?.jsonArray?.forEach { match ->
+                addPath(runCatching { match.jsonObject["path"] }.getOrNull())
+            }
+        }
+    }
+    return collected.distinct().take(SUBAGENT_RESULT_PATHS_CAP)
+}
 
 /** 从一次工具调用入参里抽出的证据。抽不到就是 null, 不猜。 */
 internal data class SubAgentEvidence(

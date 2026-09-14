@@ -1,5 +1,7 @@
 package me.rerere.rikkahub.data.ai.tools
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
@@ -21,6 +23,7 @@ import me.rerere.workspace.WorkspaceFileEntry
 import me.rerere.workspace.WorkspaceManager
 import org.koin.java.KoinJavaComponent.getKoin
 import java.io.ByteArrayOutputStream
+import java.io.File
 
 private const val SHELL_TIMEOUT_MAX_SECONDS = 600L
 private const val MAX_READ_FILE_BYTES = 8L * 1024 * 1024
@@ -133,13 +136,16 @@ private fun createReadFileTool(
             val totalLines = lines.size
             val fromIndex = (requestedOffset - 1).coerceAtMost(totalLines)
             val toIndex = (fromIndex + limit).coerceAtMost(totalLines)
-            val truncated = toIndex < totalLines
+            // offset 超过文件末尾时不要夹到末尾: 保留请求值、返回空窗口、并把这件事说清楚,
+            // 否则回显的 offset 会变成 totalLines + 1, 调用方以为读到了别的地方。
+            val beyondEnd = requestedOffset > totalLines
+            val truncated = !beyondEnd && toIndex < totalLines
             listOf(
                 UIMessagePart.Text(
                     buildJsonObject {
                         put("path", path)
-                        put("text", lines.subList(fromIndex, toIndex).joinToString("\n"))
-                        put("offset", fromIndex + 1)
+                        put("text", if (beyondEnd) "" else lines.subList(fromIndex, toIndex).joinToString("\n"))
+                        put("offset", requestedOffset)
                         put("limit", limit)
                         put("totalLines", totalLines)
                         put("truncated", truncated)
@@ -148,6 +154,11 @@ private fun createReadFileTool(
                             put(
                                 "hint",
                                 "Truncated. Call workspace_read_file again with offset=${toIndex + 1} to continue."
+                            )
+                        } else if (beyondEnd) {
+                            put(
+                                "hint",
+                                "offset=$requestedOffset is past the end of the file (totalLines=$totalLines); text is empty."
                             )
                         }
                     }.toString()
@@ -165,10 +176,10 @@ private fun createListFilesTool(
     name = "workspace_ls",
     description = """
         List entries inside a directory of the assistant's bound workspace Rootfs.
-        Paths must be absolute inside Rootfs; /workspace is the workspace files area and the default.
-        Every entry carries its absolute path, so it can be passed straight to workspace_read_file or workspace_grep.
+        path must be absolute and stay under /workspace, /skills or /tmp. Defaults to /workspace.
+        Every entry carries its absolute Rootfs path, so it can be passed straight to workspace_read_file or workspace_grep.
         depth defaults to $LS_DEFAULT_DEPTH (this directory only) and is capped at $LS_MAX_DEPTH.
-        glob filters entry names (for example *.kt). Scope stays bounded by depth, so raise depth to walk a tree.
+        glob matches entry NAMES with * and ? only. It is not a shell glob: no {a,b} expansion, no ! negation.
         At most $LS_MAX_ENTRIES entries come back; when truncated is true, omitted says how many were dropped.
     """.trimIndent().replace("\n", " "),
     parameters = {
@@ -177,7 +188,7 @@ private fun createListFilesTool(
                 putPathProperty(required = false)
                 put("glob", buildJsonObject {
                     put("type", "string")
-                    put("description", "Optional shell glob filtering entry names, for example *.kt. Scope is still bounded by depth.")
+                    put("description", "Optional name filter using * and ? only, for example *.kt. Not a shell glob.")
                 })
                 put("depth", buildJsonObject {
                     put("type", "integer")
@@ -189,44 +200,20 @@ private fun createListFilesTool(
     needsApproval = { needsApproval("workspace_ls") },
     execute = {
         val params = it.jsonObject
-        val path = params.optionalAbsolutePath("path") ?: DEFAULT_WORKSPACE_PATH
+        val rootPath = (params.string("path") ?: DEFAULT_QUERY_PATH).requireQueryableRootPath("path")
         val depth = (params.int("depth") ?: LS_DEFAULT_DEPTH).coerceIn(1, LS_MAX_DEPTH)
-        val glob = params.string("glob")?.trim()?.takeIf { it.isNotBlank() }
+        val glob = params.string("glob")?.requireNoNul("glob")?.trim()?.takeIf { it.isNotBlank() }
 
-        val command = buildString {
-            append("find ")
-            append(path.shellQuote())
-            append(" -mindepth 1 -maxdepth ")
-            append(depth)
-            if (glob != null) {
-                append(" -name ")
-                append(glob.shellQuote())
-            }
-            append(" -printf ")
-            append(FIND_PRINTF_FORMAT.shellQuote())
-        }
-        val result = workspaceRepository.executeCommand(
-            id = workspaceId,
-            command = command,
-            timeoutMillis = WORKSPACE_QUERY_TIMEOUT_MS,
-        )
-        if (result.timedOut) error("workspace_ls timed out")
-        if (result.stdout.isBlank() && result.exitCode != 0) {
-            error(result.stderr.ifBlank { result.stdout }.trim().ifBlank { "workspace_ls failed" })
-        }
-
-        val entries = result.stdout.lineSequence()
-            .mapNotNull { line -> line.toListedWorkspaceEntry() }
-            .sortedWith(compareBy({ it.type != "dir" }, { it.path.lowercase() }))
-            .toList()
-        val shown = entries.take(LS_MAX_ENTRIES)
-        val droppedByLimit = (entries.size - LS_MAX_ENTRIES).coerceAtLeast(0)
-        val truncated = droppedByLimit > 0 || result.truncated
+        val scanned = workspaceRepository.scanRootfsEntries(workspaceId, rootPath, depth, glob)
+        val sorted = scanned.entries.sortedWith(compareBy({ it.type != "dir" }, { it.path.lowercase() }))
+        val shown = sorted.take(LS_MAX_ENTRIES)
+        val droppedByLimit = (sorted.size - shown.size).coerceAtLeast(0)
+        val truncated = scanned.truncated || droppedByLimit > 0
 
         listOf(
             UIMessagePart.Text(
                 buildJsonObject {
-                    put("path", path)
+                    put("path", rootPath)
                     put("depth", depth)
                     if (glob != null) put("glob", glob)
                     put("entries", buildJsonArray {
@@ -243,9 +230,7 @@ private fun createListFilesTool(
                     put("count", shown.size)
                     put("truncated", truncated)
                     if (truncated) {
-                        if (droppedByLimit > 0) put("omitted", droppedByLimit)
-                        // runner 在 MAX_OUTPUT_CHARS 处截断时, omitted 只是下限而不是精确值
-                        if (result.truncated) put("omittedIsLowerBound", true)
+                        if (scanned.truncated) put("omittedIsLowerBound", true) else put("omitted", droppedByLimit)
                         put("hint", "Truncated. Narrow path, lower depth, or search by content with workspace_grep.")
                     }
                 }.toString()
@@ -262,12 +247,12 @@ private fun createGrepTool(
     name = "workspace_grep",
     description = """
         Search file contents inside the assistant's bound workspace Rootfs.
-        Paths must be absolute inside Rootfs; /workspace is the default search root.
+        path must be absolute and stay under /workspace, /skills or /tmp. Defaults to /workspace.
         pattern is a LITERAL string unless regex=true. ignoreCase defaults to true.
-        Each hit carries the absolute path, the line number, the matched line, and up to contextLines lines of
-        surrounding context, so the neighbourhood comes back in the same call instead of a second read.
-        maxHits defaults to $GREP_DEFAULT_MAX_HITS (max $GREP_MAX_HITS); contextLines defaults to $GREP_DEFAULT_CONTEXT_LINES (max $GREP_MAX_CONTEXT_LINES).
-        Binary files are skipped.
+        Each hit carries the absolute Rootfs path, the 1-based line number, the matched line, and up to
+        contextLines lines of surrounding context, so the neighbourhood comes back in the same call.
+        maxHits defaults to $GREP_DEFAULT_MAX_HITS (max $GREP_MAX_HITS); contextLines defaults to
+        $GREP_DEFAULT_CONTEXT_LINES (max $GREP_MAX_CONTEXT_LINES). Binary and oversized files are skipped.
     """.trimIndent().replace("\n", " "),
     parameters = {
         InputSchema.Obj(
@@ -279,7 +264,7 @@ private fun createGrepTool(
                 putPathProperty(required = false)
                 put("glob", buildJsonObject {
                     put("type", "string")
-                    put("description", "Optional shell glob limiting which files are searched, for example *.kt.")
+                    put("description", "Optional name filter limiting which files are searched, for example *.kt. Not a shell glob.")
                 })
                 put("regex", buildJsonObject {
                     put("type", "boolean")
@@ -295,7 +280,10 @@ private fun createGrepTool(
                 })
                 put("contextLines", buildJsonObject {
                     put("type", "integer")
-                    put("description", "Lines of context before and after each match. Defaults to $GREP_DEFAULT_CONTEXT_LINES, max $GREP_MAX_CONTEXT_LINES, 0 disables context.")
+                    put(
+                        "description",
+                        "Lines of context before and after each match. Defaults to $GREP_DEFAULT_CONTEXT_LINES, max $GREP_MAX_CONTEXT_LINES, 0 disables context."
+                    )
                 })
             },
             required = listOf("pattern"),
@@ -304,62 +292,36 @@ private fun createGrepTool(
     needsApproval = { needsApproval("workspace_grep") },
     execute = {
         val params = it.jsonObject
-        val pattern = params.string("pattern")?.takeIf { it.isNotBlank() }
+        val pattern = params.string("pattern")?.requireNoNul("pattern")?.takeIf { it.isNotBlank() }
             ?: error("pattern is required")
-        val path = params.optionalAbsolutePath("path") ?: DEFAULT_WORKSPACE_PATH
-        val glob = params.string("glob")?.trim()?.takeIf { it.isNotBlank() }
+        val rootPath = (params.string("path") ?: DEFAULT_QUERY_PATH).requireQueryableRootPath("path")
+        val glob = params.string("glob")?.requireNoNul("glob")?.trim()?.takeIf { it.isNotBlank() }
         val regex = params.boolean("regex") ?: false
         val ignoreCase = params.boolean("ignoreCase") ?: true
         val maxHits = (params.int("maxHits") ?: GREP_DEFAULT_MAX_HITS).coerceIn(1, GREP_MAX_HITS)
         val contextLines = (params.int("contextLines") ?: GREP_DEFAULT_CONTEXT_LINES)
             .coerceIn(0, GREP_MAX_CONTEXT_LINES)
 
-        val command = buildString {
-            append("grep -rn -I ")
-            append(if (regex) "-E " else "-F ")
-            if (ignoreCase) append("-i ")
-            if (contextLines > 0) {
-                append("-A ")
-                append(contextLines)
-                append(" -B ")
-                append(contextLines)
-                append(' ')
-            }
-            if (glob != null) {
-                append("--include=")
-                append(glob.shellQuote())
-                append(' ')
-            }
-            append("-e ")
-            append(pattern.shellQuote())
-            append(" -- ")
-            append(path.shellQuote())
-        }
-        val result = workspaceRepository.executeCommand(
-            id = workspaceId,
-            command = command,
-            timeoutMillis = WORKSPACE_QUERY_TIMEOUT_MS,
+        val found = workspaceRepository.grepRootfs(
+            workspaceId = workspaceId,
+            rootPath = rootPath,
+            pattern = pattern,
+            regex = regex,
+            ignoreCase = ignoreCase,
+            glob = glob,
+            maxHits = maxHits,
+            contextLines = contextLines,
         )
-        if (result.timedOut) error("workspace_grep timed out")
-        // grep 的退出码语义: 0=有命中, 1=无命中, 2=真出错. 只有 2 才算失败.
-        if (result.stdout.isBlank() && result.exitCode != 0 && result.exitCode != 1) {
-            error(result.stderr.ifBlank { result.stdout }.trim().ifBlank { "workspace_grep failed" })
-        }
-
-        val hits = result.stdout.parseGrepHits()
-        val shown = hits.take(maxHits)
-        val droppedByLimit = (hits.size - maxHits).coerceAtLeast(0)
-        val truncated = droppedByLimit > 0 || result.truncated
 
         listOf(
             UIMessagePart.Text(
                 buildJsonObject {
                     put("pattern", pattern)
-                    put("path", path)
+                    put("path", rootPath)
                     if (glob != null) put("glob", glob)
                     put("ignoreCase", ignoreCase)
                     put("matches", buildJsonArray {
-                        shown.forEach { hit ->
+                        found.hits.forEach { hit ->
                             add(
                                 buildJsonObject {
                                     put("path", hit.path)
@@ -375,11 +337,10 @@ private fun createGrepTool(
                             )
                         }
                     })
-                    put("count", shown.size)
-                    put("truncated", truncated)
-                    if (truncated) {
-                        if (droppedByLimit > 0) put("omitted", droppedByLimit)
-                        if (result.truncated) put("omittedIsLowerBound", true)
+                    put("count", found.hits.size)
+                    put("truncated", found.truncated)
+                    if (found.truncated) {
+                        if (found.omittedIsLowerBound) put("omittedIsLowerBound", true) else put("omitted", found.omitted)
                         put("hint", "Truncated. Raise maxHits, narrow path/glob, or make the pattern more specific.")
                     }
                 }.toString()
@@ -563,13 +524,19 @@ private fun createShellTool(
 private fun kotlinx.serialization.json.JsonObject.string(name: String): String? =
     this[name]?.jsonPrimitive?.contentOrNull
 
-private data class ListedWorkspaceEntry(
+private data class RootfsEntry(
     val path: String,
     val type: String,
     val sizeBytes: Long?,
 )
 
-private data class GrepHit(
+private data class RootfsEntries(
+    val entries: List<RootfsEntry>,
+    /** 扫描到安全上限就停了, 真正的总数未知 */
+    val truncated: Boolean,
+)
+
+private data class RootfsGrepHit(
     val path: String,
     val line: Int,
     val text: String,
@@ -577,59 +544,218 @@ private data class GrepHit(
     val after: List<String>,
 )
 
-private const val DEFAULT_WORKSPACE_PATH = "/workspace"
-
-/** find -printf 的格式串. 用字符拼接而不是字面转义, shellQuote 会原样把它交给 find. */
-private val FIND_PRINTF_FORMAT: String = "%y\t%s\t%p\n"
-
-/** 匹配行: path:LINE:text */
-private val GREP_MATCH_LINE = Regex("^(/.*?):(\\d+):(.*)$")
-
-/** 上下文行: path-LINE-text (GNU grep -r -A/-B 会给上下文行也带文件名) */
-private val GREP_CONTEXT_LINE = Regex("^(/.*?)-(\\d+)-(.*)$")
-
-private fun String.toListedWorkspaceEntry(): ListedWorkspaceEntry? {
-    val parts = split('\t', limit = 3)
-    if (parts.size != 3) return null
-    val entryPath = parts[2]
-    if (entryPath.isBlank()) return null
-    if (entryPath.rootfsName().startsWith(".l2s.")) return null
-    val isDirectory = parts[0] == "d"
-    return ListedWorkspaceEntry(
-        path = entryPath,
-        type = if (isDirectory) "dir" else "file",
-        sizeBytes = if (isDirectory) null else parts[1].toLongOrNull(),
-    )
+private data class RootfsGrepResult(
+    val hits: List<RootfsGrepHit>,
+    val omitted: Int,
+    val omittedIsLowerBound: Boolean,
+) {
+    val truncated: Boolean get() = omitted > 0 || omittedIsLowerBound
 }
 
-private fun String.parseGrepHits(): List<GrepHit> {
-    val hits = mutableListOf<GrepHit>()
-    var current: GrepHit? = null
-    lineSequence().forEach { raw ->
-        if (raw.isBlank() || raw == "--") return@forEach
-        val match = GREP_MATCH_LINE.find(raw)
-        if (match != null) {
-            current?.let { hits += it }
-            current = GrepHit(
-                path = match.groupValues[1],
-                line = match.groupValues[2].toIntOrNull() ?: 0,
-                text = match.groupValues[3],
-                before = emptyList(),
-                after = emptyList(),
-            )
-            return@forEach
-        }
-        val context = GREP_CONTEXT_LINE.find(raw) ?: return@forEach
-        val hit = current ?: return@forEach
-        val lineNo = context.groupValues[2].toIntOrNull() ?: return@forEach
-        current = if (lineNo < hit.line) {
-            hit.copy(before = hit.before + context.groupValues[3])
-        } else {
-            hit.copy(after = hit.after + context.groupValues[3])
+private const val DEFAULT_QUERY_PATH = "/workspace"
+
+/** 查询类工具(ls / grep)的作用域。它们会递归遍历, 不能放开到整个 Rootfs。 */
+private val QUERY_ROOT_PREFIXES = listOf("/workspace", "/skills", "/tmp")
+
+/** 扫描阶段的安全上限: 到了就停, 并标明"总数未知", 而不是假装知道。 */
+private const val QUERY_SCAN_FILE_CAP = 5000
+
+private const val LS_SCAN_ENTRY_CAP = 5000
+
+/** 命中数达到 maxHits 后还继续数多少条, 用来给出精确的 omitted; 超过就只报下限。 */
+private const val GREP_OMITTED_COUNT_CAP = 50
+
+/** 判定二进制: 前若干字节里出现 NUL 就当二进制, 跳过 */
+private const val BINARY_PROBE_BYTES = 8192
+
+private fun String.requireNoNul(name: String): String {
+    require(!contains('\u0000')) { "$name contains invalid character" }
+    return this
+}
+
+/**
+ * 词法规范化(不碰文件系统): 先消掉 . 和 .., 再拿白名单比前缀。
+ *
+ * **不能用 startsWith 直接比**: "/workspace/../etc" 规范化前会骗过字符串前缀检查。
+ * 真正的物理逃逸(符号链接指到外面)由 fileSystem.resolve() 的 canonical 校验兜底。
+ */
+private fun String.requireQueryableRootPath(name: String): String {
+    val raw = replace('\\', '/').trim().requireNoNul(name)
+    require(raw.startsWith("/")) { "$name must be an absolute path inside Rootfs" }
+    val normalized = runCatching {
+        java.nio.file.Paths.get(raw).normalize().toString().replace('\\', '/')
+    }.getOrElse { error("$name is not a valid path") }
+    require(normalized.startsWith("/")) { "$name must stay inside Rootfs" }
+    val trimmed = if (normalized.length > 1) normalized.trimEnd('/') else normalized
+    val allowed = QUERY_ROOT_PREFIXES.any { prefix ->
+        trimmed == prefix || trimmed.startsWith("$prefix/")
+    }
+    require(allowed) {
+        "$name must be under ${QUERY_ROOT_PREFIXES.joinToString(", ")} (got $trimmed)"
+    }
+    return trimmed
+}
+
+/** 把 * / ? 名字匹配编译成正则。不是 shell glob: 没有 {} 展开, 也没有 ! 取反。 */
+private fun nameGlobToRegex(glob: String): Regex? = runCatching {
+    val sb = StringBuilder("^")
+    glob.forEach { ch ->
+        when (ch) {
+            '*' -> sb.append("[^/]*")
+            '?' -> sb.append("[^/]")
+            '.', '(', ')', '+', '|', '^', '$', '{', '}', '[', ']', '\\' -> sb.append('\\').append(ch)
+            else -> sb.append(ch)
         }
     }
-    current?.let { hits += it }
-    return hits
+    sb.append('$')
+    Regex(sb.toString())
+}.getOrNull()
+
+/** 前若干字节里有 NUL 就当二进制。读不出来也当二进制跳过。 */
+private fun File.looksBinary(): Boolean = runCatching {
+    val probe = ByteArray(BINARY_PROBE_BYTES)
+    val read = inputStream().use { stream -> stream.read(probe) }
+    (0 until read.coerceAtLeast(0)).any { index -> probe[index] == 0.toByte() }
+}.getOrDefault(true)
+
+/** 宿主文件还原成 Rootfs 内的绝对路径, 直接可以喂给 read_file / grep。 */
+private fun rootfsChildPath(rootPath: String, child: File, base: File): String {
+    val relative = base.canonicalFile.toPath()
+        .relativize(child.canonicalFile.toPath())
+        .toString()
+        .replace(File.separatorChar, '/')
+    return if (rootPath == "/") "/$relative" else "$rootPath/$relative"
+}
+
+/** 白名单里的符号链接可能指到外面: 每一项都要求 canonical 之后仍在 base 之下。 */
+private fun File.staysUnder(baseCanonicalPath: java.nio.file.Path): Boolean = runCatching {
+    canonicalFile.toPath().startsWith(baseCanonicalPath)
+}.getOrDefault(false)
+
+private suspend fun WorkspaceRepository.scanRootfsEntries(
+    workspaceId: String,
+    rootPath: String,
+    depth: Int,
+    glob: String?,
+): RootfsEntries = withContext(Dispatchers.IO) {
+    val base = resolveRootfsEntry(workspaceId, rootPath)
+    require(base.exists()) { "Path does not exist: $rootPath" }
+    require(base.isDirectory) { "Path is not a directory: $rootPath" }
+    val baseCanonical = base.canonicalFile.toPath()
+    val matcher = glob?.let { nameGlobToRegex(it) }
+
+    val entries = mutableListOf<RootfsEntry>()
+    var capped = false
+    var level = 1
+    var current = listOf(base)
+    while (level <= depth && current.isNotEmpty() && !capped) {
+        val next = mutableListOf<File>()
+        for (dir in current) {
+            val children = runCatching { dir.listFiles() }.getOrNull() ?: continue
+            for (child in children) {
+                if (child.name.startsWith(".l2s.")) continue
+                if (!child.staysUnder(baseCanonical)) continue
+                if (entries.size >= LS_SCAN_ENTRY_CAP) {
+                    capped = true
+                    break
+                }
+                val isDirectory = child.isDirectory
+                if (!isDirectory && matcher != null && !matcher.matches(child.name)) continue
+                entries += RootfsEntry(
+                    path = rootfsChildPath(rootPath, child, base),
+                    type = if (isDirectory) "dir" else "file",
+                    sizeBytes = if (isDirectory) null else child.length(),
+                )
+                if (isDirectory) next += child
+            }
+            if (capped) break
+        }
+        current = next
+        level++
+    }
+    RootfsEntries(entries = entries, truncated = capped)
+}
+
+private suspend fun WorkspaceRepository.grepRootfs(
+    workspaceId: String,
+    rootPath: String,
+    pattern: String,
+    regex: Boolean,
+    ignoreCase: Boolean,
+    glob: String?,
+    maxHits: Int,
+    contextLines: Int,
+): RootfsGrepResult = withContext(Dispatchers.IO) {
+    val base = resolveRootfsEntry(workspaceId, rootPath)
+    require(base.exists()) { "Path does not exist: $rootPath" }
+    val baseCanonical = base.canonicalFile.toPath()
+    val options = if (ignoreCase) setOf(RegexOption.IGNORE_CASE) else emptySet()
+    val matcher = runCatching {
+        if (regex) Regex(pattern, options) else Regex(Regex.escape(pattern), options)
+    }.getOrElse { error("Invalid pattern: ${it.message}") }
+    val nameMatcher = glob?.let { nameGlobToRegex(it) }
+
+    val files = mutableListOf<File>()
+    if (base.isFile) {
+        files += base
+    } else {
+        var visited = 0
+        val stack = ArrayDeque<File>()
+        stack.addLast(base)
+        while (stack.isNotEmpty()) {
+            val dir = stack.removeLast()
+            val children = runCatching { dir.listFiles() }.getOrNull() ?: continue
+            for (child in children) {
+                if (child.name.startsWith(".l2s.")) continue
+                if (!child.staysUnder(baseCanonical)) continue
+                if (child.isDirectory) {
+                    stack.addLast(child)
+                    continue
+                }
+                if (nameMatcher != null && !nameMatcher.matches(child.name)) continue
+                if (++visited > QUERY_SCAN_FILE_CAP) break
+                files += child
+            }
+            if (visited > QUERY_SCAN_FILE_CAP) break
+        }
+    }
+
+    val hits = mutableListOf<RootfsGrepHit>()
+    var omitted = 0
+    var omittedIsLowerBound = false
+    outer@ for (file in files) {
+        if (file.length() > MAX_READ_FILE_BYTES) continue
+        if (file.looksBinary()) continue
+        val lines = runCatching { file.readLines(Charsets.UTF_8) }.getOrNull() ?: continue
+        val hitPath = rootfsChildPath(rootPath, file, base)
+        for ((index, line) in lines.withIndex()) {
+            if (!matcher.containsMatchIn(line)) continue
+            if (hits.size >= maxHits) {
+                omitted++
+                if (omitted >= GREP_OMITTED_COUNT_CAP) {
+                    omittedIsLowerBound = true
+                    break@outer
+                }
+                continue
+            }
+            hits += RootfsGrepHit(
+                path = hitPath,
+                line = index + 1,
+                text = line,
+                before = if (contextLines > 0) {
+                    lines.subList((index - contextLines).coerceAtLeast(0), index)
+                } else {
+                    emptyList()
+                },
+                after = if (contextLines > 0) {
+                    lines.subList(index + 1, (index + 1 + contextLines).coerceAtMost(lines.size))
+                } else {
+                    emptyList()
+                },
+            )
+        }
+    }
+    RootfsGrepResult(hits = hits, omitted = omitted, omittedIsLowerBound = omittedIsLowerBound)
 }
 
 /** 按行切分, 并且让「末尾换行」不算多一行: "a\nb\n" 与 "a\nb" 都是 2 行. */
