@@ -834,6 +834,9 @@
   <string name="setting_model_page_compress_model">Compress Model</string>
   <string name="setting_model_page_fast_model">Fast Model</string>
   <string name="setting_model_page_fast_model_desc">Model used for titles, chat suggestions, and other fast or background tasks</string>
+  <string name="setting_model_page_subagent_model">Sub-agent Model</string>
+  <string name="setting_model_page_subagent_model_desc">Separate model used when the main model dispatches a sub-agent. Pick one that supports tool calling. Leave empty to disable the sub-agent.</string>
+  <string name="setting_model_page_clear_model">Turn off (no model selected)</string>
   <string name="setting_model_page_compress_model_desc">Model for compressing conversation history</string>
   <string name="setting_model_page_embedding_model">Embedding Model</string>
   <string name="setting_model_page_embedding_model_desc">Used for memory retrieval (RAG). Leave unset to fall back to keyword search.</string>

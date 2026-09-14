@@ -46,6 +46,7 @@ class SubAgentEngine(
         model: Model,
         providerSetting: ProviderSetting?,
         tools: List<Tool>,
+        reasoningLevel: ReasoningLevel = ReasoningLevel.AUTO,
     ): List<UIMessagePart> {
         val trimmed = task.trim()
         if (trimmed.isEmpty()) {
@@ -76,6 +77,7 @@ class SubAgentEngine(
                 model = model,
                 providerSetting = providerSetting,
                 tools = tools,
+                reasoningLevel = reasoningLevel,
             )
         } catch (error: CancellationException) {
             throw error
@@ -95,6 +97,7 @@ class SubAgentEngine(
         model: Model,
         providerSetting: ProviderSetting,
         tools: List<Tool>,
+        reasoningLevel: ReasoningLevel,
     ): List<UIMessagePart> {
         var messages = listOf(
             UIMessage.system(DEFAULT_SUBAGENT_PROMPT),
@@ -104,7 +107,7 @@ class SubAgentEngine(
         val params = TextGenerationParams(
             model = model,
             tools = tools,
-            reasoningLevel = ReasoningLevel.OFF,
+            reasoningLevel = reasoningLevel,
         )
 
         for (stepIndex in 0 until SUBAGENT_MAX_STEPS) {

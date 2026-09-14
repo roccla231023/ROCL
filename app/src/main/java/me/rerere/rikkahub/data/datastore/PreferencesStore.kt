@@ -92,6 +92,8 @@ class SettingsStore(
         val SELECT_MODEL = stringPreferencesKey("chat_model")
         val FAST_MODEL = stringPreferencesKey("fast_model")
         val FAST_MODEL_REASONING_LEVEL = stringPreferencesKey("fast_model_reasoning_level")
+        val SUBAGENT_MODEL = stringPreferencesKey("subagent_model")
+        val SUBAGENT_REASONING_LEVEL = stringPreferencesKey("subagent_reasoning_level")
         val TRANSLATE_MODEL = stringPreferencesKey("translate_model")
         val ENABLE_SUGGESTION = booleanPreferencesKey("enable_suggestion")
         val AUTO_CONTINUE_ON_TRUNCATION = booleanPreferencesKey("auto_continue_on_truncation")
@@ -179,6 +181,13 @@ class SettingsStore(
                 preferences[SELECT_MODEL] = settings.chatModelId.toString()
                 preferences[FAST_MODEL] = settings.fastModelId.toString()
                 preferences[FAST_MODEL_REASONING_LEVEL] = settings.fastModelReasoningLevel.name
+                val subAgentModelId = settings.subAgentModelId
+                if (subAgentModelId != null) {
+                    preferences[SUBAGENT_MODEL] = subAgentModelId.toString()
+                } else {
+                    preferences.remove(SUBAGENT_MODEL)
+                }
+                preferences[SUBAGENT_REASONING_LEVEL] = settings.subAgentReasoningLevel.name
                 preferences[TRANSLATE_MODEL] = settings.translateModeId.toString()
                 preferences[ENABLE_SUGGESTION] = settings.enableSuggestion
                 preferences[AUTO_CONTINUE_ON_TRUNCATION] = settings.autoContinueOnTruncation
@@ -250,6 +259,11 @@ class SettingsStore(
                 fastModelId = preferences[FAST_MODEL]?.let { Uuid.parse(it) }
                     ?: DEFAULT_AUTO_MODEL_ID,
                 fastModelReasoningLevel = preferences[FAST_MODEL_REASONING_LEVEL]
+                    ?.let { value -> ReasoningLevel.entries.find { it.name == value } }
+                    ?: ReasoningLevel.AUTO,
+                // 没有兜底：key 缺失就是 null，null = 未启用子代理（门控靠它）
+                subAgentModelId = preferences[SUBAGENT_MODEL]?.let { Uuid.parse(it) },
+                subAgentReasoningLevel = preferences[SUBAGENT_REASONING_LEVEL]
                     ?.let { value -> ReasoningLevel.entries.find { it.name == value } }
                     ?: ReasoningLevel.AUTO,
                 translateModeId = preferences[TRANSLATE_MODEL]?.let { Uuid.parse(it) }
@@ -575,6 +589,14 @@ data class Settings(
     val chatModelId: Uuid = Uuid.random(),
     val fastModelId: Uuid = Uuid.random(),
     val fastModelReasoningLevel: ReasoningLevel = ReasoningLevel.AUTO,
+
+    /**
+     * 子代理模型。**必须保持可空**：null = 未启用子代理，
+     * 此时 ChatToolFactory 不会把 dispatch_subagent 挂进工具集（schema 都不暴露）。
+     * 不要照邻近字段那样回退成 Uuid.random()，否则门控永远为真。
+     */
+    val subAgentModelId: Uuid? = null,
+    val subAgentReasoningLevel: ReasoningLevel = ReasoningLevel.AUTO,
     val imageGenerationModelId: Uuid = Uuid.random(),
     val titlePrompt: String = DEFAULT_TITLE_PROMPT,
     val translateModeId: Uuid = Uuid.random(),

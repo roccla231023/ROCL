@@ -1235,6 +1235,9 @@ mDNS 地址：使用 .local 主机名，同一网络中的其他设备可通过�
   <string name="setting_provider_page_include_history_reasoning">回传历史思考过程</string>
   <string name="setting_model_page_fast_model">快速模型</string>
   <string name="setting_model_page_fast_model_desc">用于生成标题、聊天建议以及执行其他快速或后台任务</string>
+  <string name="setting_model_page_subagent_model">子代理模型</string>
+  <string name="setting_model_page_subagent_model_desc">派发子代理时使用的独立模型，建议选支持工具调用的模型。子代理能读文件、查文件、跑命令测试，但不能修改文件。留空则不启用子代理。</string>
+  <string name="setting_model_page_clear_model">关闭（不选择模型）</string>
   <string name="setting_model_page_enable_suggestion">启用聊天建议</string>
   <string name="assistant_page_gradient_background">渐变背景</string>
   <string name="assistant_page_gradient_background_desc">在聊天页面使用动态渐变背景</string>

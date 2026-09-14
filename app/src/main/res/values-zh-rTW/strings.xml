@@ -1152,6 +1152,9 @@
   <string name="setting_provider_page_include_history_reasoning">回傳歷史思考過程</string>
   <string name="setting_model_page_fast_model">快速模型</string>
   <string name="setting_model_page_fast_model_desc">用於生成標題、聊天建議以及執行其他快速或背景任務</string>
+  <string name="setting_model_page_subagent_model">子代理模型</string>
+  <string name="setting_model_page_subagent_model_desc">派發子代理時使用的獨立模型，建議選支援工具呼叫的模型。子代理能讀檔案、查檔案、跑指令測試，但不能修改檔案。留空則不啟用子代理。</string>
+  <string name="setting_model_page_clear_model">關閉（不選擇模型）</string>
   <string name="setting_model_page_enable_suggestion">啟用聊天建議</string>
   <string name="assistant_page_gradient_background">漸層背景</string>
   <string name="assistant_page_gradient_background_desc">在聊天頁面上使用動態漸變背景</string>
