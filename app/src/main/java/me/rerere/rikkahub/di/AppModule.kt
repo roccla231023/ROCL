@@ -5,6 +5,8 @@ import com.google.firebase.analytics.analytics
 import com.google.firebase.crashlytics.crashlytics
 import kotlinx.serialization.json.Json
 import me.rerere.rikkahub.AppScope
+import me.rerere.rikkahub.data.ai.subagent.SubAgentEngine
+import me.rerere.rikkahub.data.ai.subagent.SubAgentRunRegistry
 import me.rerere.rikkahub.data.ai.tools.local.LocalTools
 import me.rerere.rikkahub.data.ai.tools.ChatToolFactory
 import me.rerere.rikkahub.data.event.AppEventBus
@@ -77,6 +79,15 @@ val appModule = module {
         )
     }
 
+    single { SubAgentRunRegistry() }
+    single {
+        SubAgentEngine(
+            json = get(),
+            registry = get(),
+            providerManager = get(),
+        )
+    }
+
     single {
         ChatToolFactory(
             json = get(),
@@ -86,6 +97,7 @@ val appModule = module {
             mcpManager = get(),
             skillManager = get(),
             workspaceRepository = get(),
+            subAgentEngine = get(),
         )
     }
 
