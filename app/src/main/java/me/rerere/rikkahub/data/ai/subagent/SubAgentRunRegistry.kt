@@ -18,7 +18,7 @@ class SubAgentRunRegistry {
         _active.value = SubAgentProgress(
             step = 0,
             total = SUBAGENT_MAX_STEPS,
-            phase = "准备中",
+            phase = "thinking",
         )
         return true
     }

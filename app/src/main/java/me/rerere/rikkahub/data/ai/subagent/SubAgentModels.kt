@@ -119,8 +119,28 @@ data class SubAgentProgress(
     val step: Int,
     val total: Int,
     val phase: String,
-    val recent: List<SubAgentStep> = emptyList(),
-)
+    /** 已完成的步, 全量. 卡片点进去靠这个, 不再只留最近 3 条. */
+    val steps: List<SubAgentStep> = emptyList(),
+    /** 正在执行、还没记进 steps 的那次调用. */
+    val pendingToolName: String? = null,
+) {
+    val recent: List<SubAgentStep> get() = steps.takeLast(3)
+}
+
+/** 给主模型看的引擎摘录. 卡片报告仍然只用模型自己写的那段. */
+internal fun formatEngineLedger(steps: List<SubAgentStep>): String {
+    val ok = steps.count { it.success == true }
+    val fail = steps.count { it.success == false }
+    val file = steps.flatMap { step ->
+        step.resultPaths.ifEmpty { listOfNotNull(step.path) }
+    }.distinct().firstOrNull()?.removePrefix("/workspace/")
+    return buildString {
+        append("[引擎] ${steps.size} 步")
+        if (steps.isNotEmpty()) append(" · $ok 成功")
+        if (fail > 0) append(" · $fail 失败")
+        if (file != null) append(" · $file")
+    }
+}
 
 val DEFAULT_SUBAGENT_PROMPT = """
 You are an investigation sub-agent. You have NO tools to write or edit files, so never promise a change.

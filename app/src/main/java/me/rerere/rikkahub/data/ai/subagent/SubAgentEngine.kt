@@ -139,8 +139,9 @@ class SubAgentEngine(
                 it.copy(
                     step = stepIndex + 1,
                     total = SUBAGENT_MAX_STEPS,
-                    phase = "思考中",
-                    recent = steps.takeLast(3),
+                    phase = "thinking",
+                    steps = steps.toList(),
+                    pendingToolName = null,
                 )
             }
 
@@ -176,8 +177,9 @@ class SubAgentEngine(
                     it.copy(
                         step = stepIndex + 1,
                         total = SUBAGENT_MAX_STEPS,
-                        phase = "调用 ${call.toolName}",
-                        recent = steps.takeLast(3),
+                        phase = "calling",
+                        steps = steps.toList(),
+                        pendingToolName = call.toolName,
                     )
                 }
                 var toolFailure: String? = null
@@ -220,7 +222,10 @@ class SubAgentEngine(
                     },
                 )
                 registry.update {
-                    it.copy(recent = steps.takeLast(3))
+                    it.copy(
+                        steps = steps.toList(),
+                        pendingToolName = null,
+                    )
                 }
                 executed += call.copy(output = clipped)
             }
@@ -250,6 +255,13 @@ class SubAgentEngine(
         } else {
             trimmed
         }
+        // metadata.summary 只留模型写的, 给卡片当「报告」.
+        // 进主上下文的 text 在 completed/aborted 前面加一行引擎摘录, 免得父模型只信那篇可能编的报告.
+        val parentText = if (status == "completed" || status == "aborted") {
+            formatEngineLedger(steps) + "\n\n" + clippedSummary
+        } else {
+            clippedSummary
+        }
         val run = SubAgentRun(
             status = status,
             steps = steps,
@@ -257,7 +269,7 @@ class SubAgentEngine(
         )
         return listOf(
             UIMessagePart.Text(
-                text = clippedSummary,
+                text = parentText,
                 metadata = buildJsonObject {
                     put(SUBAGENT_METADATA_KEY, json.encodeToJsonElement(run))
                 },

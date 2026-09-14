@@ -22,9 +22,13 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.longOrNull
 import me.rerere.ai.ui.DiffMetadata
 import me.rerere.ai.ui.metadataAs
@@ -36,6 +40,8 @@ import me.rerere.hugeicons.stroke.ComputerTerminal01
 import me.rerere.hugeicons.stroke.FileAdd
 import me.rerere.hugeicons.stroke.FileEdit
 import me.rerere.hugeicons.stroke.FileView
+import me.rerere.hugeicons.stroke.Search01
+import me.rerere.hugeicons.stroke.Folder02
 import me.rerere.rikkahub.R
 import me.rerere.rikkahub.ui.components.richtext.DiffAddedColor
 import me.rerere.rikkahub.ui.components.richtext.DiffRemovedColor
@@ -200,6 +206,195 @@ object ReadFileToolUI : ToolUIRenderer {
             FileMarkdownPreview(path = path, content = text)
         } else {
             FileContentPreview(path = path, code = text)
+        }
+    }
+}
+
+/**
+ * 列目录: 标题是路径, 气泡是条数, 点进去目录在上文件在下.
+ * truncated 收人话, 不铺 JSON.
+ */
+object ListFilesToolUI : ToolUIRenderer {
+    override val toolName: String = "workspace_ls"
+
+    override fun icon(context: ToolUIContext): ImageVector = HugeIcons.Folder02
+
+    @Composable
+    override fun title(context: ToolUIContext): String {
+        return stringResource(R.string.tool_ui_list_files, context.dirLabel())
+    }
+
+    override fun hasSummary(context: ToolUIContext): Boolean = context.content != null
+
+    @Composable
+    override fun Summary(context: ToolUIContext) {
+        val content = context.content ?: return
+        val count = content.int("count") ?: 0
+        val truncated = content.boolean("truncated") == true
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = if (count == 0) {
+                    stringResource(R.string.tool_ui_list_files_empty)
+                } else {
+                    stringResource(R.string.tool_ui_list_files_count, count)
+                },
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (truncated) {
+                Text(
+                    text = stringResource(R.string.tool_ui_list_files_truncated),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                )
+            }
+        }
+    }
+
+    @Composable
+    override fun Preview(context: ToolUIContext, onDismissRequest: () -> Unit) {
+        val content = context.content
+        if (content == null) {
+            DefaultToolPreview(context = context)
+            return
+        }
+        val entries = content.entriesOf()
+        val dirs = entries.filter { it.type == "dir" }
+        val files = entries.filter { it.type != "dir" }
+        val truncated = content.boolean("truncated") == true
+        val hint = content.getStringContent("hint")
+        Column(
+            modifier = Modifier
+                .fillMaxHeight(0.8f)
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.tool_ui_list_files, context.dirLabel()),
+                style = MaterialTheme.typography.titleMedium,
+            )
+            if (truncated) {
+                Text(
+                    text = hint ?: stringResource(R.string.tool_ui_list_files_truncated),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            dirs.forEach { entry ->
+                PathLine(path = entry.path, suffix = "/")
+            }
+            files.forEach { entry ->
+                PathLine(path = entry.path)
+            }
+            if (entries.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.tool_ui_list_files_empty),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * 按内容检索: 标题是搜索词, 气泡是命中数 + 扫文件被砍时的提示.
+ * 点进去每条 文件:行号 + 命中行, 不嵌套进子代理卡片.
+ */
+object GrepToolUI : ToolUIRenderer {
+    override val toolName: String = "workspace_grep"
+
+    override fun icon(context: ToolUIContext): ImageVector = HugeIcons.Search01
+
+    @Composable
+    override fun title(context: ToolUIContext): String {
+        val pattern = context.arguments.getStringContent("pattern")
+        return if (pattern.isNullOrBlank()) {
+            stringResource(R.string.tool_ui_grep_default)
+        } else {
+            stringResource(R.string.tool_ui_grep, pattern.shortLabel())
+        }
+    }
+
+    override fun hasSummary(context: ToolUIContext): Boolean = context.content != null
+
+    @Composable
+    override fun Summary(context: ToolUIContext) {
+        val content = context.content ?: return
+        val count = content.int("count") ?: 0
+        val truncated = content.boolean("truncated") == true
+        val scanCapped = content.boolean("scanCapped") == true
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = stringResource(R.string.tool_ui_grep_count, count),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (truncated) {
+                Text(
+                    text = if (scanCapped) {
+                        stringResource(R.string.tool_ui_grep_scan_capped)
+                    } else {
+                        stringResource(R.string.tool_ui_grep_truncated)
+                    },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                )
+            }
+        }
+    }
+
+    @Composable
+    override fun Preview(context: ToolUIContext, onDismissRequest: () -> Unit) {
+        val content = context.content
+        if (content == null) {
+            DefaultToolPreview(context = context)
+            return
+        }
+        val matches = content.matchesOf()
+        val truncated = content.boolean("truncated") == true
+        val hint = content.getStringContent("hint")
+        Column(
+            modifier = Modifier
+                .fillMaxHeight(0.8f)
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = title(context),
+                style = MaterialTheme.typography.titleMedium,
+            )
+            if (truncated && !hint.isNullOrBlank()) {
+                Text(
+                    text = hint,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            matches.forEach { hit ->
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = "${hit.path.fileLabel()}:${hit.line}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    Text(
+                        text = hit.text,
+                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                        fontSize = 11.sp,
+                        lineHeight = 14.sp,
+                    )
+                }
+            }
+            if (matches.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.tool_ui_grep_count, 0),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }
@@ -472,6 +667,61 @@ private fun JsonElement?.long(key: String): Long? =
     this?.jsonObjectOrNull?.get(key)?.jsonPrimitiveOrNull?.longOrNull
 
 private const val FILE_SUMMARY_MAX_LINES = 10
+
+private data class ListEntry(val path: String, val type: String)
+
+private data class GrepHit(val path: String, val line: Int, val text: String)
+
+private fun JsonElement?.entriesOf(): List<ListEntry> {
+    val array = this?.jsonObjectOrNull?.get("entries") as? JsonArray ?: return emptyList()
+    return array.mapNotNull { element ->
+        val obj = element as? JsonObject ?: return@mapNotNull null
+        val path = obj.getStringContent("path") ?: return@mapNotNull null
+        ListEntry(path = path, type = obj.getStringContent("type") ?: "file")
+    }
+}
+
+private fun JsonElement?.matchesOf(): List<GrepHit> {
+    val array = this?.jsonObjectOrNull?.get("matches") as? JsonArray ?: return emptyList()
+    return array.mapNotNull { element ->
+        val obj = element as? JsonObject ?: return@mapNotNull null
+        val path = obj.getStringContent("path") ?: return@mapNotNull null
+        GrepHit(
+            path = path,
+            line = obj["line"]?.jsonPrimitiveOrNull?.intOrNull ?: 0,
+            text = obj.getStringContent("text").orEmpty(),
+        )
+    }
+}
+
+@Composable
+private fun PathLine(path: String, suffix: String = "") {
+    Text(
+        text = path.fileLabel() + suffix,
+        style = MaterialTheme.typography.bodySmall,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+    )
+}
+
+@Composable
+private fun ToolUIContext.dirLabel(): String {
+    val raw = arguments.getStringContent("path")?.trim().orEmpty()
+    return if (raw.isEmpty() || raw == "/workspace") {
+        stringResource(R.string.tool_ui_workspace_root)
+    } else {
+        raw.fileLabel()
+    }
+}
+
+private fun String.fileLabel(): String =
+    removePrefix("/workspace/").removePrefix("/workspace").ifBlank { this }
+        .substringAfterLast('/')
+        .ifBlank { this }
+
+private fun String.shortLabel(): String =
+    if (length <= 32) this else take(31) + "…"
+
 
 /** 由文件扩展名推断语法高亮语言 */
 private fun languageOf(path: String?): String = when (
