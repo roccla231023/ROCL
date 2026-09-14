@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="docs/icon.png" alt="App Icon" width="100" />
+  <img src="app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" alt="App Icon" width="100" />
   <h1>ROCL</h1>
 
 基于 [RikkaHub](https://github.com/rikkahub/rikkahub) 的个人二开版本 · 自用为主
