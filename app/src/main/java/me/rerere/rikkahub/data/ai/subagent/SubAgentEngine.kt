@@ -2,6 +2,10 @@ package me.rerere.rikkahub.data.ai.subagent
 
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.put
@@ -53,7 +57,8 @@ class SubAgentEngine(
         // 放在 tryOccupy 之前, 不占用单槽。
         if (unavailableReason != null) {
             return output(
-                status = "failed",
+                // 单独的状态: UI 要把它跟"跑了但失败了"分开显示
+                status = "unavailable",
                 steps = emptyList(),
                 summary = "子代理本轮没有可用工具，未执行。原因：$unavailableReason",
             )
@@ -175,6 +180,7 @@ class SubAgentEngine(
                         recent = steps.takeLast(3),
                     )
                 }
+                var toolFailure: String? = null
                 val rawOutput = try {
                     val def = tools.find { it.name == call.toolName }
                         ?: error("Tool ${call.toolName} not found")
@@ -182,13 +188,17 @@ class SubAgentEngine(
                 } catch (error: CancellationException) {
                     throw error
                 } catch (error: Throwable) {
+                    toolFailure = error.message ?: error::class.java.simpleName
                     listOf(
                         UIMessagePart.Text(
-                            "工具执行失败：${error.message ?: error::class.java.simpleName}",
+                            "工具执行失败：$toolFailure",
                         )
                     )
                 }
-                val clipped = clip(rawOutput, SUBAGENT_TOOL_OUTPUT_CHARS)
+                // 结果路径从**未裁剪**的输出里抽, 免得路径落在 clip 之外
+                val rawText = rawOutput.filterIsInstance<UIMessagePart.Text>()
+                    .joinToString("\n") { it.text }
+                val clipped = clip(rawOutput, SUBAGENT_TOOL_OUTPUT_CHARS, json)
                 val preview = clipped.filterIsInstance<UIMessagePart.Text>()
                     .joinToString("\n") { it.text }
                 val evidence = parseSubAgentEvidence(json, call.toolName, call.input)
@@ -200,6 +210,14 @@ class SubAgentEngine(
                     command = evidence.command,
                     url = evidence.url,
                     query = evidence.query,
+                    // 请求证据来自入参; 执行事实来自返回。两者分开记, 卡片也分开显示。
+                    success = toolFailure == null,
+                    error = toolFailure?.take(SUBAGENT_ERROR_CHARS),
+                    resultPaths = if (toolFailure == null) {
+                        parseSubAgentResultPaths(json, call.toolName, rawText)
+                    } else {
+                        emptyList()
+                    },
                 )
                 registry.update {
                     it.copy(recent = steps.takeLast(3))
@@ -264,10 +282,100 @@ private fun summarize(
     }.take(SUBAGENT_SUMMARY_CHARS)
 }
 
-internal fun clip(parts: List<UIMessagePart>, maxChars: Int = SUBAGENT_TOOL_OUTPUT_CHARS): List<UIMessagePart> {
+private const val CLIP_NOTE_KEY = "clipNote"
+
+/** 给 clipNote 预留的字符数; 控制字段和这条说明都不占载荷预算 */
+private const val CLIP_NOTE_MAX_CHARS = 120
+
+private const val CLIP_MIN_PAYLOAD_CHARS = 200
+
+private const val CLIP_TRUNCATED_SUFFIX = "\n…[truncated]"
+
+/** 只有这些字段允许被裁。其余一切 (truncated / nextOffset / hint / count / exitCode / timedOut / ...) 整体保留。 */
+private val CLIP_PAYLOAD_STRING_KEYS = listOf("text", "stdout", "stderr")
+
+private val CLIP_PAYLOAD_ARRAY_KEYS = listOf("matches", "entries")
+
+/**
+ * 内层保险丝。
+ *
+ * 工具返回的 Text 通常是 JSON, 直接按字符砍会砍出**非法 JSON** —— 更糟的是可能正好砍掉
+ * truncated / nextOffset / hint, 而那正是"还能往后读"的协议本身, 等于毁掉续读能力。
+ *
+ * 所以: 能解析成 JSON 对象时, 控制字段整体保留、只按预算裁载荷, 再重新序列化成合法 JSON;
+ * 解析不出来 (散文 / 纯文本) 才退回原样截断。
+ */
+internal fun clip(
+    parts: List<UIMessagePart>,
+    maxChars: Int = SUBAGENT_TOOL_OUTPUT_CHARS,
+    json: Json = Json,
+): List<UIMessagePart> {
     val texts = parts.filterIsInstance<UIMessagePart.Text>()
     val rest = parts.filter { it !is UIMessagePart.Text }
     val joined = texts.joinToString("\n") { it.text }
     if (joined.length <= maxChars) return parts
-    return listOf(UIMessagePart.Text(joined.take(maxChars) + "\n…[truncated]")) + rest
+    val clippedJoined = texts.joinToString("\n") { it.text.clipToolText(json, maxChars) }
+    return listOf(UIMessagePart.Text(clippedJoined)) + rest
+}
+
+private fun String.clipToolText(json: Json, budget: Int): String {
+    if (length <= budget) return this
+    val obj = runCatching { json.parseToJsonElement(this) as? JsonObject }.getOrNull()
+        ?: return take(budget) + CLIP_TRUNCATED_SUFFIX
+    val clipped = runCatching { obj.clipJsonObject(json, budget) }.getOrNull()
+        ?: return take(budget) + CLIP_TRUNCATED_SUFFIX
+    return runCatching { json.encodeToString(JsonObject.serializer(), clipped) }
+        .getOrElse { take(budget) + CLIP_TRUNCATED_SUFFIX }
+}
+
+private fun JsonObject.clipJsonObject(json: Json, budget: Int): JsonObject {
+    val values = this.toMutableMap()
+    val stringKeys = CLIP_PAYLOAD_STRING_KEYS.filter { key ->
+        (values[key] as? JsonPrimitive)?.isString == true
+    }
+    val arrayKeys = CLIP_PAYLOAD_ARRAY_KEYS.filter { values[it] is JsonArray }
+    val slots = stringKeys.size + arrayKeys.size
+    if (slots == 0) return this
+
+    // 骨架 = 去掉全部载荷后的序列化长度。控制字段不占预算, 这是这次修复的重点。
+    val skeleton = JsonObject(values.filterKeys { it !in stringKeys && it !in arrayKeys })
+    val skeletonSize = json.encodeToString(JsonObject.serializer(), skeleton).length
+    val available = (budget - skeletonSize - CLIP_NOTE_MAX_CHARS)
+        .coerceAtLeast(slots * CLIP_MIN_PAYLOAD_CHARS)
+    val share = (available / slots).coerceAtLeast(CLIP_MIN_PAYLOAD_CHARS)
+
+    val notes = mutableListOf<String>()
+
+    stringKeys.forEach { key ->
+        val value = (values[key] as? JsonPrimitive)?.content ?: return@forEach
+        if (value.length > share) {
+            values[key] = JsonPrimitive(value.take(share) + "…")
+            notes += "$key trimmed to $share chars"
+        }
+    }
+
+    arrayKeys.forEach { key ->
+        val array = values[key] as? JsonArray ?: return@forEach
+        val kept = mutableListOf<JsonElement>()
+        var used = 0
+        for (element in array) {
+            val size = json.encodeToString(JsonElement.serializer(), element).length + 1
+            if (used + size > share) break
+            kept += element
+            used += size
+        }
+        if (kept.size < array.size) {
+            values[key] = JsonArray(kept)
+            if (values.containsKey("count")) values["count"] = JsonPrimitive(kept.size)
+            notes += "$key trimmed to ${kept.size} of ${array.size} items"
+        }
+    }
+
+    if (notes.isEmpty()) return this
+
+    values["truncated"] = JsonPrimitive(true)
+    values[CLIP_NOTE_KEY] = JsonPrimitive(
+        "sub-agent engine clipped this result to fit its budget: ${notes.joinToString("; ")}"
+    )
+    return JsonObject(values)
 }

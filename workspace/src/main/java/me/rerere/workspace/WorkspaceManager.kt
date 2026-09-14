@@ -145,6 +145,15 @@ class WorkspaceManager(
         return RootfsLocation(linuxDir(root), trimmed.trimStart('/'))
     }
 
+    /**
+     * 把 Rootfs 内的绝对路径解析成**宿主机上的文件**, 供只读工具直接做文件 IO (不起 shell)。
+     * 复用同一条 bind mount 映射, 并复用 fileSystem 的 canonical 逃逸校验。
+     */
+    fun resolveRootfsEntry(root: String, path: String): File {
+        val location = resolveRootfsPath(root, path)
+        return fileSystem.resolve(location.rootDir, location.relativePath)
+    }
+
     fun rootfsFileSize(root: String, path: String): Long =
         resolveRootfsFile(root, path).also { it.requireReadableFile(path) }.length()
 
