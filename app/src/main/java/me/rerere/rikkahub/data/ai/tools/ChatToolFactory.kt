@@ -7,6 +7,10 @@ import me.rerere.ai.core.Tool
 import me.rerere.ai.provider.BuiltInTools
 import me.rerere.ai.provider.Model
 import me.rerere.rikkahub.data.ai.mcp.McpManager
+import me.rerere.rikkahub.data.ai.subagent.SUBAGENT_ENABLED
+import me.rerere.rikkahub.data.ai.subagent.SubAgentEngine
+import me.rerere.rikkahub.data.ai.subagent.buildSubAgentTool
+import me.rerere.rikkahub.data.ai.subagent.filterSubAgentTools
 import me.rerere.rikkahub.data.ai.tools.local.LocalTools
 import me.rerere.rikkahub.data.datastore.Settings
 import me.rerere.rikkahub.data.files.SkillManager
@@ -35,6 +39,7 @@ class ChatToolFactory(
     private val mcpManager: McpManager,
     private val skillManager: SkillManager,
     private val workspaceRepository: WorkspaceRepository,
+    private val subAgentEngine: SubAgentEngine,
 ) {
     suspend fun createTools(
         settings: Settings,
@@ -45,7 +50,7 @@ class ChatToolFactory(
         onSessionMemoriesChanged: (suspend (List<SessionMemory>) -> Unit)? = null,
     ): List<Tool> {
         var currentSessionMemories = sessionMemories
-        return buildList {
+        val assembled = buildList {
             if (assistant.enableMemory) {
                 val memoryAssistantId = if (assistant.useGlobalMemory) {
                     MemoryRepository.GLOBAL_MEMORY_ID
@@ -122,6 +127,15 @@ class ChatToolFactory(
                 )
             }
         }
+        if (!SUBAGENT_ENABLED) return assembled
+        val subTools = filterSubAgentTools(assembled)
+        if (subTools.isEmpty()) return assembled
+        return assembled + buildSubAgentTool(
+            engine = subAgentEngine,
+            model = model,
+            settings = settings,
+            tools = subTools,
+        )
     }
 
     private suspend fun createWorkspaceToolsIfReady(workspaceId: String?, cwd: String?): List<Tool> {

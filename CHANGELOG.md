@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.262
+
+更新内容:
+- 预览：主模型可派只读子代理（读文件 / 联网调研，最多 5 步）；摘要回主对话，轨迹留在卡片里。默认硬编码开启，仅用于试包，进正式版前会关掉
+
+Updates:
+- Preview: the main model can dispatch a read-only sub-agent (file reads / web research, max 5 steps). A short summary returns to the chat; the trail stays on the card. Hardcoded on for this preview build; it will be off before a stable release
+
 ## 1.261
 
 更新内容:
