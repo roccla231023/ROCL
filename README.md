@@ -1,16 +1,10 @@
 <div align="center">
   <img src="docs/icon.png" alt="App Icon" width="100" />
-  <h1>RikkaHub</h1>
+  <h1>ROCL</h1>
 
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/rikkahub/rikkahub)
-[![Ask DeepWiki](https://img.shields.io/badge/zread.ai-blue?style=flat&logo=readthedocs)](https://zread.ai/rikkahub/rikkahub)
+基于 [RikkaHub](https://github.com/rikkahub/rikkahub) 的个人二开版本 · 自用为主
 
-A native Android LLM chat client that supports switching between different providers for
-conversations 🤖💬
-
-Click to join our Discord server 👉 [【RikkaHub】](https://discord.gg/9weBqxe5c4)
-
-[简体中文](README_ZH_CN.md) | [繁體中文](README_ZH_TW.md) | English
+A personal fork of [RikkaHub](https://github.com/rikkahub/rikkahub) with a few custom additions.
 </div>
 
 <div align="center">
@@ -18,26 +12,23 @@ Click to join our Discord server 👉 [【RikkaHub】](https://discord.gg/9weBqx
   <img src="docs/img/desktop.png" alt="Models Picker" width="450" />
 </div>
 
-## 🚀 Download
+> [!IMPORTANT]
+> **这不是 RikkaHub 官方版本。** 底座是 [rikkahub/rikkahub](https://github.com/rikkahub/rikkahub)（AGPL-3.0），ROCL 在它之上做定制。
+> 上游相关的问题请不要反馈到这里；使用第三方分支请自行注意隐私与权限风险。
 
-🔗 [Download from Website](https://rikka-ai.com/download) (Recommended)
+## 🧩 相比上游的改动
 
-🔗 [Download from Google Play](https://play.google.com/store/apps/details?id=me.rerere.rikkahub)
+- 🤖 **多智能体群聊**：按席位（角色）单独配置模型与工具作用域；跨席位的工具执行结果可透传，便于席位之间互相审查
+- 🧠 **会话记忆**：会话记忆的抽取、组装与检索接入生成链路；本地向量检索，缺少嵌入模型或检索超时时自动降级为关键词检索
+- 🎨 **高级外观**：全局背景图与透明度 / 虚化，聊天页可单独开关，玻璃主题下弹层与过渡保持不透明
+- 🗂️ **存储管理**：集中查看与清理会话记录、文件与图片
+- ⚙️ **工程化**：GitHub Actions 自动构建与发布（每日构建 + 稳定版），数据库跨版本手写迁移
 
-> [!WARNING]
-> There are many forked versions of RikkaHub. Issues with forks are unrelated to RikkaHub, so please use forks with caution to avoid privacy leaks or excessive permission requests.
+改造原则：**最小侵入 + 模块化**，尽量只新增文件、不动上游核心，以便持续同步上游。
 
-## 💖 Sponsors
+> 其中群聊、记忆、存储等模块整合自其他二开分支的成熟实现，ROCL 负责移植、适配与持续维护。变更记录见 [CHANGELOG.md](CHANGELOG.md)。
 
-|                                                                            Sponsor                                                                             | Description                                                                                                                                                                                                                                                                                                                                             |
-|:--------------------------------------------------------------------------------------------------------------------------------------------------------------:|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-|                                    <img src="docs/sponsors/aihubmix.png" alt="Aihubmix" width="50" /><br /><b>Aihubmix</b>                                     | Thanks to <a href="https://aihubmix.com?aff=pG7r">aihubmix.com</a> for their financial support. We recommend using aihubmix as a one-stop shop for mainstream models worldwide. (OpenAI, Claude, Google Gemini, DeepSeek, Qwen, and hundreds more).                                                                                                     |
-| <img src="docs/img/api-mart.png" alt="APIMart" width="50" /><br /><b><a href="https://go.apimart.ai/gh-rikkahub">APIMart</a></b> | Thanks to APIMart for sponsoring this project! APIMart is a low-cost API platform for AI image & video generation — GPT-Image-2 from $0.006/image, 160+ images per dollar. One async API covers both image and video: submit a task, get an ID, fetch results via polling or callback. Batch tens of thousands of images without timeouts, switch models without changing code. Pay-as-you-go with no monthly fee — <a href="https://go.apimart.ai/gh-rikkahub">sign up here</a> to get started. |
-|                    <img src="docs/sponsors/suixiang.jpg" alt="随想AI中转" width="50" /><br /><b><a href="https://sui-xiang.com">随想AI中转</a></b>                     | 感谢<a href="https://sui-xiang.com">随想AI中转</a>对本项目的赞助！随想AI中转 是一家可靠高效的 API 中继服务提供商，提供 Claude、Codex、Gemini 等的中继服务。注重隐私的中转站·无数据倒卖·无模型掺水，隐私，透明，极速售后。新账户注册每日签到就送 0.5 元测试额度，充值额度 1:1，无需订阅，按量付费。多线路冗余、跨区域容灾、自动故障切换，长链路 SSE 不中断。99.9% 可用性，关键调用从不掉队。                                                                                                               |
-|                   <img src="docs/sponsors/ztest.png" alt="真测 ztest.ai" width="50" /><br /><b><a href="https://ztest.ai">真测 ztest.ai</a></b>                    | 感谢<a href="https://ztest.ai">真测 ztest.ai</a>对本项目的赞助！真测 ztest.ai 是一个 AI 中转站模型检测平台，检测结果数据全公开，23 项探针覆盖协议、身份、能力、内容完整性、安全性、性能六大维度，交叉印证识别伪造与降级。作为独立第三方验证平台，实时监测 AI 中转站的模型真实性、响应质量与服务可用性。                                                                                                                                                                      |
-| <img src="docs/sponsors/maru.png" alt="MaruCode" width="50" /><br /><b><a href="https://api.muteki.site/register?aff=Rikkahub&promo=Rikkahub">MaruCode</a></b> | <b><a href="https://api.muteki.site/register?aff=Rikkahub&promo=Rikkahub">MaruCode</a></b> 是一家偶尔做做慈善的小破站 API，自营号池，主要提供 Codex、Claude Code、GPT Image 等主流模型，支持 Websocket 协议，明码标价(Codex 0.25x, CC 1.5x)，透明汇率(1:1)，<a href="https://api.muteki.site/register?aff=Rikkahub&promo=Rikkahub">新用户注册送 2 刀</a>。<a href="https://images-2.muteki.site">生图工作台🖼️</a> |
-
-## ✨ Features
+## ✨ 继承自上游的能力
 
 - 🎨 Material You Design and 🌙 Dark mode
 - 📦 Workspace: a proot-based Linux agent environment
@@ -56,51 +47,46 @@ Click to join our Discord server 👉 [【RikkaHub】](https://discord.gg/9weBqx
 - 🌐 Custom HTTP request headers and request bodies
 - 💌 Silly Tavern character card import
 
-## ✨ Contributing
+## 🚀 下载
 
-This project is developed using [Android Studio](https://developer.android.com/studio). Before
-submitting a pull request, please read the [contribution guidelines](CONTRIBUTING.md).
+到 [Releases](https://github.com/roccla231023/ROCL/releases) 下载 APK：
 
-Technology stack documentation:
+| 文件 | 适用设备 |
+| --- | --- |
+| `app-arm64-v8a-release.apk` | 绝大多数现代手机 |
+| `app-universal-release.apk` | 不确定架构时用这个（体积最大） |
+| `app-x86_64-release.apk` | x86 设备 / 模拟器 |
 
-- [Kotlin](https://kotlinlang.org/) (Development language)
-- [Koin](https://insert-koin.io/) (Dependency Injection)
-- [Jetpack Compose](https://developer.android.com/jetpack/compose) (UI framework)
-- [DataStore](https://developer.android.com/topic/libraries/architecture/datastore) (Preference data
-  storage)
-- [Room](https://developer.android.com/training/data-storage/room) (Database)
-- [Coil](https://coil-kt.github.io/coil/) (Image loading)
-- [Material You](https://m3.material.io/) (UI design)
-- [Navigation 3](https://developer.android.com/guide/navigation/navigation-3) (Navigation)
-- [Okhttp](https://square.github.io/okhttp/) (HTTP client)
-- [kotlinx.serialization](https://github.com/Kotlin/kotlinx.serialization) (JSON serialization)
+每个版本附带 sha256 校验值。
+
+## 🌿 分支
+
+| 分支 | 用途 |
+| --- | --- |
+| `custom`（默认） | 开发分支，ROCL 的所有改动都在这里 |
+| `master` | 上游基线快照 |
+
+上游同步策略：改动尽量落在新增文件与扩展点上，保留上游合并路径，方便持续跟上游。
+
+## ✨ 构建
+
+使用 [Android Studio](https://developer.android.com/studio) 打开本项目。
+
+技术栈：
+
+- [Kotlin](https://kotlinlang.org/)（开发语言）
+- [Jetpack Compose](https://developer.android.com/jetpack/compose)（UI 框架）
+- [Koin](https://insert-koin.io/)（依赖注入）
+- [Room](https://developer.android.com/training/data-storage/room)（数据库）
+- [DataStore](https://developer.android.com/topic/libraries/architecture/datastore)（偏好存储）
+- [Okhttp](https://square.github.io/okhttp/)（HTTP 客户端）
+- [kotlinx.serialization](https://github.com/Kotlin/kotlinx.serialization)（JSON 序列化）
 
 > [!TIP]
-> You need a `google-services.json` file at `app` folder to build the app.
-
-> [!IMPORTANT]  
-> The following PRs will be rejected:
-> 1. Translation related changes, such as adding new languages or updating existing translations
-> 2. Adding new features, this project is opinionated and will not accept pull requests for new features
-> 3. Large-scale refactoring and changes generated by AI
-
-## 💰 Donate
-
-* [Patreon](https://patreon.com/rikkahub)
-* [爱发电](https://afdian.com/a/reovo)
-
-## ⭐ Star History
-
-If you like this project, please give it a star ⭐
-
-<a href="https://www.star-history.com/?type=date&repos=re-ovo%2Frikkahub">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=re-ovo/rikkahub&type=date&theme=dark&legend=top-left&sealed_token=qSytWeq7LkzQQViTjK0MYlvvA_qkfuwjOxOqgbRpLUZZwok5rO6LXhpVL7Mq-q3o89BfKpzE7g66BCy18H6eiqTsD8czD0J-HejLqmHy-npcvCTHu11wZw" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=re-ovo/rikkahub&type=date&legend=top-left&sealed_token=qSytWeq7LkzQQViTjK0MYlvvA_qkfuwjOxOqgbRpLUZZwok5rO6LXhpVL7Mq-q3o89BfKpzE7g66BCy18H6eiqTsD8czD0J-HejLqmHy-npcvCTHu11wZw" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=re-ovo/rikkahub&type=date&legend=top-left&sealed_token=qSytWeq7LkzQQViTjK0MYlvvA_qkfuwjOxOqgbRpLUZZwok5rO6LXhpVL7Mq-q3o89BfKpzE7g66BCy18H6eiqTsD8czD0J-HejLqmHy-npcvCTHu11wZw" />
- </picture>
-</a>
+> 构建需要 `app/` 目录下的 `google-services.json`。
 
 ## 📄 License
 
-This project is licensed under the [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0).
+沿用上游许可：[GNU Affero General Public License v3.0](LICENSE)（AGPL-3.0）。
+
+底座项目：[rikkahub/rikkahub](https://github.com/rikkahub/rikkahub)
