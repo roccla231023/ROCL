@@ -1547,6 +1547,9 @@ mDNS 地址：使用 .local 主机名，同一网络中的其他设备可通过�
   <string name="group_chat_page_skills">Skills</string>
   <string name="group_chat_page_seat_none">本群未开</string>
   <string name="group_chat_page_seat_selected">已选 %d 项</string>
+  <string name="group_chat_page_reasoning_follow">跟随助手（%s）</string>
+  <string name="group_chat_page_reasoning_follow_desc">使用该座位助手的思考深度</string>
+  <string name="group_chat_page_reasoning_overridden">本群覆写</string>
   <string name="group_chat_mention_members">成员</string>
   <string name="group_chat_mention_files">文件</string>
   <string name="group_chat_mention_members_desc">点名一个席位</string>

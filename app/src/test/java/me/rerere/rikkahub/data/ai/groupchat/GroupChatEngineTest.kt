@@ -1,6 +1,7 @@
 package me.rerere.rikkahub.data.ai.groupchat
 
 import me.rerere.ai.core.MessageRole
+import me.rerere.ai.core.ReasoningLevel
 import me.rerere.ai.ui.UIMessage
 import me.rerere.ai.ui.UIMessagePart
 import me.rerere.rikkahub.data.model.Assistant
@@ -275,6 +276,21 @@ class GroupChatEngineTest {
         val seat = gptSeat.copy(overrides = gptSeat.overrides.copy(systemPrompt = ""))
         val seated = gpt.copy(systemPrompt = "Original").applyGroupSeat(template, seat)
         assertEquals("", seated.systemPrompt)
+    }
+
+    @Test
+    fun applyGroupSeatUsesSeatReasoningOverride() {
+        val seat = gptSeat.copy(
+            overrides = gptSeat.overrides.copy(reasoningLevel = ReasoningLevel.HIGH),
+        )
+        val seated = gpt.copy(reasoningLevel = ReasoningLevel.AUTO).applyGroupSeat(template, seat)
+        assertEquals(ReasoningLevel.HIGH, seated.reasoningLevel)
+    }
+
+    @Test
+    fun applyGroupSeatReasoningFollowsAssistantWhenUnset() {
+        val seated = gpt.copy(reasoningLevel = ReasoningLevel.MAX).applyGroupSeat(template, gptSeat)
+        assertEquals(ReasoningLevel.MAX, seated.reasoningLevel)
     }
 
     @Test

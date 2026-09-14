@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.261
+
+更新内容:
+- 群聊成员可单独设置思考深度；未覆写时跟随该座位助手，不改助手本身
+
+Updates:
+- Group chat seats can override thinking depth; otherwise they follow that seat's assistant and do not write back to it
+
 ## 1.26
 
 更新内容:
