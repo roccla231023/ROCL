@@ -47,7 +47,17 @@ class SubAgentEngine(
         providerSetting: ProviderSetting?,
         tools: List<Tool>,
         reasoningLevel: ReasoningLevel = ReasoningLevel.AUTO,
+        unavailableReason: String? = null,
     ): List<UIMessagePart> {
+        // 配置了子代理模型但这一轮没有任何可用工具: 明确失败并说明原因, 而不是静默什么都不发生。
+        // 放在 tryOccupy 之前, 不占用单槽。
+        if (unavailableReason != null) {
+            return output(
+                status = "failed",
+                steps = emptyList(),
+                summary = "子代理本轮没有可用工具，未执行。原因：$unavailableReason",
+            )
+        }
         val trimmed = task.trim()
         if (trimmed.isEmpty()) {
             return output(
@@ -181,10 +191,15 @@ class SubAgentEngine(
                 val clipped = clip(rawOutput, SUBAGENT_TOOL_OUTPUT_CHARS)
                 val preview = clipped.filterIsInstance<UIMessagePart.Text>()
                     .joinToString("\n") { it.text }
+                val evidence = parseSubAgentEvidence(json, call.toolName, call.input)
                 steps += SubAgentStep(
                     toolName = call.toolName,
                     inputPreview = clipPreview(call.input),
                     outputPreview = clipPreview(preview),
+                    path = evidence.path,
+                    command = evidence.command,
+                    url = evidence.url,
+                    query = evidence.query,
                 )
                 registry.update {
                     it.copy(recent = steps.takeLast(3))
@@ -210,8 +225,13 @@ class SubAgentEngine(
         steps: List<SubAgentStep>,
         summary: String,
     ): List<UIMessagePart> {
-        val clippedSummary = summary.trim().ifBlank { "子代理没有产生摘要。" }
-            .take(SUBAGENT_SUMMARY_CHARS)
+        val trimmed = summary.trim().ifBlank { "子代理没有产生摘要。" }
+        val clippedSummary = if (trimmed.length > SUBAGENT_SUMMARY_CHARS) {
+            val room = (SUBAGENT_SUMMARY_CHARS - SUBAGENT_SUMMARY_TRUNCATED_MARK.length).coerceAtLeast(1)
+            trimmed.take(room) + SUBAGENT_SUMMARY_TRUNCATED_MARK
+        } else {
+            trimmed
+        }
         val run = SubAgentRun(
             status = status,
             steps = steps,
