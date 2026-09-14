@@ -44,6 +44,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import me.rerere.ai.core.ReasoningLevel
 import me.rerere.ai.provider.ModelType
 import me.rerere.hugeicons.HugeIcons
 import me.rerere.hugeicons.stroke.Add01
@@ -404,6 +405,40 @@ private fun SeatEditorSheet(
                     trailingContent = { Icon(HugeIcons.ArrowRight01, contentDescription = null) },
                 )
                 item(
+                    headlineContent = { Text(stringResource(R.string.assistant_page_thinking_budget)) },
+                    supportingContent = {
+                        Text(
+                            if (seat.overrides.reasoningLevel != null) {
+                                stringResource(R.string.group_chat_page_reasoning_overridden)
+                            } else {
+                                stringResource(R.string.group_chat_page_reasoning_follow_desc)
+                            }
+                        )
+                    },
+                    trailingContent = {
+                        val assistantLevel = selected?.reasoningLevel ?: ReasoningLevel.AUTO
+                        val choices = listOf<ReasoningLevel?>(null) + ReasoningLevel.entries
+                        Select(
+                            options = choices,
+                            selectedOption = seat.overrides.reasoningLevel,
+                            onOptionSelected = { level ->
+                                patch { it.copy(overrides = it.overrides.copy(reasoningLevel = level)) }
+                            },
+                            modifier = Modifier.fillMaxWidth(0.5f),
+                            optionToString = { level ->
+                                if (level == null) {
+                                    stringResource(
+                                        R.string.group_chat_page_reasoning_follow,
+                                        assistantLevel.levelLabel(),
+                                    )
+                                } else {
+                                    level.levelLabel()
+                                }
+                            },
+                        )
+                    },
+                )
+                item(
                     headlineContent = { Text(stringResource(R.string.assistant_page_memory)) },
                     trailingContent = {
                         Switch(
@@ -604,4 +639,15 @@ private fun seatListSummary(count: Int): String {
     } else {
         stringResource(R.string.group_chat_page_seat_selected, count)
     }
+}
+
+@Composable
+private fun ReasoningLevel.levelLabel(): String = when (this) {
+    ReasoningLevel.OFF -> stringResource(R.string.reasoning_off)
+    ReasoningLevel.AUTO -> stringResource(R.string.reasoning_auto)
+    ReasoningLevel.LOW -> stringResource(R.string.reasoning_light)
+    ReasoningLevel.MEDIUM -> stringResource(R.string.reasoning_medium)
+    ReasoningLevel.HIGH -> stringResource(R.string.reasoning_heavy)
+    ReasoningLevel.XHIGH -> stringResource(R.string.reasoning_xhigh)
+    ReasoningLevel.MAX -> stringResource(R.string.reasoning_max)
 }

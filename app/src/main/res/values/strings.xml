@@ -1552,6 +1552,9 @@
   <string name="group_chat_page_skills">Skills</string>
   <string name="group_chat_page_seat_none">Off in this group</string>
   <string name="group_chat_page_seat_selected">%d selected</string>
+  <string name="group_chat_page_reasoning_follow">Follow assistant (%s)</string>
+  <string name="group_chat_page_reasoning_follow_desc">Using the assistant thinking depth</string>
+  <string name="group_chat_page_reasoning_overridden">Overridden in this group</string>
   <string name="group_chat_mention_members">Members</string>
   <string name="group_chat_mention_files">Files</string>
   <string name="group_chat_mention_members_desc">Mention a seat</string>
