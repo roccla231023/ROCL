@@ -152,7 +152,9 @@ class SubAgentEngineTest {
         assertEquals(2, generates.get())
         val text = parts.filterIsInstance<UIMessagePart.Text>().single()
         assertNotNull(text.metadata?.get(SUBAGENT_METADATA_KEY))
-        assertEquals("ROCL is the fork.", text.text)
+        assertEquals("ROCL is the fork.", run.summary)
+        assertTrue(text.text.startsWith("[引擎]"))
+        assertTrue(text.text.contains("ROCL is the fork."))
     }
 
     @Test

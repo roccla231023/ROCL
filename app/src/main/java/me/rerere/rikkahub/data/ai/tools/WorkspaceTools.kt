@@ -253,6 +253,8 @@ private fun createGrepTool(
         contextLines lines of surrounding context, so the neighbourhood comes back in the same call.
         maxHits defaults to $GREP_DEFAULT_MAX_HITS (max $GREP_MAX_HITS); contextLines defaults to
         $GREP_DEFAULT_CONTEXT_LINES (max $GREP_MAX_CONTEXT_LINES). Binary and oversized files are skipped.
+        Junk directories (.git, node_modules, build, .gradle, .idea, dist, __pycache__) are skipped
+        unless path points inside one. If the file scan hits the cap, truncated is true.
     """.trimIndent().replace("\n", " "),
     parameters = {
         InputSchema.Obj(
@@ -340,8 +342,12 @@ private fun createGrepTool(
                     put("count", found.hits.size)
                     put("truncated", found.truncated)
                     if (found.truncated) {
-                        if (found.omittedIsLowerBound) put("omittedIsLowerBound", true) else put("omitted", found.omitted)
-                        put("hint", "Truncated. Raise maxHits, narrow path/glob, or make the pattern more specific.")
+                        if (found.scanCapped) put("scanCapped", true)
+                        when {
+                            found.omittedIsLowerBound -> put("omittedIsLowerBound", true)
+                            found.omitted > 0 -> put("omitted", found.omitted)
+                        }
+                        put("hint", found.truncationHint())
                     }
                 }.toString()
             )
@@ -548,8 +554,23 @@ private data class RootfsGrepResult(
     val hits: List<RootfsGrepHit>,
     val omitted: Int,
     val omittedIsLowerBound: Boolean,
+    /** 文件扫描撞上 QUERY_SCAN_FILE_CAP 停了, 没扫完的目录里可能还有命中。 */
+    val scanCapped: Boolean = false,
 ) {
-    val truncated: Boolean get() = omitted > 0 || omittedIsLowerBound
+    val truncated: Boolean get() = omitted > 0 || omittedIsLowerBound || scanCapped
+}
+
+private fun RootfsGrepResult.truncationHint(): String {
+    val parts = mutableListOf<String>()
+    if (scanCapped) {
+        parts += "file scan stopped after $QUERY_SCAN_FILE_CAP files; narrow path or glob"
+    }
+    if (omitted > 0 || omittedIsLowerBound) {
+        parts += "Raise maxHits, narrow path/glob, or make the pattern more specific."
+    }
+    return parts.joinToString(" ").ifBlank {
+        "Truncated. Narrow path or glob."
+    }
 }
 
 private const val DEFAULT_QUERY_PATH = "/workspace"
@@ -559,6 +580,17 @@ private val QUERY_ROOT_PREFIXES = listOf("/workspace", "/skills", "/tmp")
 
 /** 扫描阶段的安全上限: 到了就停, 并标明"总数未知", 而不是假装知道。 */
 private const val QUERY_SCAN_FILE_CAP = 5000
+
+/** grep 递归时直接跳过: 搜这些目录是负收益, 还会把配额吃光。搜索根本身在里面则不跳。 */
+private val GREP_SKIP_DIR_NAMES = setOf(
+    ".git",
+    "node_modules",
+    "build",
+    ".gradle",
+    ".idea",
+    "dist",
+    "__pycache__",
+)
 
 private const val LS_SCAN_ENTRY_CAP = 5000
 
@@ -696,6 +728,7 @@ private suspend fun WorkspaceRepository.grepRootfs(
     val nameMatcher = glob?.let { nameGlobToRegex(it) }
 
     val files = mutableListOf<File>()
+    var scanCapped = false
     if (base.isFile) {
         files += base
     } else {
@@ -709,14 +742,19 @@ private suspend fun WorkspaceRepository.grepRootfs(
                 if (child.name.startsWith(".l2s.")) continue
                 if (!child.staysUnder(baseCanonical)) continue
                 if (child.isDirectory) {
+                    // 搜索根在垃圾目录内时不跳, 否则指定 path=.git 会什么都搜不到。
+                    if (child != base && child.name in GREP_SKIP_DIR_NAMES) continue
                     stack.addLast(child)
                     continue
                 }
                 if (nameMatcher != null && !nameMatcher.matches(child.name)) continue
-                if (++visited > QUERY_SCAN_FILE_CAP) break
+                if (++visited > QUERY_SCAN_FILE_CAP) {
+                    scanCapped = true
+                    break
+                }
                 files += child
             }
-            if (visited > QUERY_SCAN_FILE_CAP) break
+            if (scanCapped) break
         }
     }
 
@@ -755,7 +793,12 @@ private suspend fun WorkspaceRepository.grepRootfs(
             )
         }
     }
-    RootfsGrepResult(hits = hits, omitted = omitted, omittedIsLowerBound = omittedIsLowerBound)
+    RootfsGrepResult(
+        hits = hits,
+        omitted = omitted,
+        omittedIsLowerBound = omittedIsLowerBound,
+        scanCapped = scanCapped,
+    )
 }
 
 /** 按行切分, 并且让「末尾换行」不算多一行: "a\nb\n" 与 "a\nb" 都是 2 行. */

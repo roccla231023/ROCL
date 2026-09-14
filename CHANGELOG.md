@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.266
+
+更新内容:
+- 按内容检索扫文件被上限砍断时会明确标成 truncated，并提示缩小路径，不再假装搜完了
+- 检索默认跳过 .git、node_modules、build、.gradle、.idea、dist、__pycache__，避免这些目录把配额吃光；指定搜里面仍然可以
+- 子代理卡片改成一张脸：跑着和跑完都是同一条时间线，点进去能看到全部步骤；报告沉到底下并标明是模型写的
+- 没有调用任何工具就结束时，标题会写成「未调用工具」，不再看起来像干完了
+- 列目录、按内容检索有自己的卡片了：条数、是否被砍断用人话写，不再铺 JSON
+- 子代理摘要前面会带一行引擎记录（几步、成败），主模型不只看见那篇可能编的报告
+
+Updates:
+- Searching file contents now sets truncated when the file-scan cap is hit, with a hint to narrow the path, instead of pretending the search finished
+- Content search skips .git, node_modules, build, .gradle, .idea, dist and __pycache__ by default so they do not consume the scan budget; pointing path inside one of them still searches it
+- The sub-agent card is one face now: running and done share the same timeline, opening it shows every step, and the model's report sits at the bottom labelled as such
+- Finishing without calling any tools is titled that way instead of looking finished
+- Listing a directory and searching file contents have their own cards: counts and truncation in plain language, not raw JSON
+- A one-line engine ledger now precedes the sub-agent report so the main model is not left with only the possibly-invented write-up
+
 ## 1.265
 
 更新内容:
