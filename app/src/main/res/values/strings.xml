@@ -1294,6 +1294,7 @@
   <string name="workspace_detail_tool_edit_file">Edit File</string>
   <string name="workspace_detail_tool_delete_file">Delete File</string>
   <string name="workspace_detail_tool_move_file">Move File</string>
+  <string name="workspace_detail_tool_grep">Search Contents</string>
   <string name="workspace_detail_tool_shell">Execute Command</string>
   <string name="workspace_detail_install_rootfs_desc">Will download tar.gz and extract to the linux directory of %s.</string>
   <string name="workspace_detail_download_url">tar.gz download URL</string>
@@ -1600,4 +1601,9 @@
   <string name="subagent_stop">Stop sub-agent</string>
   <string name="subagent_preview_title">Sub-agent · %1$d steps · %2$s</string>
   <string name="subagent_step">Step %1$d · %2$s</string>
+  <string name="subagent_summary_more">…%1$d more steps (expand to see all)</string>
+  <string name="subagent_evidence_path">Path</string>
+  <string name="subagent_evidence_command">Command</string>
+  <string name="subagent_evidence_query">Query</string>
+  <string name="subagent_evidence_url">URL</string>
 </resources>

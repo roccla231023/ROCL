@@ -28,6 +28,31 @@ internal fun shouldUseExternalWebSearch(assistant: Assistant, model: Model): Boo
     return assistant.enableWebSearch && BuiltInTools.Search !in model.tools
 }
 
+/**
+ * 子代理被启用了、但这一轮一个工具都筛不出来时, 给出人能读懂的原因。
+ *
+ * 搜索工具是按「聊天模型 + 助手联网开关」挂的 (shouldUseExternalWebSearch), 所以这里看的是
+ * chatModel 而不是子代理模型 —— 内置搜索是挂在模型上的 (BuiltInTools.Search), 模型自带内置搜索时
+ * 外部 search_web 根本不会挂上。
+ */
+private fun describeEmptySubAgentToolset(assistant: Assistant, chatModel: Model): String {
+    val reasons = buildList {
+        add(
+            if (assistant.workspaceId == null) {
+                "没有绑定工作区，因此没有文件类工具"
+            } else {
+                "工作区不可用（未找到，或 Rootfs 不是 READY），因此没有文件类工具"
+            }
+        )
+        if (!assistant.enableWebSearch) {
+            add("该助手没有开启联网搜索")
+        } else if (BuiltInTools.Search in chatModel.tools) {
+            add("聊天模型自带内置搜索，因此不会挂上外部搜索工具")
+        }
+    }
+    return reasons.joinToString("；")
+}
+
 class InvalidMcpServerNamesException(val names: List<String>) :
     IllegalStateException("Invalid MCP server names: ${names.joinToString(", ")}")
 
@@ -146,13 +171,19 @@ class ChatToolFactory(
             return assembled
         }
         val subTools = filterSubAgentTools(assembled)
-        if (subTools.isEmpty()) return assembled
         return assembled + buildSubAgentTool(
             engine = subAgentEngine,
             model = subAgentModel,
             settings = settings,
             tools = subTools,
             reasoningLevel = settings.subAgentReasoningLevel,
+            // 筛完之后一个工具都没有时, 仍然挂上 dispatch_subagent, 让它返回一条说明原因的失败摘要。
+            // 宁可让主模型看到一个可读的失败, 也不要静默什么都不发生 (设计稿 §2.3 / §10.7)。
+            unavailableReason = if (subTools.isEmpty()) {
+                describeEmptySubAgentToolset(assistant = assistant, chatModel = model)
+            } else {
+                null
+            },
         )
     }
 

@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.264
+
+更新内容:
+- 子代理现在能查文件：新增「列目录」和「按内容检索」两个只读工具，主对话和子代理都能用（它们会改变每次请求的工具集）
+- 读文件改成分段读：默认前 250 行，返回总行数和是否还有内容，可按行号接着读；长文件不再只能看到开头
+- 子代理能跑命令测试：在工作区里把「执行命令」设为免确认后子代理才拿得到，不设就没有
+- 子代理工具白名单改名（里面确实有 shell 了，再叫「只读」是假话）
+- 子代理报告改成固定四段：读了什么 / 跑了什么 / 结论 / 未知；要求写短，被截断处会标出来，不再无声截断
+- 卡片：折叠态显示每一步实际看的路径 / 命令 / 搜索词；展开态按标签分开展示；摘要按 markdown 渲染，不再出现字面星号
+- 配置了子代理模型却没有任何可用工具时，派发会返回一条说明原因的失败摘要，而不是静默什么都不发生
+
+Updates:
+- The sub-agent can search files now: two read-only tools that list directories and search file contents, available to both the main chat and the sub-agent (they change the tool set of every request)
+- Reading a file is windowed: first 250 lines by default, with total line count and a next offset to continue, so long files no longer collapse to their head
+- The sub-agent can run commands: it only gets shell once Execute Command is set to no-approval inside the workspace, and does not get it otherwise
+- The sub-agent tool whitelist is no longer called read-only, because it now really does include shell
+- Sub-agent reports use a fixed four-part shape (read / ran / findings / unknowns) and are asked to stay short; truncation is marked instead of silent
+- The card shows what each step actually looked at when collapsed, labelled evidence when expanded, and renders the summary as markdown instead of literal asterisks
+- When a sub-agent model is configured but no tools are available, dispatch returns a failed summary naming the reason instead of doing nothing
+
+
 ## 1.263
 
 更新内容:
