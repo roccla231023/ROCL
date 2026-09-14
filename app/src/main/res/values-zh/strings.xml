@@ -1603,10 +1603,10 @@ mDNS 地址：使用 .local 主机名，同一网络中的其他设备可通过�
   <string name="subagent_title_failed">子代理 · 失败 · %1$d 步</string>
   <string name="subagent_title_aborted">子代理 · 已停止 · %1$d 步</string>
   <string name="subagent_title_unavailable">子代理 · 未执行</string>
-  <string name="subagent_legacy_title">子代理（旧记录）</string>
-  <string name="subagent_legacy_body">这条记录来自 1.265 之前的版本，没有结构化证据，只能显示当时的输出。</string>
+  <string name="subagent_legacy_title">子代理 · 早期记录</string>
+  <string name="subagent_legacy_body">这条记录没有结构化证据，只能显示当时保存的输出。</string>
   <string name="subagent_request_title">请求（它要做什么）</string>
-  <string name="subagent_summary_title">报告（模型写的）</string>
+  <string name="subagent_summary_title">报告</string>
   <string name="subagent_preview_running_body">子代理正在运行，完成的步骤会陆续出现。</string>
   <string name="subagent_preview_unfinished_title">子代理 · 未完成</string>
   <string name="subagent_preview_unfinished_body">这次派发没有留下结果摘要：可能还在等模型返回，或者外层生成被停止了。</string>
