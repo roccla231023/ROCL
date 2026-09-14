@@ -1591,4 +1591,10 @@
   <string name="setting_advanced_appearance_bubble_style_frosted">Frosted Glass</string>
   <string name="setting_advanced_appearance_bubble_opacity">Bubble Opacity</string>
   <string name="setting_advanced_appearance_bubble_opacity_value">%1$d%%</string>
+  <string name="subagent_title_default">Sub-agent</string>
+  <string name="subagent_title_running">Sub-agent (%1$d/%2$d) %3$s</string>
+  <string name="subagent_title_done">Sub-agent · %1$d steps</string>
+  <string name="subagent_stop">Stop sub-agent</string>
+  <string name="subagent_preview_title">Sub-agent · %1$d steps · %2$s</string>
+  <string name="subagent_step">Step %1$d · %2$s</string>
 </resources>

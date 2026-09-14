@@ -1586,4 +1586,10 @@ mDNS 地址：使用 .local 主机名，同一网络中的其他设备可通过�
   <string name="setting_advanced_appearance_bubble_style_frosted">磨砂玻璃</string>
   <string name="setting_advanced_appearance_bubble_opacity">气泡不透明度</string>
   <string name="setting_advanced_appearance_bubble_opacity_value">%1$d%%</string>
+  <string name="subagent_title_default">子代理</string>
+  <string name="subagent_title_running">子代理 (%1$d/%2$d) %3$s</string>
+  <string name="subagent_title_done">子代理 · %1$d 步</string>
+  <string name="subagent_stop">停止子代理</string>
+  <string name="subagent_preview_title">子代理 · %1$d 步 · %2$s</string>
+  <string name="subagent_step">第 %1$d 步 · %2$s</string>
 </resources>
