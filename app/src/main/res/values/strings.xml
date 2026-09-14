@@ -1596,7 +1596,7 @@
   <string name="setting_advanced_appearance_bubble_opacity">Bubble Opacity</string>
   <string name="setting_advanced_appearance_bubble_opacity_value">%1$d%%</string>
   <string name="subagent_title_default">Sub-agent</string>
-  <string name="subagent_title_running">Sub-agent · %1$d/%2$d</string>
+  <string name="subagent_title_running">Sub-agent · running</string>
   <string name="subagent_title_done">Sub-agent · %1$d steps</string>
   <string name="subagent_title_no_tools">Sub-agent · no tools used</string>
   <string name="subagent_stop">Stop</string>

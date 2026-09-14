@@ -1439,7 +1439,7 @@
   <string name="group_chat_mention_members_desc">点名一个席位</string>
   <string name="group_chat_mention_files_desc">引用工作区文件</string>
   <string name="subagent_title_default">子代理</string>
-  <string name="subagent_title_running">子代理 · %1$d/%2$d</string>
+  <string name="subagent_title_running">子代理 · 執行中</string>
   <string name="subagent_title_done">子代理 · %1$d 步</string>
   <string name="subagent_title_no_tools">子代理 · 未呼叫工具</string>
   <string name="subagent_stop">停止</string>
