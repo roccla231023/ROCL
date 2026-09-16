@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.271
+
+更新内容:
+- 同步上游更新
+- 子代理工具结果的截断预算修好了：空的错误输出不再对半抢走预算，跑命令拿到的可用输出大约翻倍
+- 被截断时提示改用 grep / head / tail -n 重新读关键片段，而不是猜剩下的内容
+- 子代理提示词改成任务规则式开头，降低被对安全对齐敏感的模型当成注入的概率
+
+Updates:
+- Synced upstream updates
+- Sub-agent tool result clipping fixed: an empty stderr no longer takes half the budget, so command output roughly doubles
+- When a result is clipped, the note now tells the model to re-read with grep / head / tail -n instead of guessing the rest
+- The sub-agent prompt now opens with operating rules instead of a role claim, lowering the chance that safety-aligned models read it as injection
+
 ## 1.27
 
 更新内容:
