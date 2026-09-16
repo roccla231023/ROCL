@@ -297,7 +297,11 @@ private fun summarize(
 private const val CLIP_NOTE_KEY = "clipNote"
 
 /** 给 clipNote 预留的字符数; 控制字段和这条说明都不占载荷预算 */
-private const val CLIP_NOTE_MAX_CHARS = 120
+private const val CLIP_NOTE_MAX_CHARS = 260
+
+/** 截断说明末尾的续读引导: 模型该换个更窄的请求, 而不是猜剩下的内容 */
+private const val CLIP_NOTE_GUIDANCE =
+    ". Narrow the request (grep / head / tail -n) to read the rest."
 
 private const val CLIP_MIN_PAYLOAD_CHARS = 200
 
@@ -342,10 +346,15 @@ private fun String.clipToolText(json: Json, budget: Int): String {
 
 private fun JsonObject.clipJsonObject(json: Json, budget: Int): JsonObject {
     val values = this.toMutableMap()
+    // 空载荷不占 slot。shell 结果永远带 stdout 与 stderr 两个字段, 失败时 stderr 是空串,
+    // 照样给它一份预算的话, 真有内容的 stdout 只能拿到一半 (4000 预算 → 约 1916)。
     val stringKeys = CLIP_PAYLOAD_STRING_KEYS.filter { key ->
-        (values[key] as? JsonPrimitive)?.isString == true
+        val value = values[key] as? JsonPrimitive
+        value?.isString == true && value.content.isNotEmpty()
     }
-    val arrayKeys = CLIP_PAYLOAD_ARRAY_KEYS.filter { values[it] is JsonArray }
+    val arrayKeys = CLIP_PAYLOAD_ARRAY_KEYS.filter { key ->
+        (values[key] as? JsonArray)?.isNotEmpty() == true
+    }
     val slots = stringKeys.size + arrayKeys.size
     if (slots == 0) return this
 
@@ -387,7 +396,7 @@ private fun JsonObject.clipJsonObject(json: Json, budget: Int): JsonObject {
 
     values["truncated"] = JsonPrimitive(true)
     values[CLIP_NOTE_KEY] = JsonPrimitive(
-        "sub-agent engine clipped this result to fit its budget: ${notes.joinToString("; ")}"
+        "sub-agent engine clipped this result to fit its budget: ${notes.joinToString("; ")}$CLIP_NOTE_GUIDANCE"
     )
     return JsonObject(values)
 }
