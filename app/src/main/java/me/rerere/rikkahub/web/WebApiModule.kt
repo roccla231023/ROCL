@@ -5,8 +5,11 @@ import com.auth0.jwt.JWT
 import com.auth0.jwt.JWTVerifier
 import com.auth0.jwt.algorithms.Algorithm
 import io.ktor.http.auth.HttpAuthHeader
+import io.ktor.http.Cookie
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.HttpMethod
+import io.ktor.server.application.createApplicationPlugin
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
@@ -16,6 +19,7 @@ import io.ktor.server.auth.jwt.jwt
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.request.receive
+import io.ktor.server.request.httpMethod
 import io.ktor.server.response.respond
 import io.ktor.server.routing.post
 import io.ktor.server.routing.route
@@ -43,8 +47,9 @@ import java.util.UUID
 private const val WEB_JWT_ISSUER = "rikkahub-web"
 private const val WEB_JWT_AUDIENCE = "rikkahub-web-client"
 private const val WEB_JWT_SUBJECT = "web-access"
-private const val WEB_JWT_TTL_MILLIS = 30L * 24 * 60 * 60 * 1000
-private const val WEB_ACCESS_TOKEN_QUERY_KEY = "access_token"
+private const val WEB_JWT_TTL_MILLIS = 24L * 60 * 60 * 1000
+private const val WEB_AUTH_COOKIE = "rocl-web-auth"
+private val webSigningKey = UUID.randomUUID().toString() + UUID.randomUUID().toString()
 private const val WEB_AUTH_REALM = "rikkahub-web-api"
 
 /**
@@ -66,7 +71,23 @@ fun Application.configureWebApi(
     settingsStore: SettingsStore,
     filesManager: FilesManager
 ) {
-    val jwtEnabled = settingsStore.settingsFlow.value.webServerJwtEnabled
+    val jwtEnabled = settingsStore.settingsFlow.value.let { it.webServerJwtEnabled || !it.webServerLocalhostOnly }
+    val authAttempts = ArrayDeque<Long>()
+
+    install(createApplicationPlugin("WebCookieOriginCheck") {
+        onCall { call ->
+            if (call.request.cookies[WEB_AUTH_COOKIE] != null &&
+                call.request.headers[HttpHeaders.Authorization] == null &&
+                call.request.httpMethod !in listOf(HttpMethod.Get, HttpMethod.Head, HttpMethod.Options)
+            ) {
+                val origin = call.request.headers[HttpHeaders.Origin]
+                val authority = origin?.let { runCatching { java.net.URI(it).rawAuthority }.getOrNull() }
+                if (authority == null || authority != call.request.headers[HttpHeaders.Host]) {
+                    call.respond(HttpStatusCode.Forbidden, ErrorResponse("Same-origin request required", 403))
+                }
+            }
+        }
+    })
 
     install(ContentNegotiation) {
         json(JsonInstant)
@@ -104,7 +125,7 @@ fun Application.configureWebApi(
                 authHeader { call ->
                     extractAccessToken(
                         authorizationHeader = call.request.headers[HttpHeaders.Authorization],
-                        queryToken = call.request.queryParameters[WEB_ACCESS_TOKEN_QUERY_KEY]
+                        cookieToken = call.request.cookies[WEB_AUTH_COOKIE]
                     )?.let { token ->
                         HttpAuthHeader.Single("Bearer", token)
                     }
@@ -139,9 +160,25 @@ fun Application.configureWebApi(
 
     routing {
         route("/api") {
+            post("/auth/logout") {
+                call.response.cookies.append(Cookie(
+                    name = WEB_AUTH_COOKIE, value = "", path = "/api", httpOnly = true, maxAge = 0,
+                    extensions = mapOf("SameSite" to "Strict"),
+                ))
+                call.respond(HttpStatusCode.OK)
+            }
             post("/auth/token") {
+                val now = System.currentTimeMillis()
+                val allowed = synchronized(authAttempts) {
+                    while (authAttempts.isNotEmpty() && now - authAttempts.first() >= 60_000) authAttempts.removeFirst()
+                    if (authAttempts.size >= 5) false else { authAttempts.addLast(now); true }
+                }
+                if (!allowed) {
+                    call.respond(HttpStatusCode.TooManyRequests, ErrorResponse("Try again later", 429))
+                    return@post
+                }
                 val settings = settingsStore.settingsFlow.value
-                if (!settings.webServerJwtEnabled) {
+                if (!jwtEnabled) {
                     throw BadRequestException("JWT auth is disabled")
                 }
 
@@ -156,6 +193,10 @@ fun Application.configureWebApi(
                 }
 
                 val (token, expiresAt) = createWebJwt(accessPassword)
+                call.response.cookies.append(Cookie(
+                    name = WEB_AUTH_COOKIE, value = token, path = "/api", httpOnly = true,
+                    maxAge = (WEB_JWT_TTL_MILLIS / 1000).toInt(), extensions = mapOf("SameSite" to "Strict"),
+                ))
                 call.respond(
                     HttpStatusCode.OK,
                     WebAuthTokenResponse(
@@ -197,12 +238,12 @@ private fun createWebJwt(secret: String): Pair<String, Long> {
         .withSubject(WEB_JWT_SUBJECT)
         .withIssuedAt(Date(now))
         .withExpiresAt(Date(expiresAt))
-        .sign(Algorithm.HMAC256(secret))
+        .sign(Algorithm.HMAC256(webSigningKey + secret))
     return token to expiresAt
 }
 
 private fun buildWebJwtVerifier(secret: String): JWTVerifier {
-    return JWT.require(Algorithm.HMAC256(secret))
+    return JWT.require(Algorithm.HMAC256(webSigningKey + secret))
         .withIssuer(WEB_JWT_ISSUER)
         .withAudience(WEB_JWT_AUDIENCE)
         .withSubject(WEB_JWT_SUBJECT)
@@ -216,9 +257,9 @@ private fun extractBearerToken(authorizationHeader: String?): String? {
     return authorizationHeader.substring(prefix.length).trim().takeIf { it.isNotEmpty() }
 }
 
-private fun extractAccessToken(authorizationHeader: String?, queryToken: String?): String? {
+private fun extractAccessToken(authorizationHeader: String?, cookieToken: String?): String? {
     return extractBearerToken(authorizationHeader)
-        ?: queryToken?.trim()?.takeIf { it.isNotEmpty() }
+        ?: cookieToken?.trim()?.takeIf { it.isNotEmpty() }
 }
 
 private fun secureEquals(left: String, right: String): Boolean {

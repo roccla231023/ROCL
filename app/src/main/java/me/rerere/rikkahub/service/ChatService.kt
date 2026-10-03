@@ -155,6 +155,7 @@ private val inputTransformers by lazy {
         PlaceholderTransformer,
         DocumentAsPromptTransformer,
         OcrTransformer,
+        me.rerere.rikkahub.data.ai.transformers.SubAgentReminderTransformer,
     )
 }
 
@@ -621,7 +622,7 @@ class ChatService(
     // ---- 处理消息补全 ----
 
     fun continueAtMessage(conversationId: Uuid, message: UIMessage) {
-        val session = getOrCreateSession(conversationId)
+        val session = sessionManager.getOrCreate(conversationId)
         val previousJob = session.getJob()
         val job = launchGenerationJob(
             conversationId = conversationId,
@@ -929,7 +930,7 @@ class ChatService(
         if (speakers.isEmpty()) return
 
         updateConversation(conversationId, liveConversation.copy(chatSuggestions = emptyList()))
-        val session = getOrCreateSession(conversationId)
+        val session = sessionManager.getOrCreate(conversationId)
         val userName = settings.displaySetting.userNickname
         val seatDisplayNames = template.buildSeatDisplayNames(settings.assistants.associateBy { it.id })
         var firstSenderName: String? = null
@@ -965,11 +966,11 @@ class ChatService(
         }
         val finalConversation = getConversationFlow(conversationId).value.copy(
             stickySpeakerSeatId = sticky,
-            updateAt = Instant.now(),
+            updateAt = java.time.Instant.now(),
         )
         saveConversation(conversationId, finalConversation)
         recordGenerationUsage(baseMessages, finalConversation.currentMessages)
-        launchWithConversationReference(conversationId) {
+        sessionManager.launchWithSession(conversationId) {
             generateTitle(conversationId, finalConversation)
         }
         firstSenderName?.let { senderName ->
@@ -1111,13 +1112,7 @@ class ChatService(
                 }
             }
         }
-        val finished = getConversationFlow(conversationId).value.copy(
-            messageNodes = getConversationFlow(conversationId).value.messageNodes.map { node ->
-                node.copy(messages = node.messages.map { it.finishReasoning() })
-            },
-            updateAt = Instant.now(),
-        )
-        updateConversation(conversationId, finished)
+        session.finishGeneration { conversation -> saveConversation(conversationId, conversation) }
         return senderName
     }
 
@@ -1804,14 +1799,12 @@ class ChatService(
 
     private fun markConversationDeleted(conversationId: Uuid): Job? {
         deletedConversationIds.add(conversationId)
-        val session = sessions[conversationId] ?: return null
+        val session = sessionManager.get(conversationId) ?: return null
         val jobs = synchronized(session) {
             session.messageQueue.pause()
             session.cancelJobs()
         }
-        sessions.remove(conversationId, session)
-        session.cleanup()
-        _sessionsVersion.value++
+        sessionManager.removeIfIdle(session)
         return jobs.firstOrNull()
     }
 

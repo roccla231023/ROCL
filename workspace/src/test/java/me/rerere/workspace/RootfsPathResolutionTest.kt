@@ -27,6 +27,7 @@ class RootfsPathResolutionTest {
                 WorkspaceBindMount(source = skillsDir, target = "/skills"),
                 WorkspaceBindMount(source = uploadDir, target = "/upload"),
             ),
+            shellRunner = HostShellRunner(),
         ).also { it.ensureWorkspace(root) }
     }
 
@@ -53,6 +54,7 @@ class RootfsPathResolutionTest {
                 WorkspaceBindMount(source = skills, target = "/skills"),
                 WorkspaceBindMount(source = skillsets, target = "/skillsets"),
             ),
+            shellRunner = HostShellRunner(),
         ).also { it.ensureWorkspace(root) }
 
         assertEquals(skills, manager.resolveRootfsPath(root, "/skills/a.md").rootDir)

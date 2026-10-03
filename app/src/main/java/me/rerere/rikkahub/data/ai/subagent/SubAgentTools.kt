@@ -52,7 +52,8 @@ fun buildSubAgentTool(
             Dispatch an independent sub-agent for a multi-step investigation.
             The sub-agent cannot see this conversation. The `task` argument MUST be self-contained:
             include every path, question, constraint, and fact it needs.
-            Use ONLY when the work needs multiple unknown-file reads or iterative web research.
+            Prefer delegating independent multi-step investigations, codebase exploration, and iterative web research.
+            Delegate a well-scoped question while you continue the main task; use its evidence to decide next steps.
             Do NOT use for a single known-path read, a simple rewrite, or a yes/no check.
             The sub-agent cannot modify files: it has no write or edit tools. It can read files, list
             directories, search file contents, search the web, and run commands when those tools are enabled.

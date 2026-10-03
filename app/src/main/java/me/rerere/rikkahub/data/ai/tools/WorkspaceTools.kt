@@ -1,6 +1,9 @@
 package me.rerere.rikkahub.data.ai.tools
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
@@ -132,10 +135,52 @@ private fun createReadFileTool(
             val requestedOffset = (params.int("offset") ?: 1).coerceAtLeast(1)
             val limit = (params.int("limit") ?: READ_FILE_DEFAULT_LINES)
                 .coerceIn(1, READ_FILE_MAX_LINES)
-            val lines = workspaceRepository.readTextInRootfs(workspaceId, path).toWorkspaceLines()
-            val totalLines = lines.size
+            val (lines, totalLines) = withTimeout(WORKSPACE_QUERY_TIMEOUT_MS) {
+                withContext(Dispatchers.IO) {
+                    val file = workspaceRepository.resolveRootfsEntry(workspaceId, path)
+                    require(file.isFile) { "Path is not a file: $path" }
+                    require(file.length() <= MAX_READ_FILE_BYTES) { "File exceeds the 8MB read limit: $path" }
+                    val window = mutableListOf<String>()
+                    var count = 0
+                    var bytes = 0L
+                    file.inputStream().buffered().use { input ->
+                        val line = ByteArrayOutputStream()
+                        var hasContent = false
+                        val buffer = ByteArray(8192)
+                        var read = input.read(buffer)
+                        while (read >= 0) {
+                            currentCoroutineContext().ensureActive()
+                            bytes += read
+                            require(bytes <= MAX_READ_FILE_BYTES) { "File exceeds the 8MB read limit: $path" }
+                            for (index in 0 until read) {
+                                if (buffer[index] == 10.toByte()) {
+                                    count++
+                                    if (count >= requestedOffset && count.toLong() < requestedOffset.toLong() + limit) {
+                                        window += line.toString(Charsets.UTF_8.name())
+                                    }
+                                    line.reset()
+                                    hasContent = false
+                                } else {
+                                    hasContent = true
+                                    if (count.toLong() + 1 >= requestedOffset && count.toLong() + 1 < requestedOffset.toLong() + limit) {
+                                        line.write(buffer[index].toInt())
+                                    }
+                                }
+                            }
+                            read = input.read(buffer)
+                        }
+                        if (hasContent) {
+                            count++
+                            if (count >= requestedOffset && count.toLong() < requestedOffset.toLong() + limit) {
+                                window += line.toString(Charsets.UTF_8.name())
+                            }
+                        }
+                    }
+                    window to count
+                }
+            }
             val fromIndex = (requestedOffset - 1).coerceAtMost(totalLines)
-            val toIndex = (fromIndex + limit).coerceAtMost(totalLines)
+            val toIndex = (fromIndex.toLong() + limit).coerceAtMost(totalLines.toLong()).toInt()
             // offset 超过文件末尾时不要夹到末尾: 保留请求值、返回空窗口、并把这件事说清楚,
             // 否则回显的 offset 会变成 totalLines + 1, 调用方以为读到了别的地方。
             val beyondEnd = requestedOffset > totalLines
@@ -144,7 +189,7 @@ private fun createReadFileTool(
                 UIMessagePart.Text(
                     buildJsonObject {
                         put("path", path)
-                        put("text", if (beyondEnd) "" else lines.subList(fromIndex, toIndex).joinToString("\n"))
+                        put("text", if (beyondEnd) "" else lines.joinToString("\n"))
                         put("offset", requestedOffset)
                         put("limit", limit)
                         put("totalLines", totalLines)
@@ -670,42 +715,46 @@ private suspend fun WorkspaceRepository.scanRootfsEntries(
     depth: Int,
     glob: String?,
 ): RootfsEntries = withContext(Dispatchers.IO) {
-    val base = resolveRootfsEntry(workspaceId, rootPath)
-    require(base.exists()) { "Path does not exist: $rootPath" }
-    require(base.isDirectory) { "Path is not a directory: $rootPath" }
-    val baseCanonical = base.canonicalFile.toPath()
-    val matcher = glob?.let { nameGlobToRegex(it) }
+    withTimeout(WORKSPACE_QUERY_TIMEOUT_MS) {
+        val base = resolveRootfsEntry(workspaceId, rootPath)
+        require(base.exists()) { "Path does not exist: $rootPath" }
+        require(base.isDirectory) { "Path is not a directory: $rootPath" }
+        val baseCanonical = base.canonicalFile.toPath()
+        val matcher = glob?.let { nameGlobToRegex(it) }
 
-    val entries = mutableListOf<RootfsEntry>()
-    var capped = false
-    var level = 1
-    var current = listOf(base)
-    while (level <= depth && current.isNotEmpty() && !capped) {
-        val next = mutableListOf<File>()
-        for (dir in current) {
-            val children = runCatching { dir.listFiles() }.getOrNull() ?: continue
-            for (child in children) {
-                if (child.name.startsWith(".l2s.")) continue
-                if (!child.staysUnder(baseCanonical)) continue
-                if (entries.size >= LS_SCAN_ENTRY_CAP) {
-                    capped = true
-                    break
+        val entries = mutableListOf<RootfsEntry>()
+        var capped = false
+        var visited = 0
+        var level = 1
+        var current = listOf(base)
+        while (level <= depth && current.isNotEmpty() && !capped) {
+            val next = mutableListOf<File>()
+            for (dir in current) {
+                val children = runCatching { dir.listFiles() }.getOrNull() ?: continue
+                for (child in children) {
+                    currentCoroutineContext().ensureActive()
+                    if (child.name.startsWith(".l2s.")) continue
+                    if (!child.staysUnder(baseCanonical)) continue
+                    if (++visited > LS_SCAN_ENTRY_CAP) {
+                        capped = true
+                        break
+                    }
+                    val isDirectory = child.isDirectory
+                    if (isDirectory) next += child
+                    if (matcher != null && !matcher.matches(child.name)) continue
+                    entries += RootfsEntry(
+                        path = rootfsChildPath(rootPath, child, base),
+                        type = if (isDirectory) "dir" else "file",
+                        sizeBytes = if (isDirectory) null else child.length(),
+                    )
                 }
-                val isDirectory = child.isDirectory
-                if (!isDirectory && matcher != null && !matcher.matches(child.name)) continue
-                entries += RootfsEntry(
-                    path = rootfsChildPath(rootPath, child, base),
-                    type = if (isDirectory) "dir" else "file",
-                    sizeBytes = if (isDirectory) null else child.length(),
-                )
-                if (isDirectory) next += child
+                if (capped) break
             }
-            if (capped) break
+            current = next
+            level++
         }
-        current = next
-        level++
+        RootfsEntries(entries = entries, truncated = capped)
     }
-    RootfsEntries(entries = entries, truncated = capped)
 }
 
 private suspend fun WorkspaceRepository.grepRootfs(
@@ -718,94 +767,92 @@ private suspend fun WorkspaceRepository.grepRootfs(
     maxHits: Int,
     contextLines: Int,
 ): RootfsGrepResult = withContext(Dispatchers.IO) {
-    val base = resolveRootfsEntry(workspaceId, rootPath)
-    require(base.exists()) { "Path does not exist: $rootPath" }
-    val baseCanonical = base.canonicalFile.toPath()
-    val options = if (ignoreCase) setOf(RegexOption.IGNORE_CASE) else emptySet()
-    val matcher = runCatching {
-        if (regex) Regex(pattern, options) else Regex(Regex.escape(pattern), options)
-    }.getOrElse { error("Invalid pattern: ${it.message}") }
-    val nameMatcher = glob?.let { nameGlobToRegex(it) }
+    withTimeout(WORKSPACE_QUERY_TIMEOUT_MS) {
+        val base = resolveRootfsEntry(workspaceId, rootPath)
+        require(base.exists()) { "Path does not exist: $rootPath" }
+        val baseCanonical = base.canonicalFile.toPath()
+        val options = if (ignoreCase) setOf(RegexOption.IGNORE_CASE) else emptySet()
+        val matcher = runCatching {
+            if (regex) Regex(pattern, options) else Regex(Regex.escape(pattern), options)
+        }.getOrElse { error("Invalid pattern: ${it.message}") }
+        val nameMatcher = glob?.let { nameGlobToRegex(it) }
 
-    val files = mutableListOf<File>()
-    var scanCapped = false
-    if (base.isFile) {
-        files += base
-    } else {
-        var visited = 0
-        val stack = ArrayDeque<File>()
-        stack.addLast(base)
-        while (stack.isNotEmpty()) {
-            val dir = stack.removeLast()
-            val children = runCatching { dir.listFiles() }.getOrNull() ?: continue
-            for (child in children) {
-                if (child.name.startsWith(".l2s.")) continue
-                if (!child.staysUnder(baseCanonical)) continue
-                if (child.isDirectory) {
-                    // 搜索根在垃圾目录内时不跳, 否则指定 path=.git 会什么都搜不到。
-                    if (child != base && child.name in GREP_SKIP_DIR_NAMES) continue
-                    stack.addLast(child)
+        val files = mutableListOf<File>()
+        var scanCapped = false
+        if (base.isFile) {
+            files += base
+        } else {
+            var visited = 0
+            val stack = ArrayDeque<File>()
+            stack.addLast(base)
+            while (stack.isNotEmpty()) {
+                val dir = stack.removeLast()
+                val children = runCatching { dir.listFiles() }.getOrNull() ?: continue
+                for (child in children) {
+                    currentCoroutineContext().ensureActive()
+                    if (child.name.startsWith(".l2s.")) continue
+                    if (!child.staysUnder(baseCanonical)) continue
+                    if (child.isDirectory) {
+                        // 搜索根在垃圾目录内时不跳, 否则指定 path=.git 会什么都搜不到。
+                        if (child != base && child.name in GREP_SKIP_DIR_NAMES) continue
+                        stack.addLast(child)
+                        continue
+                    }
+                    if (nameMatcher != null && !nameMatcher.matches(child.name)) continue
+                    if (++visited > QUERY_SCAN_FILE_CAP) {
+                        scanCapped = true
+                        break
+                    }
+                    files += child
+                }
+                if (scanCapped) break
+            }
+        }
+
+        val hits = mutableListOf<RootfsGrepHit>()
+        var omitted = 0
+        var omittedIsLowerBound = false
+        outer@ for (file in files) {
+            currentCoroutineContext().ensureActive()
+            if (file.length() > MAX_READ_FILE_BYTES) continue
+            if (file.looksBinary()) continue
+            val lines = runCatching { file.readLines(Charsets.UTF_8) }.getOrNull() ?: continue
+            val hitPath = rootfsChildPath(rootPath, file, base)
+            for ((index, line) in lines.withIndex()) {
+                currentCoroutineContext().ensureActive()
+                if (!matcher.containsMatchIn(line)) continue
+                if (hits.size >= maxHits) {
+                    omitted++
+                    if (omitted >= GREP_OMITTED_COUNT_CAP) {
+                        omittedIsLowerBound = true
+                        break@outer
+                    }
                     continue
                 }
-                if (nameMatcher != null && !nameMatcher.matches(child.name)) continue
-                if (++visited > QUERY_SCAN_FILE_CAP) {
-                    scanCapped = true
-                    break
-                }
-                files += child
+                hits += RootfsGrepHit(
+                    path = hitPath,
+                    line = index + 1,
+                    text = line,
+                    before = if (contextLines > 0) {
+                        lines.subList((index - contextLines).coerceAtLeast(0), index)
+                    } else {
+                        emptyList()
+                    },
+                    after = if (contextLines > 0) {
+                        lines.subList(index + 1, (index + 1 + contextLines).coerceAtMost(lines.size))
+                    } else {
+                        emptyList()
+                    },
+                )
             }
-            if (scanCapped) break
         }
+        RootfsGrepResult(
+            hits = hits,
+            omitted = omitted,
+            omittedIsLowerBound = omittedIsLowerBound,
+            scanCapped = scanCapped,
+        )
     }
-
-    val hits = mutableListOf<RootfsGrepHit>()
-    var omitted = 0
-    var omittedIsLowerBound = false
-    outer@ for (file in files) {
-        if (file.length() > MAX_READ_FILE_BYTES) continue
-        if (file.looksBinary()) continue
-        val lines = runCatching { file.readLines(Charsets.UTF_8) }.getOrNull() ?: continue
-        val hitPath = rootfsChildPath(rootPath, file, base)
-        for ((index, line) in lines.withIndex()) {
-            if (!matcher.containsMatchIn(line)) continue
-            if (hits.size >= maxHits) {
-                omitted++
-                if (omitted >= GREP_OMITTED_COUNT_CAP) {
-                    omittedIsLowerBound = true
-                    break@outer
-                }
-                continue
-            }
-            hits += RootfsGrepHit(
-                path = hitPath,
-                line = index + 1,
-                text = line,
-                before = if (contextLines > 0) {
-                    lines.subList((index - contextLines).coerceAtLeast(0), index)
-                } else {
-                    emptyList()
-                },
-                after = if (contextLines > 0) {
-                    lines.subList(index + 1, (index + 1 + contextLines).coerceAtMost(lines.size))
-                } else {
-                    emptyList()
-                },
-            )
-        }
-    }
-    RootfsGrepResult(
-        hits = hits,
-        omitted = omitted,
-        omittedIsLowerBound = omittedIsLowerBound,
-        scanCapped = scanCapped,
-    )
-}
-
-/** 按行切分, 并且让「末尾换行」不算多一行: "a\nb\n" 与 "a\nb" 都是 2 行. */
-private fun String.toWorkspaceLines(): List<String> {
-    if (isEmpty()) return emptyList()
-    val lines = split('\n')
-    return if (endsWith('\n')) lines.dropLast(1) else lines
 }
 
 private fun kotlinx.serialization.json.JsonObject.int(name: String): Int? =

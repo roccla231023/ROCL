@@ -33,7 +33,10 @@ object GroupChatEngine {
             val atIndex = lowerText.indexOf('@', startIndex = cursor)
             if (atIndex < 0) break
             val after = lowerText.substring(atIndex + 1)
-            val matchedKey = sortedKeys.firstOrNull { after.startsWith(it) }
+            val matchedKey = sortedKeys.firstOrNull { key ->
+                after.startsWith(key) && (after.length == key.length ||
+                    !after[key.length].isLetterOrDigit() && after[key.length] != '_')
+            }
             if (matchedKey != null) {
                 keyToSeatIds[matchedKey]?.forEach { seatId ->
                     if (seatId !in result) result.add(seatId)
@@ -175,15 +178,19 @@ object GroupChatEngine {
     internal fun extractToolOutputSummary(message: UIMessage, maxChars: Int = 2000): String {
         val tools = message.parts.filterIsInstance<UIMessagePart.Tool>().filter { it.isExecuted }
         if (tools.isEmpty()) return ""
-        return tools.joinToString("\n") { tool ->
-            val body = tool.output
-                .filterIsInstance<UIMessagePart.Text>()
-                .joinToString("\n") { it.text }
-                .trim()
-            val clipped = if (body.length > maxChars) body.take(maxChars) + "…" else body
-            val name = tool.toolName.ifBlank { "tool" }
-            "[$name]\n$clipped"
+        val mark = "…[truncated]"
+        val summary = buildString {
+            for (tool in tools) {
+                if (length > maxChars) break
+                if (isNotEmpty()) appendLine()
+                appendLine("[${tool.toolName.ifBlank { "tool" }}]")
+                val body = tool.output.filterIsInstance<UIMessagePart.Text>().joinToString("\n") { it.text }.trim()
+                append(body.take((maxChars - length + 1).coerceAtLeast(0)))
+            }
         }.trim()
+        return if (summary.length > maxChars) {
+            summary.take((maxChars - mark.length).coerceAtLeast(0)) + mark.take(maxChars)
+        } else summary
     }
 
     private fun isSelfMessage(
@@ -220,7 +227,7 @@ object GroupChatEngine {
         val text = buildString {
             appendLine("[Message from $label (assistant)]")
             if (content.isNotBlank()) {
-                append(content.take(4000))
+                append(if (content.length > 4000) content.take(3987) + "…[truncated]" else content)
             }
             if (toolSummary.isNotBlank()) {
                 if (content.isNotBlank()) appendLine()

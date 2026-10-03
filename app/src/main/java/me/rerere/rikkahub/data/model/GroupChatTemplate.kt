@@ -25,6 +25,8 @@ data class GroupChatSeat(
 
 @Serializable
 data class GroupChatSeatOverrides(
+    val name: String? = null,
+    val searchServiceId: Uuid? = null,
     val chatModelId: Uuid? = null,
     val systemPrompt: String? = null,
     val reasoningLevel: ReasoningLevel? = null,
@@ -75,13 +77,14 @@ fun GroupChatTemplate.buildSeatDisplayNames(
     if (seats.isEmpty()) return emptyMap()
     val safeDefaultName = defaultName.trim().ifBlank { "Assistant" }
     return seats.associate { seat ->
+        val overrideName = seat.overrides.name?.trim()?.takeIf { it.isNotBlank() }
         val baseName = assistantsById[seat.assistantId]
             ?.name
             ?.trim()
             ?.takeIf { it.isNotBlank() }
             ?: safeDefaultName
         val number = seat.instanceNumber.coerceAtLeast(1)
-        val displayName = if (number == 1) baseName else "$baseName#$number"
+        val displayName = overrideName ?: if (number == 1) baseName else "$baseName#$number"
         seat.id to displayName
     }
 }
@@ -112,6 +115,8 @@ fun Assistant.applyGroupSeat(
 ): Assistant {
     val overrides = seat.overrides
     return copy(
+        name = overrides.name?.trim()?.takeIf { it.isNotBlank() } ?: name,
+        searchServiceId = overrides.searchServiceId,
         chatModelId = overrides.chatModelId ?: chatModelId,
         systemPrompt = overrides.systemPrompt ?: systemPrompt,
         reasoningLevel = overrides.reasoningLevel ?: reasoningLevel,

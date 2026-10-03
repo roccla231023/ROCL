@@ -320,6 +320,7 @@ fun GroupChatTemplateDetailPage(id: String) {
             mcpServers = settings.mcpServers,
             lorebooks = settings.lorebooks,
             modeInjections = settings.modeInjections,
+            searchServices = settings.searchServices,
             displayName = seatNames[editingSeat.id].orEmpty().ifBlank { defaultAssistantName },
             onUpdate = vm::update,
             onDismiss = { editingSeatId = null },
@@ -336,6 +337,7 @@ private fun SeatEditorSheet(
     mcpServers: List<me.rerere.rikkahub.data.ai.mcp.McpServerConfig>,
     lorebooks: List<Lorebook>,
     modeInjections: List<PromptInjection.ModeInjection>,
+    searchServices: List<me.rerere.search.SearchServiceOptions>,
     displayName: String,
     onUpdate: (GroupChatTemplate) -> Unit,
     onDismiss: () -> Unit,
@@ -346,6 +348,7 @@ private fun SeatEditorSheet(
     LaunchedEffect(Unit) {
         skills = skillManager.listSkills()
     }
+    var showNameEditor by remember { mutableStateOf(false) }
     var showPromptEditor by remember { mutableStateOf(false) }
     var picker by remember { mutableStateOf<SeatPicker?>(null) }
     fun patch(transform: (GroupChatSeat) -> GroupChatSeat) {
@@ -391,6 +394,12 @@ private fun SeatEditorSheet(
             )
             CardGroup {
                 item(
+                    onClick = { showNameEditor = true },
+                    headlineContent = { Text(stringResource(R.string.group_chat_page_override_name)) },
+                    supportingContent = { Text(displayName) },
+                    trailingContent = { Icon(HugeIcons.ArrowRight01, contentDescription = null) },
+                )
+                item(
                     onClick = { showPromptEditor = true },
                     headlineContent = { Text(stringResource(R.string.group_chat_page_override_prompt)) },
                     supportingContent = {
@@ -434,6 +443,25 @@ private fun SeatEditorSheet(
                                 } else {
                                     level.levelLabel()
                                 }
+                            },
+                        )
+                    },
+                )
+                item(
+                    headlineContent = { Text(stringResource(R.string.group_chat_page_search_service)) },
+                    supportingContent = { Text(stringResource(R.string.group_chat_page_search_service_desc)) },
+                    trailingContent = {
+                        val choices = listOf<me.rerere.search.SearchServiceOptions?>(null) + searchServices
+                        Select(
+                            options = choices,
+                            selectedOption = searchServices.find { it.id == seat.overrides.searchServiceId },
+                            onOptionSelected = { service ->
+                                patch { it.copy(overrides = it.overrides.copy(searchServiceId = service?.id)) }
+                            },
+                            modifier = Modifier.fillMaxWidth(0.5f),
+                            optionToString = { service ->
+                                service?.displayName
+                                    ?: stringResource(R.string.group_chat_page_follow_global)
                             },
                         )
                     },
@@ -529,6 +557,37 @@ private fun SeatEditorSheet(
                 )
             }
         }
+    }
+    if (showNameEditor) {
+        val baseName = selected?.name.orEmpty()
+        var draft by remember(seat.id, seat.overrides.name, baseName) {
+            mutableStateOf(seat.overrides.name ?: baseName)
+        }
+        AlertDialog(
+            onDismissRequest = { showNameEditor = false },
+            title = { Text(stringResource(R.string.group_chat_page_override_name)) },
+            text = {
+                OutlinedTextField(
+                    value = draft,
+                    onValueChange = { draft = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    supportingText = { Text(stringResource(R.string.group_chat_page_override_name_desc)) },
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val normalized = draft.trim().takeIf { it.isNotBlank() && it != baseName.trim() }
+                    patch { it.copy(overrides = it.overrides.copy(name = normalized)) }
+                    showNameEditor = false
+                }) { Text(stringResource(R.string.assistant_page_save)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { draft = baseName }) {
+                    Text(stringResource(R.string.group_chat_page_override_prompt_restore))
+                }
+            },
+        )
     }
     if (showPromptEditor) {
         val basePrompt = selected?.systemPrompt.orEmpty()

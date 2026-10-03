@@ -85,7 +85,7 @@ class ProotShellRunner(
             }
         }
 
-        WorkspaceManager.KERNEL_FS_MOUNTS.forEach { path ->
+        listOf("/dev/null", "/dev/zero", "/dev/random", "/dev/urandom").forEach { path ->
             if (File(path).exists()) {
                 command += "-b"
                 command += path

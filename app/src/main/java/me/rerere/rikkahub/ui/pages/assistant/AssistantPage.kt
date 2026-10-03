@@ -373,8 +373,6 @@ fun AssistantPage(vm: AssistantVM = koinViewModel()) {
             }
         }
     }
-
-    }
 }
 
 @Composable

@@ -9,6 +9,7 @@ import kotlinx.serialization.Serializable
 import me.rerere.ai.ui.UIMessagePart
 import me.rerere.rikkahub.data.datastore.Settings
 import me.rerere.rikkahub.data.datastore.SettingsStore
+import me.rerere.rikkahub.data.db.SQLiteConfiguration
 import me.rerere.rikkahub.data.db.dao.ConversationDAO
 import me.rerere.rikkahub.data.db.dao.GenMediaDAO
 import me.rerere.rikkahub.data.db.dao.MessageNodeDAO
@@ -163,7 +164,6 @@ class StorageManagerRepository(
             file.parentFile?.mkdirs()
             val tmp = File.createTempFile(file.name, ".tmp", file.parentFile)
             tmp.writeText(JsonInstant.encodeToString(StorageOverview.serializer(), overview))
-            if (file.exists()) file.delete()
             tmp.renameTo(file)
         }
     }
@@ -533,13 +533,6 @@ class StorageManagerRepository(
                 }
         }
 
-        val skillsDir = File(context.filesDir, FileFolders.SKILLS)
-        if (skillsDir.exists()) {
-            skillsDir.listFiles()
-                ?.filter { it.isFile }
-                ?.forEach { file -> addOrphan(file) }
-        }
-
         OrphanScanResult(
             totalBytes = totalBytes,
             totalCount = totalCount,
@@ -577,13 +570,6 @@ class StorageManagerRepository(
                 }
         }
 
-        val skillsDir = File(context.filesDir, FileFolders.SKILLS)
-        if (skillsDir.exists()) {
-            skillsDir.listFiles()
-                ?.filter { it.isFile }
-                ?.forEach { file -> deleteFile(file) }
-        }
-
         val result = DeleteResult(
             deletedCount = deletedCount,
             failedCount = failedCount,
@@ -606,7 +592,6 @@ class StorageManagerRepository(
         File(context.filesDir, FileFolders.UPLOAD),
         File(context.filesDir, "images"),
         File(context.filesDir, "avatars"),
-        File(context.filesDir, "custom_icons"),
     )
 
     private data class Usage(val count: Int, val bytes: Long)
@@ -629,9 +614,9 @@ class StorageManagerRepository(
     )
 
     private fun countDatabaseUsage(): Usage {
-        val dbFile = context.getDatabasePath("rikka_hub")
-        val walFile = File(dbFile.parentFile, "rikka_hub-wal")
-        val shmFile = File(dbFile.parentFile, "rikka_hub-shm")
+        val dbFile = context.getDatabasePath(SQLiteConfiguration.DATABASE_NAME)
+        val walFile = File(dbFile.parentFile, "${SQLiteConfiguration.DATABASE_NAME}-wal")
+        val shmFile = File(dbFile.parentFile, "${SQLiteConfiguration.DATABASE_NAME}-shm")
         val files = listOf(dbFile, walFile, shmFile).filter { it.exists() && it.isFile }
         return Usage(
             count = files.size,
@@ -701,24 +686,16 @@ class StorageManagerRepository(
 
         var filesCount = 0
         var filesBytes = 0L
-        var historyCount = 0
-        var historyBytes = 0L
-
         skillsDir.listFiles().orEmpty().forEach { entry ->
             if (!entry.exists()) return@forEach
             val usage = countDirUsage(entry)
-            if (entry.isDirectory) {
-                filesCount += usage.count
-                filesBytes += usage.bytes
-            } else {
-                historyCount += usage.count
-                historyBytes += usage.bytes
-            }
+            filesCount += usage.count
+            filesBytes += usage.bytes
         }
 
         return SkillSplitUsage(
             files = Usage(filesCount, filesBytes),
-            history = Usage(historyCount, historyBytes),
+            history = Usage(0, 0),
         )
     }
 
@@ -930,11 +907,22 @@ class StorageManagerRepository(
 
     private fun File.lengthSafe(): Long = runCatching { length() }.getOrNull() ?: 0L
 
-    private fun deleteFiles(files: List<File>): DeleteResult {
+    private suspend fun deleteFiles(files: List<File>): DeleteResult {
+        val referenceCounts = mutableMapOf<String, Int>()
+        conversationDAO.getAllIds().forEach { conversationId ->
+            val paths = messageNodeDAO.getNodesOfConversation(conversationId).flatMap { node ->
+                StorageScanUtils.extractReferencedFilePathsFromText(node.messages, context.filesDir)
+            }.toSet()
+            paths.forEach { path -> referenceCounts[path] = (referenceCounts[path] ?: 0) + 1 }
+        }
         var deletedCount = 0
         var failedCount = 0
         var deletedBytes = 0L
         files.forEach { file ->
+            if ((referenceCounts[StorageScanUtils.normalizePath(file)] ?: 0) > 1) {
+                failedCount++
+                return@forEach
+            }
             val bytes = file.lengthSafe()
             val ok = runCatching { file.delete() }.getOrNull() == true
             if (ok) {

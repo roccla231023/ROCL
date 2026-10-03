@@ -1,5 +1,31 @@
 # Changelog
 
+## 1.29
+
+更新内容:
+- 同步上游 2.5.6 更新及其后续修复（截至 a6dbb8c）
+- 群聊成员支持覆写名字：仅在本群该座位生效，成员列表、消息标题、@ 点名及模型上下文统一使用，不修改原助手
+- 群聊成员可单独选择搜索服务，未覆写时跟随全局，不改变全局选择
+- 子代理增加独立多步骤调查的调度引导，报告上限提高至 8000 字符，空工具集原因更明确
+- 读文件改为流式按行取窗口并保留 8MB 上限；文件查询增加超时与取消检查，目录 glob 同时过滤文件和目录
+- 修复群聊 @ 名字前缀误匹配，跨成员内容截断增加标记，工具结果限制总预算
+- 清理附件前复查共享引用，保护仍被其他会话引用的附件；孤儿清理不再无条件清除技能顶层文件及自定义图标目录
+- Web 服务默认仅本机访问，局域网模式强制鉴权和密码；登录增加频率限制、随机签名密钥及更短有效期，附件鉴权不再把 token 放入 URL
+- 工作区命令不再挂载宿主 /proc 和 /sys，仅透传必要设备；增加权限风险说明，收紧工作区名称与旧检索符号链接检查（PRoot 仍不是安全隔离边界）
+- 修复 Debug 图标资源引用，恢复本地单测资源链接
+
+Updates:
+- Synced upstream 2.5.6 and subsequent fixes through a6dbb8c
+- Group seats can override their names across member lists, message headers, mentions, and model context without changing the original assistant
+- Group seats can select their own search service or follow the global selection without modifying it
+- Added sub-agent delegation guidance, increased report limit to 8000 characters, and clarified unavailable-tool reasons
+- Streamed file reading with the existing 8MB limit; added query timeouts and cancellation checks; directory glob now filters files and directories
+- Fixed mention prefix matching and added honest truncation markers and total tool-output budgets for group context
+- Protected attachments shared across conversations and stopped unconditional orphan deletion of skill root files and custom icons
+- Web server defaults to localhost; LAN access requires authentication and a password, with login throttling, randomized signing keys, shorter token lifetime, and cookie-based attachment authentication instead of URL tokens
+- Removed host /proc and /sys mounts from workspace commands, retained essential devices, clarified app-level permissions, and tightened workspace-name and legacy symlink checks; PRoot is still not a security boundary
+- Fixed Debug icon references so local unit-test resources link correctly
+
 ## 1.28
 
 更新内容:

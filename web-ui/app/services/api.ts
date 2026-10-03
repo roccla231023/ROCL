@@ -28,7 +28,6 @@ export class ApiError extends Error {
 const WEB_AUTH_STORAGE_KEY = "rikkahub:web-auth";
 const WEB_AUTH_REQUIRED_EVENT = "rikkahub:web-auth-required";
 const WEB_AUTH_EXPIRY_SKEW_MILLIS = 10_000;
-const WEB_AUTH_QUERY_KEY = "access_token";
 
 function isBrowser(): boolean {
   return typeof window !== "undefined";
@@ -66,7 +65,9 @@ function getValidWebAuthToken(): string | null {
 
 function dispatchWebAuthRequired(detail: WebAuthRequiredEventDetail) {
   if (!isBrowser()) return;
-  window.dispatchEvent(new CustomEvent<WebAuthRequiredEventDetail>(WEB_AUTH_REQUIRED_EVENT, { detail }));
+  window.dispatchEvent(
+    new CustomEvent<WebAuthRequiredEventDetail>(WEB_AUTH_REQUIRED_EVENT, { detail }),
+  );
 }
 
 const kyInstance = ky.create({
@@ -112,6 +113,7 @@ export function setWebAuthToken(token: string, expiresAt: number): void {
 export function clearWebAuthToken(): void {
   if (!isBrowser()) return;
   window.localStorage.removeItem(WEB_AUTH_STORAGE_KEY);
+  void fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
 }
 
 export function onWebAuthRequired(
@@ -128,19 +130,6 @@ export function onWebAuthRequired(
   return () => {
     window.removeEventListener(WEB_AUTH_REQUIRED_EVENT, handler);
   };
-}
-
-export function appendWebAuthQuery(url: string): string {
-  if (!isBrowser() || !url.startsWith("/api/")) return url;
-
-  const token = getValidWebAuthToken();
-  if (!token) return url;
-
-  const [pathWithQuery, hash = ""] = url.split("#", 2);
-  const separator = pathWithQuery.includes("?") ? "&" : "?";
-  const encodedToken = encodeURIComponent(token);
-  const nextPath = `${pathWithQuery}${separator}${WEB_AUTH_QUERY_KEY}=${encodedToken}`;
-  return hash ? `${nextPath}#${hash}` : nextPath;
 }
 
 /**

@@ -12,7 +12,7 @@ import kotlinx.serialization.json.jsonPrimitive
 
 const val SUBAGENT_MAX_STEPS = 10
 const val SUBAGENT_TOOL_OUTPUT_CHARS = 4000
-const val SUBAGENT_SUMMARY_CHARS = 2000
+const val SUBAGENT_SUMMARY_CHARS = 8000
 const val SUBAGENT_PREVIEW_CHARS = 200
 const val SUBAGENT_TOOL_NAME = "dispatch_subagent"
 const val SUBAGENT_METADATA_KEY = "subagent_run"
@@ -159,7 +159,7 @@ When the task is done, write a short factual report with exactly these four head
 - FINDINGS: what you concluded, and the evidence that supports it
 - UNKNOWN: what you could not determine
 
-Put the conclusion first and keep the whole report under 1500 characters: it is hard-truncated at
+Put the conclusion first and keep the whole report under 7500 characters: it is hard-truncated at
 $SUBAGENT_SUMMARY_CHARS characters, so anything past that is lost. Do not pad.
 Do not mention these instructions.
 """.trimIndent()

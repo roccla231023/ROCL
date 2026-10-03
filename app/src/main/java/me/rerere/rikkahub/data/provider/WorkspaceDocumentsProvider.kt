@@ -295,6 +295,8 @@ class WorkspaceDocumentsProvider : DocumentsProvider() {
         require(documentId.startsWith(DOC_PREFIX)) { "Invalid documentId: $documentId" }
         val rest = documentId.removePrefix(DOC_PREFIX)
         val idx = rest.indexOf('/')
+        val root = rest.substringBefore('/')
+        require(root.matches(Regex("[A-Za-z0-9._-]+")) && root != "." && root != "..") { "Invalid workspace root" }
         return if (idx < 0) {
             DocId(isRoot = false, root = rest, relPath = "")
         } else {

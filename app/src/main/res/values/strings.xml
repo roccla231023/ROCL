@@ -1660,4 +1660,10 @@
   <string name="tool_ui_grep_count">%1$d hits</string>
   <string name="tool_ui_grep_scan_capped">Search did not finish — narrow the path</string>
   <string name="tool_ui_grep_truncated">More matches remain — narrow the search</string>
+  <string name="group_chat_page_override_name">Override name</string>
+  <string name="group_chat_page_override_name_desc">Only changes this seat in this group. Leave empty to follow the assistant.</string>
+  <string name="group_chat_page_search_service">Search service</string>
+  <string name="group_chat_page_search_service_desc">Only changes this seat; does not change the global selection.</string>
+  <string name="group_chat_page_follow_global">Follow global</string>
+  <string name="workspace_detail_shell_security_warning">Commands run with app permissions. PRoot is not a security boundary; disabling approval also gives the sub-agent command access. Only enable for trusted tasks.</string>
 </resources>

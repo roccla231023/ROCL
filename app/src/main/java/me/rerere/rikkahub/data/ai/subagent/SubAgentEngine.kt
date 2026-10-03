@@ -330,7 +330,17 @@ internal fun clip(
     val rest = parts.filter { it !is UIMessagePart.Text }
     val joined = texts.joinToString("\n") { it.text }
     if (joined.length <= maxChars) return parts
-    val clippedJoined = texts.joinToString("\n") { it.text.clipToolText(json, maxChars) }
+    val budgetPerPart = ((maxChars - (texts.size - 1).coerceAtLeast(0)) / texts.size).coerceAtLeast(1)
+    val clippedJoined = if (texts.size == 1) {
+        texts.single().text.clipToolText(json, maxChars)
+    } else {
+        texts.joinToString("\n") { part ->
+            val mark = "…[truncated]"
+            if (part.text.length > budgetPerPart) {
+                part.text.take((budgetPerPart - mark.length).coerceAtLeast(0)) + mark.take(budgetPerPart)
+            } else part.text
+        }.take(maxChars)
+    }
     return listOf(UIMessagePart.Text(clippedJoined)) + rest
 }
 

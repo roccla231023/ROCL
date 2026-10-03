@@ -253,7 +253,7 @@ fun SettingWebPage() {
                         supportingContent = { Text(stringResource(R.string.setting_page_web_server_jwt_enable_desc)) },
                         trailingContent = {
                             Switch(
-                                checked = settings.webServerJwtEnabled,
+                                checked = settings.webServerJwtEnabled || !settings.webServerLocalhostOnly,
                                 onCheckedChange = { checked ->
                                     scope.launch {
                                         settingsStore.update {
@@ -261,7 +261,7 @@ fun SettingWebPage() {
                                         }
                                     }
                                 },
-                                enabled = settings.webServerJwtEnabled || accessPasswordText.isNotBlank(),
+                                enabled = !serverState.isRunning && settings.webServerLocalhostOnly && (settings.webServerJwtEnabled || accessPasswordText.isNotBlank()),
                             )
                         },
                     )

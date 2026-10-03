@@ -9,7 +9,7 @@ import java.nio.charset.StandardCharsets
 class WorkspaceManager(
     private val baseDir: File,
     private val config: WorkspaceConfig = WorkspaceConfig(),
-    private val shellRunner: WorkspaceShellRunner = HostShellRunner(),
+    private val shellRunner: WorkspaceShellRunner,
     private val bindMounts: List<WorkspaceBindMount> = emptyList(),
 ) {
     private val fileSystem = WorkspaceFileSystem(config)
@@ -228,7 +228,7 @@ class WorkspaceManager(
     }
 
     private fun requireValidRoot(root: String) {
-        require(root.matches(ROOT_NAME_REGEX)) {
+        require(root.matches(ROOT_NAME_REGEX) && root != "." && root != "..") {
             "Invalid workspace root name: $root"
         }
     }

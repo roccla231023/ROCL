@@ -490,8 +490,8 @@ private fun WorkspaceToolApprovalCard(
                 headlineContent = { Text(label) },
                 supportingContent = {
                     Text(
-                        text = toolName,
-                        maxLines = 1,
+                        text = if (toolName == "workspace_shell") stringResource(R.string.workspace_detail_shell_security_warning) else toolName,
+                        maxLines = if (toolName == "workspace_shell") 4 else 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                 },

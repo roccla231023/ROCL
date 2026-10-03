@@ -1660,4 +1660,10 @@ mDNS 地址：使用 .local 主机名，同一网络中的其他设备可通过�
   <string name="tool_ui_grep_count">%1$d 条</string>
   <string name="tool_ui_grep_scan_capped">未搜完，缩小路径</string>
   <string name="tool_ui_grep_truncated">还有更多，缩小范围</string>
+  <string name="group_chat_page_override_name">覆写名字</string>
+  <string name="group_chat_page_override_name_desc">仅对本群该座位生效；留空则跟随原助手。</string>
+  <string name="group_chat_page_search_service">搜索服务</string>
+  <string name="group_chat_page_search_service_desc">仅对本群该座位生效，不改变全局选择。</string>
+  <string name="group_chat_page_follow_global">跟随全局</string>
+  <string name="workspace_detail_shell_security_warning">命令以应用权限运行，PRoot 不是安全隔离边界。关闭审批也会允许子代理执行命令，仅用于可信任务。</string>
 </resources>

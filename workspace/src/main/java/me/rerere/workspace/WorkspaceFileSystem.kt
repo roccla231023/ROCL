@@ -110,6 +110,7 @@ class WorkspaceFileSystem(
         return walk(start) { paths ->
             paths
                 .filter { Files.isRegularFile(it) || Files.isDirectory(it) }
+                .filter { it.toFile().canonicalFile.toPath().startsWith(root.canonicalFile.toPath()) }
                 .filter { !it.toFile().name.startsWith(".l2s.") }
                 .filter { matcher.matches(root.toPath().relativize(it).normalizeForMatch()) }
                 .take(config.maxListEntries)
@@ -139,6 +140,7 @@ class WorkspaceFileSystem(
         walk(start) { paths ->
             paths
                 .filter { Files.isRegularFile(it) }
+                .filter { it.toFile().canonicalFile.toPath().startsWith(root.canonicalFile.toPath()) }
                 .filter { !it.toFile().name.startsWith(".l2s.") }
                 .forEach { path ->
                     if (results.size >= config.maxSearchResults) return@forEach

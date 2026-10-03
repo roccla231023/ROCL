@@ -29,7 +29,7 @@ data class WebServerState(
     val isLoading: Boolean = false,
     val port: Int = 8080,
     val serviceName: String = DEFAULT_SERVICE_NAME,
-    val localhostOnly: Boolean = false,
+    val localhostOnly: Boolean = true,
     val hostname: String? = null,
     val address: String? = null,
     val error: String? = null
@@ -53,7 +53,7 @@ class WebServerManager(
     fun start(
         port: Int = 8080,
         serviceName: String = DEFAULT_SERVICE_NAME,
-        localhostOnly: Boolean = false
+        localhostOnly: Boolean = true
     ) {
         if (server != null) {
             Log.w(TAG, "Server already running")
@@ -70,6 +70,10 @@ class WebServerManager(
             )
             try {
                 _state.value = _state.value.copy(isLoading = true)
+                val settings = settingsStore.settingsFlow.value
+                require(localhostOnly || settings.webServerJwtEnabled && settings.webServerAccessPassword.isNotBlank()) {
+                    "LAN access requires JWT authentication and an access password; use localhost-only mode otherwise"
+                }
                 Log.i(TAG, "Starting web server on $host:$port")
                 if (!isPortAvailable(port)) {
                     Log.w(TAG, "Port $port is already in use")

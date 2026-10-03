@@ -43,7 +43,7 @@ class ExampleUnitTest {
     @Test
     fun rootfsRequiresShellEntryPoint() {
         val baseDir = Files.createTempDirectory("workspace-manager-test").toFile()
-        val manager = WorkspaceManager(baseDir)
+        val manager = WorkspaceManager(baseDir, shellRunner = HostShellRunner())
         val root = "test-workspace"
         manager.ensureWorkspace(root)
 
@@ -60,7 +60,7 @@ class ExampleUnitTest {
     @Test
     fun rootfsInstallerDownloadsAndExtractsTarGz() {
         val baseDir = Files.createTempDirectory("workspace-manager-test").toFile()
-        val manager = WorkspaceManager(baseDir)
+        val manager = WorkspaceManager(baseDir, shellRunner = HostShellRunner())
         val installer = RootfsInstaller(manager)
         val archive = tarGz(
             TarTestEntry("bin/", type = '5'),
@@ -89,7 +89,7 @@ class ExampleUnitTest {
     @Test
     fun commandRunsInsideWorkspaceFilesDirectory() {
         val baseDir = Files.createTempDirectory("workspace-command-test").toFile()
-        val manager = WorkspaceManager(baseDir)
+        val manager = WorkspaceManager(baseDir, shellRunner = HostShellRunner())
         val root = "test-workspace"
         manager.ensureWorkspace(root)
 
@@ -103,7 +103,7 @@ class ExampleUnitTest {
     @Test
     fun commandReceivesStdin() {
         val baseDir = Files.createTempDirectory("workspace-stdin-test").toFile()
-        val manager = WorkspaceManager(baseDir)
+        val manager = WorkspaceManager(baseDir, shellRunner = HostShellRunner())
         val root = "test-workspace"
         manager.ensureWorkspace(root)
 
@@ -120,7 +120,7 @@ class ExampleUnitTest {
     @Test
     fun commandWithoutStdinGetsImmediateEof() {
         val baseDir = Files.createTempDirectory("workspace-stdin-eof-test").toFile()
-        val manager = WorkspaceManager(baseDir)
+        val manager = WorkspaceManager(baseDir, shellRunner = HostShellRunner())
         val root = "test-workspace"
         manager.ensureWorkspace(root)
 
@@ -155,7 +155,7 @@ class ExampleUnitTest {
     @Test
     fun commandOutputIsTruncatedAtLimit() {
         val baseDir = Files.createTempDirectory("workspace-truncate-test").toFile()
-        val manager = WorkspaceManager(baseDir)
+        val manager = WorkspaceManager(baseDir, shellRunner = HostShellRunner())
         val root = "test-workspace"
         manager.ensureWorkspace(root)
 

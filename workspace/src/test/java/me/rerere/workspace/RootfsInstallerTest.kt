@@ -49,7 +49,7 @@ class RootfsInstallerTest {
         assertEquals("content", File(target, "dir/file.txt").readText())
     }
 
-    private fun createInstaller() = RootfsInstaller(WorkspaceManager(tmp.newFolder()))
+    private fun createInstaller() = RootfsInstaller(WorkspaceManager(tmp.newFolder(), shellRunner = HostShellRunner()))
 
     private fun OutputStream.writeTarEntry(name: String, type: Char, data: ByteArray) {
         val header = ByteArray(TAR_BLOCK)

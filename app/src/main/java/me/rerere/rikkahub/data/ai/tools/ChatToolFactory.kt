@@ -35,20 +35,20 @@ internal fun shouldUseExternalWebSearch(assistant: Assistant, model: Model): Boo
  * chatModel 而不是子代理模型 —— 内置搜索是挂在模型上的 (BuiltInTools.Search), 模型自带内置搜索时
  * 外部 search_web 根本不会挂上。
  */
-private fun describeEmptySubAgentToolset(assistant: Assistant, chatModel: Model): String {
+private fun describeEmptySubAgentToolset(assistant: Assistant, chatModel: Model, assembled: List<Tool>): String {
     val reasons = buildList {
-        add(
-            if (assistant.workspaceId == null) {
-                "没有绑定工作区，因此没有文件类工具"
-            } else {
-                "工作区不可用（未找到，或 Rootfs 不是 READY），因此没有文件类工具"
-            }
-        )
-        if (!assistant.enableWebSearch) {
-            add("该助手没有开启联网搜索")
-        } else if (BuiltInTools.Search in chatModel.tools) {
-            add("聊天模型自带内置搜索，因此不会挂上外部搜索工具")
-        }
+        val workspaceTools = assembled.filter { it.name.startsWith("workspace_") }
+        add(when {
+            workspaceTools.isNotEmpty() -> "工作区工具需要审批，子代理无法请求审批"
+            assistant.workspaceId == null -> "该助手或群聊座位没有绑定工作区"
+            else -> "工作区未找到或 Rootfs 尚未就绪"
+        })
+        add(when {
+            !assistant.enableWebSearch -> "该助手或群聊座位未开启联网搜索"
+            BuiltInTools.Search in chatModel.tools -> "聊天模型使用内置搜索，子代理不能借用该内置工具"
+            assembled.any { it.name == "search_web" } -> "搜索工具需要审批，子代理无法请求审批"
+            else -> "所选搜索服务不可用"
+        })
     }
     return reasons.joinToString("；")
 }
@@ -105,7 +105,7 @@ class ChatToolFactory(
                 )
             }
             if (shouldUseExternalWebSearch(assistant, model)) {
-                addAll(createSearchTools(settings))
+                addAll(createSearchTools(settings, assistant.searchServiceId))
             }
             addAll(localTools.getTools(assistant.localTools))
             if (assistant.enableSessionMemory && onSessionMemoriesChanged != null) {
@@ -180,7 +180,7 @@ class ChatToolFactory(
             // 筛完之后一个工具都没有时, 仍然挂上 dispatch_subagent, 让它返回一条说明原因的失败摘要。
             // 宁可让主模型看到一个可读的失败, 也不要静默什么都不发生 (设计稿 §2.3 / §10.7)。
             unavailableReason = if (subTools.isEmpty()) {
-                describeEmptySubAgentToolset(assistant = assistant, chatModel = model)
+                describeEmptySubAgentToolset(assistant = assistant, chatModel = model, assembled = assembled)
             } else {
                 null
             },

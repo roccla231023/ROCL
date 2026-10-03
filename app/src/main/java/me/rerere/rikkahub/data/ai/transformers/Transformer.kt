@@ -120,3 +120,15 @@ suspend fun List<UIMessage>.onGenerationFinish(
         }
     }
 }
+
+object SubAgentReminderTransformer : InputMessageTransformer {
+    override suspend fun transform(ctx: TransformerContext, messages: List<UIMessage>): List<UIMessage> {
+        val modelId = ctx.settings.subAgentModelId ?: return messages
+        if (ctx.settings.providers.none { it.enabled && it.models.any { model -> model.id == modelId } }) return messages
+        val prompt = "Use dispatch_subagent for independent multi-step investigations, codebase exploration, or iterative web research when delegating helps the main task. Give it a self-contained question and verify its evidence. Use tools directly for simple reads or edits."
+        val index = messages.indexOfFirst { it.role == me.rerere.ai.core.MessageRole.SYSTEM }
+        return if (index >= 0) messages.toMutableList().apply {
+            this[index] = this[index].copy(parts = this[index].parts + me.rerere.ai.ui.UIMessagePart.Text("\n\n$prompt"), isSynthetic = true)
+        } else listOf(UIMessage.system(prompt).copy(isSynthetic = true)) + messages
+    }
+}
