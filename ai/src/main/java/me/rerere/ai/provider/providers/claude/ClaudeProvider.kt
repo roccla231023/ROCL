@@ -583,8 +583,10 @@ class ClaudeProvider(private val client: OkHttpClient, context: Context? = null)
         }.mergeCustomBody(params.customBody)
     }
 
-    private fun messagesUrl(providerSetting: ProviderSetting.Claude): String {
-        val url = "${providerSetting.baseUrl.trimEnd('/')}/messages"
+    internal fun messagesUrl(providerSetting: ProviderSetting.Claude): String {
+        val cleanBase = providerSetting.baseUrl.trimEnd('/')
+        val baseUrlWithV1 = if (cleanBase.endsWith("/v1")) cleanBase else "$cleanBase/v1"
+        val url = "$baseUrlWithV1/messages"
         return if (providerSetting.claudeCodeSpoofing && !url.contains('?')) {
             "$url?beta=true"
         } else {

@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.293
+
+更新内容:
+- 修复 Claude 流式工具调用在反代提前携带 input 时参数重复拼接导致的 JSON 解析错误
+- Claude 供应商请求路径自动补齐缺省的 /v1 前缀
+
+Updates:
+- Fixed duplicate tool parameter accumulation in Claude streaming responses when proxies pre-fill input on block start
+- Claude provider automatically appends missing /v1 to messages URL endpoints
+
 ## 1.292
 
 更新内容:

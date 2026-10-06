@@ -117,6 +117,51 @@ class ClaudeServerToolTest {
     }
 
     @Test
+    fun `streaming client tool use with prefilled input in content_block_start should not duplicate json`() {
+        val decoder = ClaudeStreamDecoder()
+        val events = listOf(
+            sse("message_start", buildJsonObject {
+                put("message", buildJsonObject {
+                    put("id", "msg_1")
+                    put("model", "claude-test")
+                })
+            }),
+            sse("content_block_start", buildJsonObject {
+                put("index", 0)
+                put("content_block", buildJsonObject {
+                    put("type", "tool_use")
+                    put("id", "toolu_1")
+                    put("name", "workspace_read_file")
+                    put("input", buildJsonObject {
+                        put("path", "/workspace/test.txt")
+                    })
+                })
+            }),
+            sse("content_block_delta", buildJsonObject {
+                put("index", 0)
+                put("delta", buildJsonObject {
+                    put("type", "input_json_delta")
+                    put("partial_json", "{\"path\":\"/workspace/test.txt\"}")
+                })
+            }),
+            sse("content_block_stop", buildJsonObject { put("index", 0) }),
+            sse("message_stop", buildJsonObject {}),
+        )
+
+        val chunks = events.flatMap { decoder.accept(it).chunks }
+        val handler = StreamChunkHandler(Model(modelId = "claude-test"))
+        val messages = chunks.fold(listOf(UIMessage.user("read"))) { acc, chunk ->
+            handler.handle(acc, chunk)
+        }
+        val tool = messages.last().parts.single() as UIMessagePart.Tool
+
+        assertEquals("workspace_read_file", tool.toolName)
+        assertEquals("{\"path\":\"/workspace/test.txt\"}", tool.input)
+        val parsed = json.parseToJsonElement(tool.input).jsonObject
+        assertEquals("/workspace/test.txt", parsed["path"]?.jsonPrimitive?.content)
+    }
+
+    @Test
     fun `server tool history should replay original Claude blocks with final input`() {
         val call = serverToolUse(input = buildJsonObject {})
         val result = serverToolResult()

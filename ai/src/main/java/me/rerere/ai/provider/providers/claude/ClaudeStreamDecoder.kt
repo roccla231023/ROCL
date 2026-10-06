@@ -67,13 +67,6 @@ internal class ClaudeStreamDecoder : StreamChunkDecoder {
                             id = blockId,
                             toolName = contentBlock["name"]?.jsonPrimitive?.contentOrNull ?: "",
                         ))
-                        val input = contentBlock["input"]?.jsonObject
-                        if (input != null && input.isNotEmpty()) {
-                            add(StreamChunk.ToolCallDelta(
-                                id = blockId,
-                                inputDelta = json.encodeToString(input),
-                            ))
-                        }
                     }
                     else -> if (kind.isClaudeServerToolUseType()) {
                         add(StreamChunk.ServerToolStart(

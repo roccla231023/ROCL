@@ -134,4 +134,28 @@ class ClaudeCodeSpoofingRequestTest {
                 .jsonObject["text"]!!.jsonPrimitive.content == "hello",
         )
     }
+
+    @Test
+    fun `messagesUrl should normalize baseUrl and append v1 if missing`() {
+        assertEquals(
+            "https://api.anthropic.com/v1/messages",
+            provider.messagesUrl(ProviderSetting.Claude(baseUrl = "https://api.anthropic.com")),
+        )
+        assertEquals(
+            "https://api.anthropic.com/v1/messages",
+            provider.messagesUrl(ProviderSetting.Claude(baseUrl = "https://api.anthropic.com/")),
+        )
+        assertEquals(
+            "https://api.anthropic.com/v1/messages",
+            provider.messagesUrl(ProviderSetting.Claude(baseUrl = "https://api.anthropic.com/v1")),
+        )
+        assertEquals(
+            "https://api.anthropic.com/v1/messages",
+            provider.messagesUrl(ProviderSetting.Claude(baseUrl = "https://api.anthropic.com/v1/")),
+        )
+        assertEquals(
+            "https://api.anthropic.com/v1/messages?beta=true",
+            provider.messagesUrl(ProviderSetting.Claude(baseUrl = "https://api.anthropic.com", claudeCodeSpoofing = true)),
+        )
+    }
 }
