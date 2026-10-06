@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -380,6 +381,25 @@ private fun ProviderConfigureClaude(
                 )
             }
         }
+    }
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+            Text(stringResource(R.string.setting_provider_page_claude_code_spoofing))
+            Text(
+                stringResource(R.string.setting_provider_page_claude_code_spoofing_desc),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Switch(
+            checked = provider.claudeCodeSpoofing,
+            onCheckedChange = { onEdit(provider.copy(claudeCodeSpoofing = it)) }
+        )
     }
 }
 

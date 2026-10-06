@@ -83,6 +83,14 @@ private const val ANTHROPIC_VERSION = "2023-06-01"
 private const val CLAUDE_PAUSE_TURN = "pause_turn"
 private const val MAX_PAUSE_TURN_CONTINUATIONS = 5
 
+private const val CLAUDE_CODE_USER_AGENT = "claude-cli/2.1.34 (external, sdk-cli)"
+private const val CLAUDE_CODE_BILLING_HEADER = "x-anthropic-billing-header: cc_version=2.1.34.712; cc_entrypoint=sdk-cli;"
+private const val CLAUDE_CODE_SKILL_REMINDER = """<system-reminder>
+The following skills are available for use with the Skill tool:
+
+- keybindings-help: Use when the user wants to customize keyboard shortcuts, rebind keys, add chord bindings, or modify ~/.claude/keybindings.json. Examples: "rebind ctrl+s", "add a chord shortcut", "change the submit key", "customize keybindings".
+</system-reminder>"""
+
 internal suspend fun generateClaudeWithPauseTurn(
     messages: List<UIMessage>,
     model: Model,
@@ -299,11 +307,12 @@ class ClaudeProvider(private val client: OkHttpClient, context: Context? = null)
     ): TextGenerationResult {
         val requestBody = buildMessageRequest(providerSetting, messages, params)
         val request = Request.Builder()
-            .url("${providerSetting.baseUrl}/messages")
+            .url(messagesUrl(providerSetting))
             .headers(providerSetting.mergeCustomHeaders(params.customHeaders))
             .post(json.encodeToString(requestBody).toRequestBody("application/json".toMediaType()))
             .addHeader("x-api-key", keyRoulette.next(providerSetting.apiKey, providerSetting.id.toString()))
             .addHeader("anthropic-version", ANTHROPIC_VERSION)
+            .applyClaudeCodeHeaders(providerSetting)
             .configureReferHeaders(providerSetting.baseUrl)
             .configureSessionHeaders(providerSetting.baseUrl, params.sessionId)
             .build()
@@ -349,12 +358,13 @@ class ClaudeProvider(private val client: OkHttpClient, context: Context? = null)
     ): Flow<StreamChunk> = callbackFlow {
         val requestBody = buildMessageRequest(providerSetting, messages, params, stream = true)
         val request = Request.Builder()
-            .url("${providerSetting.baseUrl}/messages")
+            .url(messagesUrl(providerSetting))
             .headers(providerSetting.mergeCustomHeaders(params.customHeaders))
             .post(json.encodeToString(requestBody).toRequestBody("application/json".toMediaType()))
             .addHeader("x-api-key", keyRoulette.next(providerSetting.apiKey, providerSetting.id.toString()))
             .addHeader("anthropic-version", ANTHROPIC_VERSION)
             .addHeader("Content-Type", "application/json")
+            .applyClaudeCodeHeaders(providerSetting)
             .configureReferHeaders(providerSetting.baseUrl)
             .configureSessionHeaders(providerSetting.baseUrl, params.sessionId)
             .build()
@@ -439,7 +449,10 @@ class ClaudeProvider(private val client: OkHttpClient, context: Context? = null)
             put("model", params.model.modelId)
             put(
                 "messages",
-                buildMessages(messages, providerSetting.promptCaching, providerSetting.promptCacheTtl)
+                applyClaudeCodeFirstUserReminder(
+                    buildMessages(messages, providerSetting.promptCaching, providerSetting.promptCacheTtl),
+                    providerSetting.claudeCodeSpoofing,
+                )
             )
             put("max_tokens", params.maxTokens ?: 64_000)
 
@@ -459,8 +472,23 @@ class ClaudeProvider(private val client: OkHttpClient, context: Context? = null)
             // system prompt
             val systemMessage = messages.firstOrNull { it.role == MessageRole.SYSTEM }
             val systemTextParts = systemMessage?.parts?.filterIsInstance<UIMessagePart.Text>().orEmpty()
-            if (systemTextParts.isNotEmpty()) {
+            if (providerSetting.claudeCodeSpoofing || systemTextParts.isNotEmpty()) {
                 put("system", buildJsonArray {
+                    if (providerSetting.claudeCodeSpoofing) {
+                        add(buildJsonObject {
+                            put("type", "text")
+                            put("text", CLAUDE_CODE_BILLING_HEADER)
+                        })
+                        add(buildJsonObject {
+                            put("type", "text")
+                            put("text", "You are a Claude agent, built on Anthropic's Claude Agent SDK.")
+                            put("cache_control", buildJsonObject { put("type", "ephemeral") })
+                        })
+                        add(buildJsonObject {
+                            put("type", "text")
+                            put("text", "You are an interactive AI assistant. Answer the user prompt directly, concisely and accurately. Do NOT output CLI greetings.")
+                        })
+                    }
                     systemTextParts.forEachIndexed { index, part ->
                         add(buildJsonObject {
                             put("type", "text")
@@ -540,8 +568,64 @@ class ClaudeProvider(private val client: OkHttpClient, context: Context? = null)
                         }
                     }
                 }
+            } else if (providerSetting.claudeCodeSpoofing) {
+                putJsonArray("tools") {}
             }
         }.mergeCustomBody(params.customBody)
+    }
+
+    private fun messagesUrl(providerSetting: ProviderSetting.Claude): String {
+        val url = "${providerSetting.baseUrl}/messages"
+        return if (providerSetting.claudeCodeSpoofing && !url.contains('?')) {
+            "$url?beta=true"
+        } else {
+            url
+        }
+    }
+
+    private fun Request.Builder.applyClaudeCodeHeaders(
+        providerSetting: ProviderSetting.Claude,
+    ): Request.Builder {
+        if (!providerSetting.claudeCodeSpoofing) return this
+        return addHeader("User-Agent", CLAUDE_CODE_USER_AGENT)
+            .addHeader("x-app", "cli")
+            .addHeader(
+                "anthropic-beta",
+                "interleaved-thinking-2025-05-14,context-management-2025-06-27,prompt-caching-scope-2026-01-05",
+            )
+            .addHeader("anthropic-dangerous-direct-browser-access", "true")
+            .addHeader("x-stainless-arch", "arm64")
+            .addHeader("x-stainless-lang", "js")
+            .addHeader("x-stainless-os", "Linux")
+            .addHeader("x-stainless-package-version", "0.70.0")
+            .addHeader("x-stainless-runtime", "node")
+            .addHeader("x-stainless-runtime-version", "v18.19.1")
+            .addHeader("x-stainless-timeout", "600")
+    }
+
+    private fun applyClaudeCodeFirstUserReminder(
+        messages: JsonArray,
+        enabled: Boolean,
+    ): JsonArray {
+        if (!enabled || messages.isEmpty()) return messages
+        return buildJsonArray {
+            messages.forEachIndexed { index, messageElement ->
+                val messageObj = messageElement.jsonObject
+                if (index == 0 && messageObj["role"]?.jsonPrimitive?.contentOrNull == "user") {
+                    val contentArray = messageObj["content"]?.jsonArray ?: buildJsonArray {}
+                    val newContentArray = buildJsonArray {
+                        add(buildJsonObject {
+                            put("type", "text")
+                            put("text", CLAUDE_CODE_SKILL_REMINDER)
+                        })
+                        contentArray.forEach { add(it) }
+                    }
+                    add(JsonObject(messageObj + mapOf("content" to newContentArray)))
+                } else {
+                    add(messageElement)
+                }
+            }
+        }
     }
 
     private fun cacheControlEphemeral(promptCacheTtl: ClaudePromptCacheTtl) = buildJsonObject {

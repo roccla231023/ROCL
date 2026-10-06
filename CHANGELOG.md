@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.291
+
+更新内容:
+- Claude 供应商新增 Claude Code 兼容模式：模拟官方 CLI 协议指纹与前置上下文，用于接入限定该客户端的代理网关
+
+Updates:
+- Claude providers can emulate official CLI protocol fingerprints and prefix context for reverse proxies that require the Claude Code client
+
 ## 1.29
 
 更新内容:

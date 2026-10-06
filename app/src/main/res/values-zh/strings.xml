@@ -1004,6 +1004,8 @@ mDNS 地址：使用 .local 主机名，同一网络中的其他设备可通过�
   <string name="setting_provider_page_claude_prompt_cache_ttl_1h">1 小时</string>
   <string name="setting_provider_page_claude_prompt_cache_ttl_5m">5 分钟</string>
   <string name="setting_provider_page_claude_prompt_caching">提示缓存 (cache_control)</string>
+  <string name="setting_provider_page_claude_code_spoofing">Claude Code 兼容模式</string>
+  <string name="setting_provider_page_claude_code_spoofing_desc">模拟官方 CLI 协议指纹与前置上下文，用于接入限定客户端的代理网关</string>
   <string name="setting_provider_page_configuration">配置</string>
   <string name="setting_provider_page_configure_provider_override">配置提供商重写</string>
   <string name="setting_provider_page_delete_dialog_text">确定要删除这个提供商吗？此操作无法撤销。</string>

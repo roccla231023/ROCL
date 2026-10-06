@@ -1037,6 +1037,8 @@
   <string name="setting_provider_page_claude_prompt_cache_ttl_1h">1 hour</string>
   <string name="setting_provider_page_claude_prompt_cache_ttl_5m">5 minutes</string>
   <string name="setting_provider_page_claude_prompt_caching">Prompt caching (cache_control)</string>
+  <string name="setting_provider_page_claude_code_spoofing">Claude Code emulation</string>
+  <string name="setting_provider_page_claude_code_spoofing_desc">Emulate official CLI protocol fingerprints and context for reverse proxies</string>
   <string name="setting_provider_page_configuration">Configuration</string>
   <string name="setting_provider_page_configure_provider_override">Configure Provider Override</string>
   <string name="setting_provider_page_delete_dialog_text">Are you sure you want to delete this provider? This action cannot be undone.</string>

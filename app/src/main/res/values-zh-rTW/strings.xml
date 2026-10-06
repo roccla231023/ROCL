@@ -916,6 +916,8 @@
   <string name="setting_provider_page_claude_prompt_cache_ttl_1h">1 小時</string>
   <string name="setting_provider_page_claude_prompt_cache_ttl_5m">5 分鐘</string>
   <string name="setting_provider_page_claude_prompt_caching">提示快取 (cache_control)</string>
+  <string name="setting_provider_page_claude_code_spoofing">Claude Code 相容模式</string>
+  <string name="setting_provider_page_claude_code_spoofing_desc">模擬官方 CLI 協定指紋與前置上下文，用於接入限定客戶端的代理閘道</string>
   <string name="setting_provider_page_configuration">配置</string>
   <string name="setting_provider_page_configure_provider_override">配置提供商覆寫</string>
   <string name="setting_provider_page_delete_dialog_text">確定要刪除這個提供商嗎？此操作無法撤銷。</string>
