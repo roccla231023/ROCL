@@ -76,7 +76,9 @@ import okhttp3.Response
 import okhttp3.sse.EventSource
 import okhttp3.sse.EventSourceListener
 import okhttp3.sse.EventSources
+import kotlin.random.Random
 import kotlin.time.Clock
+import kotlin.uuid.Uuid
 
 private const val TAG = "ClaudeProvider"
 private const val ANTHROPIC_VERSION = "2023-06-01"
@@ -85,6 +87,7 @@ private const val MAX_PAUSE_TURN_CONTINUATIONS = 5
 
 private const val CLAUDE_CODE_USER_AGENT = "claude-cli/2.1.34 (external, sdk-cli)"
 private const val CLAUDE_CODE_BILLING_HEADER = "x-anthropic-billing-header: cc_version=2.1.34.712; cc_entrypoint=sdk-cli;"
+private val CLAUDE_CODE_SESSION_ID = Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 private const val CLAUDE_CODE_SKILL_REMINDER = """<system-reminder>
 The following skills are available for use with the Skill tool:
 
@@ -469,6 +472,12 @@ class ClaudeProvider(private val client: OkHttpClient, context: Context? = null)
 
             put("stream", stream)
 
+            if (providerSetting.claudeCodeSpoofing) {
+                put("metadata", buildJsonObject {
+                    put("user_id", claudeCodeUserId(params.sessionId))
+                })
+            }
+
             // system prompt
             val systemMessage = messages.firstOrNull { it.role == MessageRole.SYSTEM }
             val systemTextParts = systemMessage?.parts?.filterIsInstance<UIMessagePart.Text>().orEmpty()
@@ -575,12 +584,22 @@ class ClaudeProvider(private val client: OkHttpClient, context: Context? = null)
     }
 
     private fun messagesUrl(providerSetting: ProviderSetting.Claude): String {
-        val url = "${providerSetting.baseUrl}/messages"
+        val url = "${providerSetting.baseUrl.trimEnd('/')}/messages"
         return if (providerSetting.claudeCodeSpoofing && !url.contains('?')) {
             "$url?beta=true"
         } else {
             url
         }
+    }
+
+    private fun claudeCodeUserId(sessionId: String?): String {
+        val deviceHex = Random.nextBytes(32).joinToString("") { byte ->
+            "%02x".format(byte)
+        }
+        val session = sessionId
+            ?.takeIf { CLAUDE_CODE_SESSION_ID.matches(it) }
+            ?: Uuid.random().toString()
+        return "user_${deviceHex}_account__session_$session"
     }
 
     private fun Request.Builder.applyClaudeCodeHeaders(

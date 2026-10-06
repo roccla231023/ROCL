@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.292
+
+更新内容:
+- Claude Code 兼容模式补上会话 metadata，并规范化 Messages 请求路径末尾斜杠
+
+Updates:
+- Claude Code emulation now sends session metadata and trims trailing slashes from the messages URL
+
 ## 1.291
 
 更新内容:

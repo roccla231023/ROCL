@@ -54,6 +54,7 @@ class ClaudeCodeSpoofingRequestTest {
         assertEquals(1, system.size)
         assertEquals("custom system", system[0].jsonObject["text"]!!.jsonPrimitive.content)
         assertNull(request["tools"])
+        assertNull(request["metadata"])
 
         val firstUser = request["messages"]!!.jsonArray.first().jsonObject
         assertEquals("user", firstUser["role"]!!.jsonPrimitive.content)
@@ -110,6 +111,10 @@ class ClaudeCodeSpoofingRequestTest {
             secondUser["content"]!!.jsonArray[0].jsonObject["text"]!!.jsonPrimitive.content,
         )
         assertEquals(0, request["tools"]!!.jsonArray.size)
+        val userId = request["metadata"]!!.jsonObject["user_id"]!!.jsonPrimitive.content
+        assertTrue(
+            Regex("^user_[0-9a-f]{64}_account__session_[0-9a-fA-F-]{36}$").matches(userId),
+        )
     }
 
     @Test
