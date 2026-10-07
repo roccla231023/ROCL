@@ -56,6 +56,9 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
+      - name: Use workflow JDK
+        run: rm -f gradle/gradle-daemon-jvm.properties
+
       - name: Read version
         id: meta
         run: |
