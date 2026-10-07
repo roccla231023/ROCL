@@ -2,9 +2,15 @@ package me.rerere.rikkahub.data.db.entity
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "rp_session")
+@Entity(
+    tableName = "rp_session",
+    indices = [
+        Index("conversation_id"),
+    ],
+)
 data class RpSessionEntity(
     @PrimaryKey val id: String,
     @ColumnInfo("card_id") val cardId: String,

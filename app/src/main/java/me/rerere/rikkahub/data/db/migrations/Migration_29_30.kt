@@ -59,9 +59,26 @@ val Migration_29_30 = object : Migration(29, 30) {
                 )
                 """.trimIndent()
             )
-            db.execSQL("ALTER TABLE ConversationEntity ADD COLUMN rp_session_id TEXT NOT NULL DEFAULT ''")
+            addColumnIfNotExists(db, "ConversationEntity", "rp_session_id", "TEXT NOT NULL DEFAULT ''")
         } finally {
             DatabaseMigrationTracker.onMigrationEnd()
         }
     }
+}
+
+private fun addColumnIfNotExists(
+    db: SupportSQLiteDatabase,
+    table: String,
+    column: String,
+    columnDef: String,
+) {
+    db.query("PRAGMA table_info(`$table`)").use { cursor ->
+        val nameIndex = cursor.getColumnIndex("name")
+        while (cursor.moveToNext()) {
+            if (nameIndex != -1 && cursor.getString(nameIndex) == column) {
+                return
+            }
+        }
+    }
+    db.execSQL("ALTER TABLE `$table` ADD COLUMN `$column` $columnDef")
 }

@@ -788,7 +788,18 @@
           "columnNames": [
             "id"
           ]
-        }
+        },
+        "indices": [
+          {
+            "name": "index_rp_session_conversation_id",
+            "unique": false,
+            "columnNames": [
+              "conversation_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_rp_session_conversation_id` ON `${TABLE_NAME}` (`conversation_id`)"
+          }
+        ]
       },
       {
         "tableName": "rp_turn",
