@@ -14,6 +14,7 @@ import me.rerere.rikkahub.data.repository.MemoryRepository
 import me.rerere.rikkahub.data.repository.MemoryRetrievalService
 import me.rerere.rikkahub.data.repository.StorageManagerRepository
 import me.rerere.rikkahub.data.repository.WorkspaceRepository
+import me.rerere.rikkahub.data.rp.repository.RpRepository
 import me.rerere.workspace.ProotShellRunner
 import me.rerere.workspace.RootfsInstaller
 import me.rerere.workspace.WorkspaceBindMount
@@ -23,12 +24,14 @@ import java.io.File
 
 val repositoryModule = module {
     single {
-        ConversationRepository(get(), get(), get(), get(), get(), get(), get(), get())
+        ConversationRepository(get(), get(), get(), get(), get(), get(), get(), get(), get(), get())
     }
 
     single {
         FolderRepository(get(), get())
     }
+
+    single { RpRepository(get(), get(), get()) }
 
     single {
         MemoryRepository(get(), get())

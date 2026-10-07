@@ -103,6 +103,12 @@ val dataSourceModule = module {
         get<AppDatabase>().dailyActivityDao()
     }
 
+    single { get<AppDatabase>().rpSessionDao() }
+
+    single { get<AppDatabase>().rpTurnDao() }
+
+    single { get<AppDatabase>().rpCardDao() }
+
     single {
         MessageFtsManager(get())
     }

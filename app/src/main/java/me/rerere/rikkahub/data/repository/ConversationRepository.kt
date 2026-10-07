@@ -25,6 +25,8 @@ import me.rerere.rikkahub.data.db.entity.DailyActivityEntity
 import me.rerere.rikkahub.data.db.entity.MessageNodeEntity
 import me.rerere.rikkahub.data.db.entity.UsageStatsEntity
 import me.rerere.rikkahub.data.db.dao.UsageStatsDAO
+import me.rerere.rikkahub.data.db.dao.RpSessionDAO
+import me.rerere.rikkahub.data.db.dao.RpTurnDAO
 import me.rerere.rikkahub.data.files.FilesManager
 import me.rerere.rikkahub.data.model.Conversation
 import me.rerere.rikkahub.data.model.MessageNode
@@ -43,6 +45,8 @@ class ConversationRepository(
     private val messageFtsManager: MessageFtsManager,
     private val usageStatsDAO: UsageStatsDAO,
     private val dailyActivityDAO: DailyActivityDAO,
+    private val rpSessionDAO: RpSessionDAO,
+    private val rpTurnDAO: RpTurnDAO,
 ) {
     companion object {
         private const val PAGE_SIZE = 20
@@ -333,6 +337,10 @@ class ConversationRepository(
         }
         messageFtsManager.deleteConversation(conversation.id.toString())
         database.withTransaction {
+            rpSessionDAO.getByConversationId(conversation.id.toString())?.let { rpSession ->
+                rpTurnDAO.deleteForSession(rpSession.id)
+                rpSessionDAO.delete(rpSession)
+            }
             conversationDAO.deleteById(conversation.id.toString())
         }
         if (deleteFiles) {
@@ -387,6 +395,7 @@ class ConversationRepository(
             workspaceCwd = conversation.workspaceCwd ?: "",
             stickySpeakerSeatId = conversation.stickySpeakerSeatId?.toString() ?: "",
             sessionMemories = JsonInstant.encodeToString(conversation.sessionMemories),
+            rpSessionId = conversation.rpSessionId?.toString() ?: "",
             folderId = conversation.folderId?.toString() ?: "",
         )
     }
@@ -414,6 +423,7 @@ class ConversationRepository(
                     conversationEntity.sessionMemories,
                 )
             }.getOrDefault(emptyList()),
+            rpSessionId = conversationEntity.rpSessionId.ifEmpty { null }?.let { Uuid.parse(it) },
             folderId = conversationEntity.folderId.ifEmpty { null }?.let { Uuid.parse(it) },
         )
     }

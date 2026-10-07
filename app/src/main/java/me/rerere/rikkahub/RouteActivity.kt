@@ -105,6 +105,9 @@ import me.rerere.rikkahub.ui.pages.history.HistoryPage
 import me.rerere.rikkahub.ui.pages.imggen.ImageGenPage
 import me.rerere.rikkahub.ui.pages.log.LogPage
 import me.rerere.rikkahub.ui.pages.search.SearchPage
+import me.rerere.rikkahub.ui.pages.rp.RpPage
+import me.rerere.rikkahub.ui.pages.rp.RpCardDetailPage
+import me.rerere.rikkahub.ui.pages.rp.RpSessionPage
 import me.rerere.rikkahub.ui.pages.setting.SettingAboutPage
 import me.rerere.rikkahub.ui.pages.setting.SettingPreferencesPage
 import me.rerere.rikkahub.ui.pages.setting.SettingPreferencesThemePage
@@ -384,6 +387,18 @@ class RouteActivity : ComponentActivity() {
                                 AssistantPage()
                             }
 
+                            entry<Screen.Rp> {
+                                RpPage()
+                            }
+
+                            entry<Screen.RpCardDetail> { key ->
+                                RpCardDetailPage(key.id)
+                            }
+
+                            entry<Screen.RpSession> { key ->
+                                RpSessionPage(key.id)
+                            }
+
                             entry<Screen.AssistantDetail> { key ->
                                 AssistantDetailPage(key.id)
                             }
@@ -656,6 +671,15 @@ sealed interface Screen : NavKey {
 
     @Serializable
     data object Assistant : Screen
+
+    @Serializable
+    data object Rp : Screen
+
+    @Serializable
+    data class RpCardDetail(val id: String) : Screen
+
+    @Serializable
+    data class RpSession(val id: String) : Screen
 
     @Serializable
     data class AssistantDetail(val id: String) : Screen

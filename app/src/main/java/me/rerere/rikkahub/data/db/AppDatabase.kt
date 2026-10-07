@@ -16,6 +16,9 @@ import me.rerere.rikkahub.data.db.dao.MemoryDAO
 import me.rerere.rikkahub.data.db.dao.MessageNodeDAO
 import me.rerere.rikkahub.data.db.dao.UsageStatsDAO
 import me.rerere.rikkahub.data.db.dao.WorkspaceDAO
+import me.rerere.rikkahub.data.db.dao.RpSessionDAO
+import me.rerere.rikkahub.data.db.dao.RpTurnDAO
+import me.rerere.rikkahub.data.db.dao.RpCardDAO
 import me.rerere.rikkahub.data.db.entity.ConversationEntity
 import me.rerere.rikkahub.data.db.entity.DailyActivityEntity
 import me.rerere.rikkahub.data.db.entity.FavoriteEntity
@@ -26,6 +29,9 @@ import me.rerere.rikkahub.data.db.entity.MemoryEntity
 import me.rerere.rikkahub.data.db.entity.MessageNodeEntity
 import me.rerere.rikkahub.data.db.entity.UsageStatsEntity
 import me.rerere.rikkahub.data.db.entity.WorkspaceEntity
+import me.rerere.rikkahub.data.db.entity.RpSessionEntity
+import me.rerere.rikkahub.data.db.entity.RpTurnEntity
+import me.rerere.rikkahub.data.db.entity.RpCardEntity
 import me.rerere.rikkahub.data.db.migrations.Migration_16_17
 import me.rerere.rikkahub.data.db.migrations.Migration_22_23
 import me.rerere.rikkahub.data.db.migrations.Migration_8_9
@@ -43,8 +49,11 @@ import me.rerere.rikkahub.utils.JsonInstant
         FolderEntity::class,
         UsageStatsEntity::class,
         DailyActivityEntity::class,
+        RpSessionEntity::class,
+        RpTurnEntity::class,
+        RpCardEntity::class,
     ],
-    version = 29,
+    version = 30,
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
         AutoMigration(from = 2, to = 3),
@@ -88,6 +97,12 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun usageStatsDao(): UsageStatsDAO
 
     abstract fun dailyActivityDao(): DailyActivityDAO
+
+    abstract fun rpSessionDao(): RpSessionDAO
+
+    abstract fun rpTurnDao(): RpTurnDAO
+
+    abstract fun rpCardDao(): RpCardDAO
 }
 
 object TokenUsageConverter {

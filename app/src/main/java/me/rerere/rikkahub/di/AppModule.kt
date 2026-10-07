@@ -6,6 +6,9 @@ import com.google.firebase.crashlytics.crashlytics
 import kotlinx.serialization.json.Json
 import me.rerere.rikkahub.AppScope
 import me.rerere.rikkahub.data.ai.subagent.SubAgentEngine
+import me.rerere.rikkahub.data.rp.runtime.RpModelGateway
+import me.rerere.rikkahub.data.rp.runtime.RpRuntime
+import me.rerere.rikkahub.data.rp.runtime.RpStateReducer
 import me.rerere.rikkahub.data.ai.subagent.SubAgentRunRegistry
 import me.rerere.rikkahub.data.ai.tools.local.LocalTools
 import me.rerere.rikkahub.data.ai.tools.ChatToolFactory
@@ -80,6 +83,19 @@ val appModule = module {
     }
 
     single { SubAgentRunRegistry() }
+
+    single { RpModelGateway(providerManager = get(), json = get()) }
+    single { RpStateReducer() }
+    single {
+        RpRuntime(
+            settingsStore = get(),
+            rpRepository = get(),
+            conversationRepository = get(),
+            modelGateway = get(),
+            stateReducer = get(),
+        )
+    }
+
     single {
         SubAgentEngine(
             json = get(),
@@ -117,7 +133,7 @@ val appModule = module {
             mcpManager = get(),
             filesManager = get(),
             workspaceRepository = get(),
-            folderRepository = get()
+            folderRepository = get(),
         )
     }
 

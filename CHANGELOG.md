@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.294
+
+更新内容:
+- 新增独立 RP 板块：支持 RP 卡片、独立会话、角色互动、沙盒模拟、共同创作、悬疑推理和规则跑团等玩法模式
+- RP 卡片支持世界设定、玩法规则、叙事风格、初始状态 JSON、状态面板字段、隐藏状态路径及多模型职能绑定
+- RP 会话支持世界裁定、可选结果审查、叙事生成、结构化状态变更、状态恢复、回合重试、回滚与分支
+- 新增 ROCL 风格的 RP 卡片库、会话列表、卡片编辑器、状态面板和独立游玩页面
+
+Updates:
+- Added a standalone RP module with reusable cards, isolated sessions, character interaction, sandbox simulation, collaborative creation, mystery, and tabletop play modes
+- RP cards now support world setting, play rules, narrative style, initial state JSON, state views, hidden paths, and role-based model bindings
+- RP sessions support world adjudication, optional outcome review, narration, structured state changes, recovery, phase retry, rollback, and branching
+- Added ROCL-styled RP card library, session list, card editor, state sheet, and dedicated play surface
+
 ## 1.293
 
 更新内容:

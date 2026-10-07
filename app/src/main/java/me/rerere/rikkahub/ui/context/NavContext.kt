@@ -30,6 +30,11 @@ class Navigator(private val backStack: MutableList<NavKey>) {
         backStack.add(screen)
     }
 
+    fun replaceCurrent(screen: Screen) {
+        if (backStack.isNotEmpty()) backStack.removeLast()
+        backStack.add(screen)
+    }
+
     fun popBackStack() {
         if (backStack.size > 1) backStack.removeLastOrNull()
     }

@@ -3,6 +3,9 @@ package me.rerere.rikkahub.di
 import me.rerere.rikkahub.ui.pages.assistant.AssistantVM
 import me.rerere.rikkahub.ui.pages.assistant.detail.AssistantDetailVM
 import me.rerere.rikkahub.ui.pages.assistant.groupchat.GroupChatTemplateDetailVM
+import me.rerere.rikkahub.ui.pages.rp.RpVM
+import me.rerere.rikkahub.ui.pages.rp.RpCardDetailVM
+import me.rerere.rikkahub.ui.pages.rp.RpSessionVM
 import me.rerere.rikkahub.ui.pages.backup.BackupVM
 import me.rerere.rikkahub.ui.pages.chat.ChatDrawerVM
 import me.rerere.rikkahub.ui.pages.chat.ChatVM
@@ -46,6 +49,22 @@ val viewModelModule = module {
     viewModelOf(::DebugVM)
     viewModelOf(::HistoryVM)
     viewModelOf(::AssistantVM)
+    viewModel<RpVM> { RpVM(repository = get()) }
+    viewModel<RpCardDetailVM> {
+        RpCardDetailVM(
+            id = it.get(),
+            settingsStore = get(),
+            rpRepository = get(),
+            conversationRepository = get(),
+        )
+    }
+    viewModel<RpSessionVM> {
+        RpSessionVM(
+            id = it.get(),
+            repository = get(),
+            runtime = get(),
+        )
+    }
     viewModel<GroupChatTemplateDetailVM> {
         GroupChatTemplateDetailVM(
             id = it.get(),

@@ -31,6 +31,7 @@ data class Conversation(
     val workspaceCwd: String? = null,
     val stickySpeakerSeatId: Uuid? = null,
     val sessionMemories: List<SessionMemory> = emptyList(),
+    val rpSessionId: Uuid? = null,
     // 所属文件夹（助手内分组），null 表示未归入任何文件夹
     val folderId: Uuid? = null,
     @Transient
