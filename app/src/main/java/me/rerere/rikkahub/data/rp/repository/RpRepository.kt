@@ -12,6 +12,7 @@ import me.rerere.rikkahub.data.db.entity.RpCardEntity
 import me.rerere.rikkahub.data.db.entity.RpSessionEntity
 import me.rerere.rikkahub.data.db.entity.RpTurnEntity
 import me.rerere.rikkahub.data.rp.model.RpCard
+import me.rerere.rikkahub.data.rp.model.RpCommittedEvent
 import me.rerere.rikkahub.data.rp.model.RpReview
 import me.rerere.rikkahub.data.rp.model.RpSession
 import me.rerere.rikkahub.data.rp.model.RpSessionSnapshot
@@ -114,6 +115,9 @@ private fun RpSessionEntity.toModel(): RpSession = RpSession(
     activeBranchId = Uuid.parse(activeBranchId),
     revision = revision,
     state = JsonInstant.parseToJsonElement(stateJson).jsonObject,
+    storyMemory = storyMemoryJson.takeIf { it.isNotBlank() }?.let {
+        JsonInstant.decodeFromString(it)
+    } ?: me.rerere.rikkahub.data.rp.model.RpStoryMemory(),
     status = me.rerere.rikkahub.data.rp.model.RpSessionStatus.valueOf(status),
     createdAt = createdAt,
     updatedAt = updatedAt,
@@ -128,6 +132,7 @@ private fun RpSession.toEntity(): RpSessionEntity = RpSessionEntity(
     activeBranchId = activeBranchId.toString(),
     revision = revision,
     stateJson = JsonInstant.encodeToString(state),
+    storyMemoryJson = JsonInstant.encodeToString(storyMemory),
     status = status.name,
     createdAt = createdAt,
     updatedAt = updatedAt,
@@ -142,7 +147,9 @@ private fun RpTurnEntity.toModel(): RpTurn = RpTurn(
     outcome = outcomeJson.takeIf { it.isNotBlank() }?.let { JsonInstant.decodeFromString<RpOutcome>(it) },
     review = reviewJson.takeIf { it.isNotBlank() }?.let { JsonInstant.decodeFromString<RpReview>(it) },
     narrative = narrative,
+    stateBefore = stateBeforeJson.takeIf { it.isNotBlank() }?.let { JsonInstant.parseToJsonElement(it).jsonObject },
     stateAfter = stateAfterJson.takeIf { it.isNotBlank() }?.let { JsonInstant.parseToJsonElement(it).jsonObject },
+    event = eventJson.takeIf { it.isNotBlank() }?.let { JsonInstant.decodeFromString<RpCommittedEvent>(it) },
     error = error,
     createdAt = createdAt,
 )
@@ -156,7 +163,9 @@ private fun RpTurn.toEntity(): RpTurnEntity = RpTurnEntity(
     outcomeJson = outcome?.let(JsonInstant::encodeToString).orEmpty(),
     reviewJson = review?.let(JsonInstant::encodeToString).orEmpty(),
     narrative = narrative,
+    stateBeforeJson = stateBefore?.let(JsonInstant::encodeToString).orEmpty(),
     stateAfterJson = stateAfter?.let(JsonInstant::encodeToString).orEmpty(),
+    eventJson = event?.let(JsonInstant::encodeToString).orEmpty(),
     error = error,
     createdAt = createdAt,
 )

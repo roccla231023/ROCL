@@ -38,6 +38,7 @@ data class RpSession(
     val activeBranchId: Uuid = Uuid.random(),
     val revision: Long = 0,
     val state: JsonObject = card.initialState,
+    val storyMemory: RpStoryMemory = RpStoryMemory(),
     val status: RpSessionStatus = RpSessionStatus.ACTIVE,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
@@ -53,7 +54,9 @@ data class RpTurn(
     val outcome: RpOutcome? = null,
     val review: RpReview? = null,
     val narrative: String = "",
+    val stateBefore: JsonObject? = null,
     val stateAfter: JsonObject? = null,
+    val event: RpCommittedEvent? = null,
     val error: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
 )
@@ -69,6 +72,15 @@ data class RpOutcome(
 )
 
 @Serializable
+enum class RpStateOperation {
+    SET,
+    APPEND,
+    REMOVE,
+    INCREMENT,
+    DECREMENT,
+}
+
+@Serializable
 data class RpStateChange(
     val path: String,
     val operation: RpStateOperation = RpStateOperation.SET,
@@ -76,11 +88,13 @@ data class RpStateChange(
 )
 
 @Serializable
-enum class RpStateOperation {
-    SET,
-    APPEND,
-    REMOVE,
-}
+data class RpAdjudicationProposal(
+    val summary: String = "",
+    val facts: List<String> = emptyList(),
+    val changes: List<RpStateChange> = emptyList(),
+    val nextPrompt: String = "",
+    val needsChoice: Boolean = false,
+)
 
 @Serializable
 data class RpReview(

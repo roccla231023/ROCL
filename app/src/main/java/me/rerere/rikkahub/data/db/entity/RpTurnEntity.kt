@@ -18,7 +18,9 @@ data class RpTurnEntity(
     @ColumnInfo("outcome_json") val outcomeJson: String,
     @ColumnInfo("review_json") val reviewJson: String,
     val narrative: String,
+    @ColumnInfo("state_before_json", defaultValue = "") val stateBeforeJson: String = "",
     @ColumnInfo("state_after_json") val stateAfterJson: String,
+    @ColumnInfo("event_json", defaultValue = "") val eventJson: String = "",
     val error: String?,
     @ColumnInfo("created_at") val createdAt: Long,
 )

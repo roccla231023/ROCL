@@ -13,6 +13,7 @@ import me.rerere.rikkahub.data.db.migrations.Migration_15_16
 import me.rerere.rikkahub.data.db.migrations.Migration_25_28
 import me.rerere.rikkahub.data.db.migrations.Migration_28_29
 import me.rerere.rikkahub.data.db.migrations.Migration_29_30
+import me.rerere.rikkahub.data.db.migrations.Migration_30_31
 
 /** Shared schema, migrations and extensions for the app and staged backup validation. */
 internal object AppDatabaseFactory {
@@ -28,6 +29,7 @@ internal object AppDatabaseFactory {
                 Migration_25_28,
                 Migration_28_29,
                 Migration_29_30,
+                Migration_30_31,
             )
             .addCallback(object : RoomDatabase.Callback() {
                 override fun onOpen(db: SupportSQLiteDatabase) {

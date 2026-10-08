@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import me.rerere.rikkahub.data.rp.model.RpCard
+import me.rerere.rikkahub.data.rp.model.starterStateSchema
 import me.rerere.rikkahub.data.rp.repository.RpRepository
 
 class RpVM(
@@ -18,7 +19,7 @@ class RpVM(
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     fun createCard(): RpCard {
-        val card = RpCard(name = "未命名 RP")
+        val card = RpCard(name = "未命名 RP", stateSchema = starterStateSchema())
         viewModelScope.launch { repository.saveCard(card) }
         return card
     }

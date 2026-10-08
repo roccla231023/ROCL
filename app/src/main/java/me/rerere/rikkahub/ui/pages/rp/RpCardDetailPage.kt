@@ -1,7 +1,10 @@
 package me.rerere.rikkahub.ui.pages.rp
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -28,22 +31,24 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import me.rerere.ai.provider.Model
 import me.rerere.ai.provider.ModelType
-import me.rerere.hugeicons.HugeIcons
-import me.rerere.hugeicons.stroke.ArrowRight01
 import me.rerere.rikkahub.R
 import me.rerere.rikkahub.Screen
+import me.rerere.rikkahub.data.datastore.Settings
 import me.rerere.rikkahub.data.rp.model.RpCard
 import me.rerere.rikkahub.data.rp.model.RpPlayMode
+import me.rerere.rikkahub.data.rp.model.RpStateField
+import me.rerere.rikkahub.data.rp.model.RpStateFieldType
+import me.rerere.rikkahub.data.rp.model.RpStateSchema
+import me.rerere.rikkahub.data.rp.model.RpViewField
 import me.rerere.rikkahub.ui.components.ai.ModelSelector
 import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.ui.CardGroup
 import me.rerere.rikkahub.ui.context.LocalNavController
 import me.rerere.rikkahub.ui.theme.CustomColors
-import me.rerere.rikkahub.utils.plus
 import me.rerere.rikkahub.utils.JsonInstant
 import me.rerere.rikkahub.utils.JsonInstantPretty
+import me.rerere.rikkahub.utils.plus
 import kotlinx.serialization.json.jsonObject
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -54,11 +59,14 @@ fun RpCardDetailPage(id: String) {
     val card by vm.card.collectAsStateWithLifecycle()
     val settings by vm.settings.collectAsStateWithLifecycle()
     val navController = LocalNavController.current
+    var advancedExpanded by remember(card.id) { mutableStateOf(false) }
     var stateText by remember(card.id) { mutableStateOf(JsonInstantPretty.encodeToString(card.initialState)) }
+    var schemaText by remember(card.id) { mutableStateOf(card.stateSchema.toEditorText()) }
+    var schemaHasInvalidLines by remember(card.id) { mutableStateOf(false) }
     var viewFieldsText by remember(card.id) {
-        mutableStateOf(card.viewFields.joinToString("\\n") { "${it.path}=${it.label}" })
+        mutableStateOf(card.viewFields.joinToString("\n") { "${it.path}=${it.label}" })
     }
-    var hiddenPathsText by remember(card.id) { mutableStateOf(card.hiddenStatePaths.joinToString("\\n")) }
+    var hiddenPathsText by remember(card.id) { mutableStateOf(card.hiddenStatePaths.joinToString("\n")) }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     Scaffold(
@@ -81,7 +89,7 @@ fun RpCardDetailPage(id: String) {
             item {
                 CardGroup(
                     modifier = Modifier.padding(horizontal = 8.dp),
-                    title = { Text(stringResource(R.string.rp_card_identity)) },
+                    title = { Text(stringResource(R.string.rp_card_basic)) },
                 ) {
                     item {
                         OutlinedTextField(
@@ -89,15 +97,6 @@ fun RpCardDetailPage(id: String) {
                             onValueChange = { vm.update(card.copy(name = it)) },
                             modifier = Modifier.fillMaxWidth(),
                             label = { Text(stringResource(R.string.rp_card_name)) },
-                            singleLine = true,
-                        )
-                    }
-                    item {
-                        OutlinedTextField(
-                            value = card.genre,
-                            onValueChange = { vm.update(card.copy(genre = it)) },
-                            modifier = Modifier.fillMaxWidth(),
-                            label = { Text(stringResource(R.string.rp_card_genre)) },
                             singleLine = true,
                         )
                     }
@@ -111,24 +110,34 @@ fun RpCardDetailPage(id: String) {
                             maxLines = 4,
                         )
                     }
-                }
-            }
-            item {
-                CardGroup(
-                    modifier = Modifier.padding(horizontal = 8.dp),
-                    title = { Text(stringResource(R.string.rp_card_mode)) },
-                ) {
                     item {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            RpPlayMode.entries.forEach { mode ->
-                                FilterChip(
-                                    selected = card.mode == mode,
-                                    onClick = { vm.update(card.copy(mode = mode)) },
-                                    label = { Text(mode.displayName()) },
-                                )
-                            }
-                        }
+                        OutlinedTextField(
+                            value = card.genre,
+                            onValueChange = { vm.update(card.copy(genre = it)) },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text(stringResource(R.string.rp_card_genre)) },
+                            singleLine = true,
+                        )
                     }
+                    item(
+                        supportingContent = {
+                            Text(
+                                stringResource(R.string.rp_card_mode),
+                                style = MaterialTheme.typography.labelMedium,
+                            )
+                        },
+                        headlineContent = {
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                RpPlayMode.entries.forEach { mode ->
+                                    FilterChip(
+                                        selected = card.mode == mode,
+                                        onClick = { vm.update(card.copy(mode = mode)) },
+                                        label = { Text(mode.localizedName()) },
+                                    )
+                                }
+                            }
+                        },
+                    )
                 }
             }
             item {
@@ -158,53 +167,6 @@ fun RpCardDetailPage(id: String) {
                     }
                     item {
                         OutlinedTextField(
-                            value = stateText,
-                            onValueChange = { value ->
-                                stateText = value
-                                runCatching { JsonInstant.parseToJsonElement(value).jsonObject }
-                                    .onSuccess { vm.update(card.copy(initialState = it)) }
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            label = { Text(stringResource(R.string.rp_card_initial_state)) },
-                            minLines = 5,
-                            maxLines = 12,
-                        )
-                    }
-                    item {
-                        OutlinedTextField(
-                            value = viewFieldsText,
-                            onValueChange = { value ->
-                                viewFieldsText = value
-                                val fields = value.lines().mapNotNull { line ->
-                                    val separator = line.indexOf('=')
-                                    if (separator <= 0) null else me.rerere.rikkahub.data.rp.model.RpViewField(
-                                        path = line.substring(0, separator).trim(),
-                                        label = line.substring(separator + 1).trim(),
-                                    )
-                                }
-                                vm.update(card.copy(viewFields = fields))
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            label = { Text(stringResource(R.string.rp_card_view_fields)) },
-                            minLines = 3,
-                            maxLines = 8,
-                        )
-                    }
-                    item {
-                        OutlinedTextField(
-                            value = hiddenPathsText,
-                            onValueChange = { value ->
-                                hiddenPathsText = value
-                                vm.update(card.copy(hiddenStatePaths = value.lines().map { it.trim() }.filter { it.isNotBlank() }.toSet()))
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            label = { Text(stringResource(R.string.rp_card_hidden_paths)) },
-                            minLines = 2,
-                            maxLines = 6,
-                        )
-                    }
-                    item {
-                        OutlinedTextField(
                             value = card.narrativeStyle,
                             onValueChange = { vm.update(card.copy(narrativeStyle = it)) },
                             modifier = Modifier.fillMaxWidth(),
@@ -217,39 +179,159 @@ fun RpCardDetailPage(id: String) {
             }
             item {
                 CardGroup(
-                    modifier = Modifier.padding(horizontal = 8.dp),
+                    modifier = Modifier.padding(horizontal = 8.dp).animateContentSize(),
                     title = { Text(stringResource(R.string.rp_card_models)) },
                 ) {
-                    item {
-                        RpModelRow(
-                            label = stringResource(R.string.rp_model_narrator),
-                            modelId = card.modelBindings.narratorModelId,
-                            settings = settings,
-                            onSelect = { model ->
-                                vm.setModels(card.modelBindings.copy(narratorModelId = model.id))
-                            },
-                        )
-                    }
-                    item {
-                        RpModelRow(
-                            label = stringResource(R.string.rp_model_adjudicator),
-                            modelId = card.modelBindings.adjudicatorModelId,
-                            settings = settings,
-                            onSelect = { model ->
-                                vm.setModels(card.modelBindings.copy(adjudicatorModelId = model.id))
-                            },
-                        )
-                    }
-                    item {
-                        RpModelRow(
-                            label = stringResource(R.string.rp_model_reviewer),
-                            modelId = card.modelBindings.reviewerModelId,
-                            settings = settings,
-                            onSelect = { model ->
-                                vm.setModels(card.modelBindings.copy(reviewerModelId = model.id.takeIf { model.modelId.isNotBlank() }))
-                            },
-                            allowClear = true,
-                        )
+                    item(
+                        supportingContent = {
+                            Text(stringResource(R.string.rp_model_narrator_desc))
+                        },
+                        trailingContent = {
+                            RpModelSelector(
+                                modelId = card.modelBindings.narratorModelId,
+                                settings = settings,
+                                onSelect = { vm.setModels(card.modelBindings.copy(narratorModelId = it)) },
+                            )
+                        },
+                        headlineContent = { Text(stringResource(R.string.rp_model_narrator)) },
+                    )
+                    item(
+                        supportingContent = {
+                            Text(stringResource(R.string.rp_model_adjudicator_desc))
+                        },
+                        trailingContent = {
+                            RpModelSelector(
+                                modelId = card.modelBindings.adjudicatorModelId,
+                                settings = settings,
+                                onSelect = { vm.setModels(card.modelBindings.copy(adjudicatorModelId = it)) },
+                            )
+                        },
+                        headlineContent = { Text(stringResource(R.string.rp_model_adjudicator)) },
+                    )
+                    item(
+                        supportingContent = {
+                            Text(stringResource(R.string.rp_model_reviewer_desc))
+                        },
+                        trailingContent = {
+                            RpModelSelector(
+                                modelId = card.modelBindings.reviewerModelId,
+                                settings = settings,
+                                onSelect = { vm.setModels(card.modelBindings.copy(reviewerModelId = it)) },
+                            )
+                        },
+                        headlineContent = { Text(stringResource(R.string.rp_model_reviewer)) },
+                    )
+                    item(
+                        supportingContent = {
+                            Text(stringResource(R.string.rp_model_state_keeper_desc))
+                        },
+                        trailingContent = {
+                            RpModelSelector(
+                                modelId = card.modelBindings.stateKeeperModelId,
+                                settings = settings,
+                                onSelect = { vm.setModels(card.modelBindings.copy(stateKeeperModelId = it)) },
+                            )
+                        },
+                        headlineContent = { Text(stringResource(R.string.rp_model_state_keeper)) },
+                    )
+                    item(
+                        supportingContent = {
+                            Text(stringResource(R.string.rp_model_follow_global))
+                        },
+                        headlineContent = { Text(stringResource(R.string.rp_card_models_desc)) },
+                    )
+                }
+            }
+            item {
+                CardGroup(
+                    modifier = Modifier.padding(horizontal = 8.dp).animateContentSize(),
+                ) {
+                    item(
+                        onClick = { advancedExpanded = !advancedExpanded },
+                        headlineContent = { Text(stringResource(R.string.rp_card_advanced)) },
+                        supportingContent = { Text(stringResource(R.string.rp_card_advanced_desc)) },
+                    )
+                }
+            }
+            item {
+                AnimatedVisibility(visible = advancedExpanded) {
+                    CardGroup(
+                        modifier = Modifier.padding(horizontal = 8.dp),
+                        title = { Text(stringResource(R.string.rp_card_advanced)) },
+                    ) {
+                        item {
+                            OutlinedTextField(
+                                value = stateText,
+                                onValueChange = { value ->
+                                    stateText = value
+                                    runCatching { JsonInstant.parseToJsonElement(value).jsonObject }
+                                        .onSuccess { vm.update(card.copy(initialState = it)) }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                label = { Text(stringResource(R.string.rp_card_state_json)) },
+                                minLines = 5,
+                                maxLines = 12,
+                            )
+                        }
+                        item {
+                            OutlinedTextField(
+                                value = schemaText,
+                                onValueChange = { value ->
+                                    schemaText = value
+                                    val parsed = value.parseStateSchema()
+                                    schemaHasInvalidLines = parsed.hadInvalidLines
+                                    if (!parsed.hadInvalidLines) {
+                                        vm.update(card.copy(stateSchema = parsed.schema))
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                label = { Text(stringResource(R.string.rp_card_state_schema)) },
+                                supportingText = {
+                                    Text(
+                                        if (schemaHasInvalidLines) {
+                                            stringResource(R.string.rp_card_state_schema_invalid)
+                                        } else {
+                                            stringResource(R.string.rp_card_state_schema_help)
+                                        }
+                                    )
+                                },
+                                minLines = 5,
+                                maxLines = 12,
+                            )
+                        }
+                        item {
+                            OutlinedTextField(
+                                value = hiddenPathsText,
+                                onValueChange = { value ->
+                                    hiddenPathsText = value
+                                    vm.update(
+                                        card.copy(
+                                            hiddenStatePaths = value.lines()
+                                                .map(String::trim)
+                                                .filter(String::isNotBlank)
+                                                .toSet(),
+                                        )
+                                    )
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                label = { Text(stringResource(R.string.rp_card_hidden_paths_advanced)) },
+                                minLines = 2,
+                                maxLines = 6,
+                            )
+                        }
+                        item {
+                            OutlinedTextField(
+                                value = viewFieldsText,
+                                onValueChange = { value ->
+                                    viewFieldsText = value
+                                    vm.update(card.copy(viewFields = value.parseViewFields()))
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                label = { Text(stringResource(R.string.rp_card_view_fields)) },
+                                minLines = 2,
+                                maxLines = 6,
+                            )
+                        }
                     }
                 }
             }
@@ -271,30 +353,90 @@ fun RpCardDetailPage(id: String) {
 }
 
 @Composable
-private fun RpModelRow(
-    label: String,
+private fun RpModelSelector(
     modelId: kotlin.uuid.Uuid?,
-    settings: me.rerere.rikkahub.data.datastore.Settings,
-    onSelect: (Model) -> Unit,
-    allowClear: Boolean = false,
+    settings: Settings,
+    onSelect: (kotlin.uuid.Uuid?) -> Unit,
 ) {
-    Column {
-        Text(label, style = MaterialTheme.typography.labelLarge)
-        ModelSelector(
-            modelId = modelId,
-            providers = settings.providers,
-            type = ModelType.CHAT,
-            allowClear = allowClear,
-            onSelect = onSelect,
-        )
-    }
+    ModelSelector(
+        modelId = modelId,
+        providers = settings.providers,
+        type = ModelType.CHAT,
+        allowClear = true,
+        onSelect = { model -> onSelect(model.modelId.takeIf(String::isNotBlank)?.let { model.id }) },
+    )
 }
 
-private fun RpPlayMode.displayName(): String = when (this) {
-    RpPlayMode.CHARACTER -> "角色"
-    RpPlayMode.SIMULATION -> "沙盒"
-    RpPlayMode.COLLABORATIVE -> "共创"
-    RpPlayMode.MYSTERY -> "推理"
-    RpPlayMode.TABLETOP -> "跑团"
-    RpPlayMode.CUSTOM -> "自定义"
+@Composable
+private fun RpPlayMode.localizedName(): String = when (this) {
+    RpPlayMode.CHARACTER -> stringResource(R.string.rp_mode_character)
+    RpPlayMode.SIMULATION -> stringResource(R.string.rp_mode_simulation)
+    RpPlayMode.COLLABORATIVE -> stringResource(R.string.rp_mode_collaborative)
+    RpPlayMode.MYSTERY -> stringResource(R.string.rp_mode_mystery)
+    RpPlayMode.TABLETOP -> stringResource(R.string.rp_mode_tabletop)
+    RpPlayMode.CUSTOM -> stringResource(R.string.rp_mode_custom)
+}
+
+private data class ParsedStateSchema(
+    val schema: RpStateSchema,
+    val hadInvalidLines: Boolean,
+)
+
+private fun String.parseStateSchema(): ParsedStateSchema {
+    val fields = mutableListOf<RpStateField>()
+    var hadInvalidLines = false
+    lines().forEach { line ->
+        if (line.isBlank()) return@forEach
+        val parts = line.split('|').map(String::trim)
+        if (parts.size < 3) {
+            hadInvalidLines = true
+            return@forEach
+        }
+        val path = parts[0]
+        val label = parts[1]
+        val type = parts[2].uppercase().let { value ->
+            runCatching { RpStateFieldType.valueOf(value) }.getOrNull()
+        }
+        val validPath = path.matches(Regex("[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*"))
+        if (!validPath || label.isBlank() || type == null) {
+            hadInvalidLines = true
+            return@forEach
+        }
+        val min = parts.getOrNull(4)?.takeIf(String::isNotBlank)?.toDoubleOrNull()
+        val max = parts.getOrNull(5)?.takeIf(String::isNotBlank)?.toDoubleOrNull()
+        if ((parts.getOrNull(4)?.isNotBlank() == true && min == null) ||
+            (parts.getOrNull(5)?.isNotBlank() == true && max == null)
+        ) {
+            hadInvalidLines = true
+            return@forEach
+        }
+        fields += RpStateField(
+            path = path,
+            label = label,
+            type = type,
+            group = parts.getOrNull(3)?.takeIf(String::isNotBlank) ?: "状态",
+            min = min,
+            max = max,
+        )
+    }
+    return ParsedStateSchema(RpStateSchema(fields), hadInvalidLines)
+}
+
+private fun RpStateSchema.toEditorText(): String = fields.joinToString("\n") { field ->
+    listOf(
+        field.path,
+        field.label,
+        field.type.name,
+        field.group,
+        field.min?.toString().orEmpty(),
+        field.max?.toString().orEmpty(),
+    ).joinToString(" | ")
+}
+
+private fun String.parseViewFields(): List<RpViewField> = lines().mapNotNull { line ->
+    val separator = line.indexOf('=')
+    if (separator <= 0) return@mapNotNull null
+    val path = line.substring(0, separator).trim()
+    val label = line.substring(separator + 1).trim()
+    if (path.isBlank() || label.isBlank()) null else RpViewField(path, label)
 }

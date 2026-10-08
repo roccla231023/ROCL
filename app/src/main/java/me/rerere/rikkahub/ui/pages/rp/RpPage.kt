@@ -1,9 +1,7 @@
 package me.rerere.rikkahub.ui.pages.rp
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -25,6 +23,7 @@ import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -33,8 +32,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -46,8 +43,8 @@ import me.rerere.hugeicons.stroke.Delete01
 import me.rerere.rikkahub.R
 import me.rerere.rikkahub.Screen
 import me.rerere.rikkahub.data.rp.model.RpCard
+import me.rerere.rikkahub.data.rp.model.RpPlayMode
 import me.rerere.rikkahub.data.rp.model.RpSession
-import me.rerere.rikkahub.data.rp.model.displayModeName
 import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.ui.RikkaConfirmDialog
 import me.rerere.rikkahub.ui.context.LocalNavController
@@ -106,23 +103,13 @@ fun RpPage(vm: RpVM = koinViewModel()) {
                 items(cards, key = { it.id }) { card ->
                     RpCardItem(
                         card = card,
+                        recentSession = sessions.firstOrNull { it.card.id == card.id },
                         onOpen = { navController.navigate(Screen.RpCardDetail(card.id.toString())) },
+                        onContinue = { session ->
+                            navController.navigate(Screen.RpSession(session.id.toString()))
+                        },
                         onDelete = { deleteTarget = card },
                     )
-                }
-                if (sessions.isNotEmpty()) {
-                    item(key = "sessions-title") {
-                        Text(
-                            stringResource(R.string.rp_page_sessions),
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.padding(top = 12.dp, start = 4.dp),
-                        )
-                    }
-                    items(sessions, key = { "session-${it.id}" }) { session ->
-                        RpSessionItem(session) {
-                            navController.navigate(Screen.RpSession(session.id.toString()))
-                        }
-                    }
                 }
             }
         }
@@ -163,83 +150,72 @@ private fun EmptyRpState(modifier: Modifier = Modifier, onCreate: () -> Unit) {
 }
 
 @Composable
-private fun RpCardItem(card: RpCard, onOpen: () -> Unit, onDelete: () -> Unit) {
+private fun RpCardItem(
+    card: RpCard,
+    recentSession: RpSession?,
+    onOpen: () -> Unit,
+    onContinue: (RpSession) -> Unit,
+    onDelete: () -> Unit,
+) {
     Card(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen),
-        shape = RoundedCornerShape(24.dp),
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {
-        Column {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(116.dp)
-                    .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
-                    .background(
-                        Brush.linearGradient(
-                            listOf(
-                                MaterialTheme.colorScheme.primaryContainer,
-                                MaterialTheme.colorScheme.tertiaryContainer,
-                            )
-                        )
-                    )
-                    .padding(20.dp),
-            ) {
-                Column(modifier = Modifier.align(Alignment.BottomStart)) {
+        Column(modifier = Modifier.padding(start = 18.dp, top = 16.dp, end = 8.dp, bottom = 12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f).clickable(onClick = onOpen).padding(vertical = 2.dp)) {
                     Text(
                         card.name.ifBlank { stringResource(R.string.rp_page_untitled) },
-                        style = MaterialTheme.typography.headlineSmall,
+                        style = MaterialTheme.typography.titleLarge,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
-                        card.genre.ifBlank { card.displayModeName() },
+                        card.genre.ifBlank { card.mode.localizedName() },
                         style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(start = 18.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    card.description.ifBlank { card.displayModeName() },
-                    modifier = Modifier.weight(1f),
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
                 IconButton(onClick = onDelete) {
                     Icon(HugeIcons.Delete01, contentDescription = stringResource(R.string.rp_page_delete))
                 }
                 Icon(HugeIcons.ArrowRight01, contentDescription = null, modifier = Modifier.size(20.dp))
+            }
+            Text(
+                card.description.ifBlank { stringResource(R.string.rp_page_empty_desc) },
+                modifier = Modifier.padding(top = 10.dp, end = 8.dp),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            recentSession?.let { session ->
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        stringResource(R.string.rp_page_recent_story),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = { onContinue(session) }) {
+                        Text(stringResource(R.string.rp_page_continue_story))
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun RpSessionItem(session: RpSession, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(session.card.name.ifBlank { stringResource(R.string.rp_page_untitled) }, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(
-                    session.card.genre.ifBlank { session.card.displayModeName() },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Icon(HugeIcons.ArrowRight01, contentDescription = null, modifier = Modifier.size(18.dp))
-        }
-    }
+private fun RpPlayMode.localizedName(): String = when (this) {
+    RpPlayMode.CHARACTER -> stringResource(R.string.rp_mode_character)
+    RpPlayMode.SIMULATION -> stringResource(R.string.rp_mode_simulation)
+    RpPlayMode.COLLABORATIVE -> stringResource(R.string.rp_mode_collaborative)
+    RpPlayMode.MYSTERY -> stringResource(R.string.rp_mode_mystery)
+    RpPlayMode.TABLETOP -> stringResource(R.string.rp_mode_tabletop)
+    RpPlayMode.CUSTOM -> stringResource(R.string.rp_mode_custom)
 }

@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.296
+
+更新内容:
+- 完善 RP 卡片编辑器：将基本信息、世界设定、模型工作组和高级状态配置分层展示
+- RP 模型工作组新增叙事模型、世界裁决模型、规则审查模型和状态记录员说明与选择
+- 新增通用状态 Schema 编辑和按字段分组的状态面板，支持进度、单位、隐藏字段与故事记忆
+- RP 首页改为剧本库样式，支持从最近故事继续进入
+- 角色互动与共同创作模式跳过不适用的裁决、审查和状态记录阶段
+- 补充 RP 页面默认、简体中文和繁体中文文案；Room 数据库升级至 31 保存故事记忆与回合事件
+
+Updates:
+- Refined the RP card editor with separate basic, world, model-group, and advanced state sections
+- Added narrator, world adjudicator, rules reviewer, and state recorder descriptions and model selection
+- Added a generic state schema editor and grouped state sheet with progress, units, hidden fields, and story memory
+- Reworked the RP home page into a story library with a continue-recent-story entry
+- Character and collaborative modes now skip inapplicable adjudication, review, and state-keeping stages
+- Added RP strings for the default, Simplified Chinese, and Traditional Chinese locales; database version 31 persists story memory and turn events
+
 ## 1.295
 
 更新内容:

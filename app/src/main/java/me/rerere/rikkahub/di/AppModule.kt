@@ -6,6 +6,7 @@ import com.google.firebase.crashlytics.crashlytics
 import kotlinx.serialization.json.Json
 import me.rerere.rikkahub.AppScope
 import me.rerere.rikkahub.data.ai.subagent.SubAgentEngine
+import me.rerere.rikkahub.data.rp.runtime.RpContextBuilder
 import me.rerere.rikkahub.data.rp.runtime.RpModelGateway
 import me.rerere.rikkahub.data.rp.runtime.RpRuntime
 import me.rerere.rikkahub.data.rp.runtime.RpStateReducer
@@ -86,13 +87,14 @@ val appModule = module {
 
     single { RpModelGateway(providerManager = get(), json = get()) }
     single { RpStateReducer() }
+    single { RpContextBuilder(get()) }
     single {
         RpRuntime(
             settingsStore = get(),
             rpRepository = get(),
-            conversationRepository = get(),
             modelGateway = get(),
             stateReducer = get(),
+            contextBuilder = get(),
         )
     }
 

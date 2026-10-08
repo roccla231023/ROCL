@@ -20,6 +20,7 @@ data class RpSessionEntity(
     @ColumnInfo("active_branch_id") val activeBranchId: String,
     val revision: Long,
     @ColumnInfo("state_json") val stateJson: String,
+    @ColumnInfo("story_memory_json", defaultValue = "'{}'") val storyMemoryJson: String = "{}",
     val status: String,
     @ColumnInfo("created_at") val createdAt: Long,
     @ColumnInfo("updated_at") val updatedAt: Long,

@@ -23,6 +23,7 @@ enum class RpModelRole {
     NARRATOR,
     ADJUDICATOR,
     REVIEWER,
+    STATE_KEEPER,
     MEMORY_CURATOR,
 }
 
@@ -31,6 +32,7 @@ data class RpModelBindings(
     val narratorModelId: Uuid? = null,
     val adjudicatorModelId: Uuid? = null,
     val reviewerModelId: Uuid? = null,
+    val stateKeeperModelId: Uuid? = null,
     val memoryCuratorModelId: Uuid? = null,
 )
 
@@ -65,6 +67,7 @@ data class RpCard(
     val hiddenStatePaths: Set<String> = emptySet(),
     val participants: List<RpParticipant> = emptyList(),
     val modelBindings: RpModelBindings = RpModelBindings(),
+    val stateSchema: RpStateSchema = defaultStateSchema(),
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
 )
