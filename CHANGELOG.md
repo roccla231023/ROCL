@@ -1,14 +1,16 @@
 # Changelog
 
-## Unreleased
+## 1.300
 
 更新内容:
+- 更换应用图标
 - 同步官方 RikkaHub 3.1.0，接入新的聊天生成链路、文件记忆、用量统计、创作和订阅账号功能
 - 移除独立角色扮演功能及入口；原有角色卡和故事存档数据保留在数据库中
 - 数据库升级至 32，保留 ROCL 原有群聊、会话记忆、向量记忆与历史统计数据
 - 升级前请导出完整备份；如需回退使用角色扮演功能，请安装旧版并恢复升级前的备份，不保证旧版直接读取新版数据库
 
 Updates:
+- New app icon
 - Sync with upstream RikkaHub 3.1.0, including the new chat agent loop, file memory, usage statistics, media creation, and subscription accounts
 - Remove the standalone roleplay feature and entry points while retaining existing character cards and story archives in the database
 - Migrate to database version 32 while preserving ROCL group chat, session memory, vector memory, and historical statistics
