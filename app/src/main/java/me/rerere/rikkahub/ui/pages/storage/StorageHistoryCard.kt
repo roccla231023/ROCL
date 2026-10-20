@@ -31,6 +31,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import java.io.File
 import me.rerere.hugeicons.HugeIcons
 import me.rerere.hugeicons.stroke.Delete02
 import me.rerere.hugeicons.stroke.Refresh01
@@ -39,7 +40,6 @@ import me.rerere.rikkahub.data.repository.OrphanEntry
 import me.rerere.rikkahub.data.repository.OrphanScanResult
 import me.rerere.rikkahub.data.repository.StorageCategoryUsage
 import me.rerere.rikkahub.utils.UiState
-import java.io.File
 
 @Composable
 fun HistoryFilesCard(

@@ -1,5 +1,8 @@
 package me.rerere.rikkahub.data.ai.tools
 
+import java.time.LocalDate
+import kotlin.time.Clock
+import kotlin.uuid.Uuid
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -12,9 +15,6 @@ import me.rerere.rikkahub.data.datastore.Settings
 import me.rerere.rikkahub.utils.JsonInstantPretty
 import me.rerere.rikkahub.utils.toLocalString
 import me.rerere.search.SearchService
-import java.time.LocalDate
-import kotlin.time.Clock
-import kotlin.uuid.Uuid
 
 fun createSearchTools(settings: Settings, searchServiceId: Uuid? = null): Set<Tool> {
     val selected = searchServiceId?.let { id -> settings.searchServices.find { it.id == id } }

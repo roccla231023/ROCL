@@ -1,9 +1,9 @@
 package me.rerere.rikkahub.data.ai.mcp
 
+import kotlin.uuid.Uuid
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import kotlin.uuid.Uuid
 
 class McpAvailableToolsTest {
     private val searchServerId = Uuid.parse("11111111-1111-1111-1111-111111111111")

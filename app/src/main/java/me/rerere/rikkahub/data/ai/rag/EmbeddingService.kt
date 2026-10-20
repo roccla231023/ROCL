@@ -1,12 +1,12 @@
 package me.rerere.rikkahub.data.ai.rag
 
+import kotlin.uuid.Uuid
 import me.rerere.ai.provider.EmbeddingGenerationParams
 import me.rerere.ai.provider.ProviderManager
 import me.rerere.rikkahub.data.datastore.SettingsStore
 import me.rerere.rikkahub.data.datastore.findModelById
 import me.rerere.rikkahub.data.datastore.findProvider
 import me.rerere.rikkahub.data.datastore.getEmbeddingRetrievalTimeoutMillis
-import kotlin.uuid.Uuid
 
 class EmbeddingService(
     private val providerManager: ProviderManager,

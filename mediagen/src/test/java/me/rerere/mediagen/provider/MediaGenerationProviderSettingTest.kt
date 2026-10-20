@@ -40,6 +40,21 @@ class MediaGenerationProviderSettingTest {
         assertEquals(setting.id, copy.id)
         assertEquals("sk-test", copy.apiKey)
         assertEquals("中转", copy.name)
-        assertEquals(listOf("gpt-image-2", "gpt-image-1"), copy.models.map { it.modelId })
+        assertEquals(
+            listOf("gpt-image-2.5-sunburst", "gpt-image-2.5-flare", "gpt-image-1"),
+            copy.models.map { it.modelId }
+        )
+    }
+
+    @Test
+    fun copyProviderReplacesCredentialsAndKeepsVendorFields() {
+        val setting = MediaGenerationProviderSetting.Aliyun(apiKey = "old", workspaceId = "ws-1")
+
+        val copy = setting.copyProvider(apiKey = "new", baseUrl = "https://dashscope.aliyuncs.com/api/v1")
+
+        assertEquals("new", copy.apiKey)
+        assertEquals("https://dashscope.aliyuncs.com/api/v1", copy.baseUrl)
+        assertEquals("ws-1", (copy as MediaGenerationProviderSetting.Aliyun).workspaceId)
+        assertEquals(setting.models, copy.models)
     }
 }

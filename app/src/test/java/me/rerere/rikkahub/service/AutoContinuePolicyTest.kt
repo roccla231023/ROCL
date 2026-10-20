@@ -1,5 +1,9 @@
 package me.rerere.rikkahub.service
 
+import java.io.IOException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
+import kotlin.uuid.Uuid
 import kotlinx.coroutines.CancellationException
 import me.rerere.ai.core.MessageRole
 import me.rerere.ai.ui.UIMessage
@@ -12,10 +16,6 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.IOException
-import java.net.SocketTimeoutException
-import java.net.UnknownHostException
-import kotlin.uuid.Uuid
 
 class AutoContinuePolicyTest {
     @Test

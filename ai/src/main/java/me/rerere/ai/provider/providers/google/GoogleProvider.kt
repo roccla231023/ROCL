@@ -36,9 +36,11 @@ import me.rerere.ai.provider.Model
 import me.rerere.ai.provider.ModelAbility
 import me.rerere.ai.provider.ModelType
 import me.rerere.ai.provider.Provider
+import me.rerere.ai.provider.ProviderQuota
 import me.rerere.ai.provider.ProviderSetting
 import me.rerere.ai.provider.TextGenerationResult
 import me.rerere.ai.provider.TextGenerationParams
+import me.rerere.ai.provider.runQuotaQuery
 import me.rerere.ai.provider.providers.PartGroup
 import me.rerere.ai.provider.providers.google.vertex.ServiceAccountTokenProvider
 import me.rerere.ai.provider.providers.groupPartsByToolBoundary
@@ -65,6 +67,7 @@ import me.rerere.ai.util.removeElements
 import me.rerere.ai.util.stringSafe
 import me.rerere.common.http.await
 import me.rerere.common.http.jsonPrimitiveOrNull
+import me.rerere.common.http.sse.newEventSource
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
@@ -74,7 +77,6 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import okhttp3.sse.EventSource
 import okhttp3.sse.EventSourceListener
-import okhttp3.sse.EventSources
 import org.apache.commons.text.StringEscapeUtils
 import kotlin.time.Clock
 import kotlin.uuid.Uuid
@@ -87,6 +89,11 @@ class GoogleProvider(private val client: OkHttpClient, context: Context? = null)
         ServiceAccountTokenProvider(client)
     }
     private val interactionsAPI = InteractionsAPI(client = client, keyRoulette = keyRoulette)
+
+    override suspend fun getQuota(providerSetting: ProviderSetting.Google): ProviderQuota? =
+        client.runQuotaQuery(providerSetting) {
+            keyRoulette.next(providerSetting.apiKey, providerSetting.id.toString())
+        }
 
     // Interactions API 目前只有 Gemini Developer API 提供，Vertex AI 仍走 generateContent
     private fun ProviderSetting.Google.usesInteractionsApi() = useInteractionsApi && !vertexAI
@@ -331,8 +338,7 @@ class GoogleProvider(private val client: OkHttpClient, context: Context? = null)
             }
         }
 
-        val eventSource = EventSources.createFactory(client)
-                .newEventSource(request, listener)
+        val eventSource = client.newEventSource(request, listener)
 
         awaitClose {
             println("[awaitClose] 关闭eventSource")
@@ -816,20 +822,20 @@ class GoogleProvider(private val client: OkHttpClient, context: Context? = null)
 
                 // 1. 拆分出纯文本部分
                 val textParts = output.filterIsInstance<UIMessagePart.Text>()
-                
+
                 // 2. 提取所有的多模态(图片/视频/音频)，并直接转为 Google 要求的格式
                 // 过滤出最终包含 inlineData 的数据块
                 val mediaGoogleParts = output
                     .filter { it !is UIMessagePart.Text }
                     .mapNotNull { it.toGooglePart() }
-                    .filter { it.containsKey("inlineData") } 
+                    .filter { it.containsKey("inlineData") }
 
                 // 3. 构建给模型看的结构化 response 节点
                 put("response", buildJsonObject {
                     // 处理文本结果
                     if (textParts.isNotEmpty()) {
                         put(
-                            "result", 
+                            "result",
                             textParts.joinToString("\n") { it.text }
                         )
                     } else if (mediaGoogleParts.isEmpty()) {
@@ -861,7 +867,7 @@ class GoogleProvider(private val client: OkHttpClient, context: Context? = null)
                                     // 添加能够让 $ref 认出它的唯一名称
                                     put("displayName", refName)
                                 })
-                                
+
                                 // 保留可能存在的其他字段
                                 googlePart.forEach { (k, v) ->
                                     if (k != "inlineData") put(k, v)

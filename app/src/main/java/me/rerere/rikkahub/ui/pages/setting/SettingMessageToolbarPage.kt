@@ -22,6 +22,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import me.rerere.ai.core.MessageRole
 import me.rerere.hugeicons.HugeIcons
 import me.rerere.hugeicons.stroke.ArrowRight01
 import me.rerere.hugeicons.stroke.Copy01
@@ -40,7 +41,6 @@ import me.rerere.rikkahub.data.datastore.MessageToolbarButton
 import me.rerere.rikkahub.data.datastore.MessageToolbarConfig
 import me.rerere.rikkahub.data.datastore.USER_TOOLBAR_BUTTONS
 import me.rerere.rikkahub.data.datastore.resolvedToolbar
-import me.rerere.ai.core.MessageRole
 import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.ui.CardGroup
 import me.rerere.rikkahub.ui.components.ui.CardGroupScope
@@ -56,7 +56,7 @@ fun SettingMessageToolbarPage(vm: SettingVM = koinViewModel()) {
 
     fun updateDisplaySetting(setting: DisplaySetting) {
         displaySetting = setting
-        vm.updateSettings(settings.copy(displaySetting = setting))
+        vm.updateSettings({ current -> current.copy(displaySetting = setting) })
     }
 
     Scaffold(

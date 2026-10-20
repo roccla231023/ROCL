@@ -1,5 +1,6 @@
 package me.rerere.rikkahub.data.ai.subagent
 
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
@@ -18,7 +19,6 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.util.concurrent.atomic.AtomicInteger
 
 class SubAgentEngineTest {
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }

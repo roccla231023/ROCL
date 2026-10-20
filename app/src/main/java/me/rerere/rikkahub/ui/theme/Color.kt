@@ -2,6 +2,8 @@ package me.rerere.rikkahub.ui.theme
 
 import androidx.compose.material3.CardColors
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FloatingToolbarColors
+import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.ListItemColors
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme.colorScheme
@@ -191,6 +193,11 @@ object CustomColors {
 
     val overlayContainerColor: Color
         @Composable get() = colorScheme.surfaceContainerHigh.copy(alpha = 1f)
+
+    val floatingToolbarColors: FloatingToolbarColors
+        @Composable get() = FloatingToolbarDefaults.standardFloatingToolbarColors().copy(
+            toolbarContainerColor = overlayContainerColor,
+        )
 
     val opaqueCardColors: CardColors
         @Composable get() = CardDefaults.cardColors(containerColor = overlayContainerColor)

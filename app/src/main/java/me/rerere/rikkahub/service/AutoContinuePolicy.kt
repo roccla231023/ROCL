@@ -1,11 +1,11 @@
 package me.rerere.rikkahub.service
 
+import java.io.IOException
+import java.util.Locale
 import kotlinx.coroutines.CancellationException
 import me.rerere.ai.core.MessageRole
 import me.rerere.ai.ui.UIMessage
 import me.rerere.rikkahub.data.model.Conversation
-import java.io.IOException
-import java.util.Locale
 
 private val TRUNCATION_FINISH_REASONS = setOf(
     "length",

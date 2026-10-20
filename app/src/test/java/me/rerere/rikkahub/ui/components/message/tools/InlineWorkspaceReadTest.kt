@@ -1,9 +1,9 @@
 package me.rerere.rikkahub.ui.components.message.tools
 
+import kotlin.uuid.Uuid
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import kotlin.uuid.Uuid
 
 class InlineWorkspaceReadTest {
     private val allowed = Uuid.parse("11111111-1111-1111-1111-111111111111")

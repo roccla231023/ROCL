@@ -1,13 +1,13 @@
 package me.rerere.rikkahub.data.db.fts
 
 import android.util.Log
+import java.time.Instant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.rerere.ai.ui.UIMessage
 import me.rerere.ai.ui.UIMessagePart
 import me.rerere.rikkahub.data.db.AppDatabase
 import me.rerere.rikkahub.data.model.Conversation
-import java.time.Instant
 
 data class MessageSearchResult(
     val nodeId: String,
@@ -53,6 +53,10 @@ class MessageFtsManager(private val database: AppDatabase) {
         }
     }
 
+    suspend fun updateTitle(conversationId: String, title: String) = withContext(Dispatchers.IO) {
+        db.execSQL("UPDATE message_fts SET title = ? WHERE conversation_id = ?", arrayOf(title, conversationId))
+    }
+
     suspend fun deleteConversation(conversationId: String) = withContext(Dispatchers.IO) {
         db.execSQL("DELETE FROM message_fts WHERE conversation_id = ?", arrayOf(conversationId))
     }
@@ -64,15 +68,17 @@ class MessageFtsManager(private val database: AppDatabase) {
     suspend fun search(
         keyword: String,
         sort: MessageSearchSort = MessageSearchSort.RELEVANCE,
-        assistantId: String? = null,
+        // 只搜这些助手的对话，null 表示不限
+        assistantIds: Collection<String>? = null,
     ): List<MessageSearchResult> = withContext(Dispatchers.IO) {
         val results = mutableListOf<MessageSearchResult>()
-        val assistantFilter = if (assistantId != null) {
+        if (assistantIds != null && assistantIds.isEmpty()) return@withContext results
+        val assistantFilter = if (assistantIds != null) {
             """
             AND EXISTS (
                 SELECT 1 FROM conversationentity AS conversation
                 WHERE conversation.id = message_fts.conversation_id
-                  AND conversation.assistant_id = ?
+                  AND conversation.assistant_id IN (${assistantIds.joinToString { "?" }})
             )
             """.trimIndent()
         } else {
@@ -84,11 +90,16 @@ class MessageFtsManager(private val database: AppDatabase) {
                    simple_snippet(message_fts, 0, '[', ']', '...', 30) AS snippet
             FROM message_fts
             WHERE text MATCH jieba_query(?)
+            AND EXISTS (
+                SELECT 1 FROM conversationentity AS visible_conversation
+                WHERE visible_conversation.id = message_fts.conversation_id
+                  AND visible_conversation.rp_session_id = ''
+            )
             $assistantFilter
             ORDER BY ${sort.orderBy}
             LIMIT 50
             """.trimIndent(),
-            if (assistantId != null) arrayOf(keyword, assistantId) else arrayOf(keyword)
+            arrayOf(keyword, *assistantIds.orEmpty().toTypedArray())
         )
         Log.i(TAG, "search: $keyword")
         cursor.use {

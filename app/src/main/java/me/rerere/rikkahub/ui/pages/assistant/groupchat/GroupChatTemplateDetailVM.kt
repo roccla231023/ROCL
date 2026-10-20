@@ -2,6 +2,7 @@ package me.rerere.rikkahub.ui.pages.assistant.groupchat
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlin.uuid.Uuid
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -13,7 +14,6 @@ import me.rerere.rikkahub.data.db.entity.WorkspaceEntity
 import me.rerere.rikkahub.data.model.GroupChatTemplate
 import me.rerere.rikkahub.data.model.ensureSeatInstanceNumbers
 import me.rerere.rikkahub.data.repository.WorkspaceRepository
-import kotlin.uuid.Uuid
 
 class GroupChatTemplateDetailVM(
     private val id: String,
@@ -37,22 +37,19 @@ class GroupChatTemplateDetailVM(
 
     fun update(template: GroupChatTemplate) {
         viewModelScope.launch {
-            val current = settings.value
-            val normalized = template.ensureSeatInstanceNumbers()
-            val exists = current.groupChatTemplates.any { it.id == templateId }
-            val templates = if (exists) {
-                current.groupChatTemplates.map { if (it.id == templateId) normalized else it }
-            } else {
-                current.groupChatTemplates + normalized
+            val normalized = template.ensureSeatInstanceNumbers().copy(id = templateId)
+            settingsStore.update { current ->
+                val templates = current.groupChatTemplates
+                current.copy(groupChatTemplates = if (templates.any { it.id == templateId }) {
+                    templates.map { if (it.id == templateId) normalized else it }
+                } else templates + normalized)
             }
-            settingsStore.update(current.copy(groupChatTemplates = templates))
         }
     }
 
     fun delete() {
         viewModelScope.launch {
-            val current = settings.value
-            settingsStore.update(
+            settingsStore.update({ current ->
                 current.copy(
                     groupChatTemplates = current.groupChatTemplates.filterNot { it.id == templateId },
                     assistantId = if (current.assistantId == templateId) {
@@ -61,7 +58,7 @@ class GroupChatTemplateDetailVM(
                         current.assistantId
                     },
                 )
-            )
+             })
         }
     }
 }

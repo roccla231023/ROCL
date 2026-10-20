@@ -1,12 +1,5 @@
 package me.rerere.rikkahub.ui.pages.setting
 
-import me.rerere.hugeicons.HugeIcons
-import me.rerere.hugeicons.stroke.Tick01
-import me.rerere.hugeicons.stroke.StopCircle
-import me.rerere.hugeicons.stroke.Add01
-import me.rerere.hugeicons.stroke.Mic01
-import me.rerere.hugeicons.stroke.Delete01
-import me.rerere.hugeicons.stroke.VolumeHigh
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -37,10 +30,10 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.SheetValue
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -55,15 +48,21 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import me.rerere.rikkahub.R
 import me.rerere.asr.ASRProviderSetting
+import me.rerere.hugeicons.HugeIcons
+import me.rerere.hugeicons.stroke.Add01
+import me.rerere.hugeicons.stroke.Delete01
+import me.rerere.hugeicons.stroke.Mic01
+import me.rerere.hugeicons.stroke.StopCircle
+import me.rerere.hugeicons.stroke.Tick01
+import me.rerere.hugeicons.stroke.VolumeHigh
+import me.rerere.rikkahub.R
 import me.rerere.rikkahub.data.datastore.DEFAULT_SYSTEM_TTS_ID
 import me.rerere.rikkahub.data.datastore.Settings
 import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.ui.AutoAIIcon
 import me.rerere.rikkahub.ui.components.ui.ItemAction
 import me.rerere.rikkahub.ui.components.ui.ItemActionMenu
-import me.rerere.rikkahub.ui.components.ui.RikkaConfirmDialog
 import me.rerere.rikkahub.ui.components.ui.Tag
 import me.rerere.rikkahub.ui.components.ui.TagType
 import me.rerere.rikkahub.ui.components.ui.longPressReorder
@@ -73,6 +72,7 @@ import me.rerere.rikkahub.ui.pages.setting.components.TTSProviderConfigure
 import me.rerere.rikkahub.ui.theme.CustomColors
 import me.rerere.rikkahub.utils.plus
 import me.rerere.tts.provider.TTSProviderSetting
+import me.rerere.ui.components.RikkaConfirmDialog
 import org.koin.androidx.compose.koinViewModel
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
@@ -97,20 +97,20 @@ fun SettingSpeechPage(vm: SettingVM = koinViewModel()) {
                 actions = {
                     if (selectedPage == 0) {
                         AddTTSProviderButton {
-                            vm.updateSettings(
-                                settings.copy(
+                            vm.updateSettings({ current ->
+                                current.copy(
                                     ttsProviders = listOf(it) + settings.ttsProviders
                                 )
-                            )
+                             })
                         }
                     } else {
                         AddASRProviderButton {
-                            vm.updateSettings(
-                                settings.copy(
+                            vm.updateSettings({ current ->
+                                current.copy(
                                     asrProviders = listOf(it) + settings.asrProviders,
                                     selectedASRProviderId = settings.selectedASRProviderId ?: it.id
                                 )
-                            )
+                             })
                         }
                     }
                 },
@@ -143,7 +143,7 @@ fun SettingSpeechPage(vm: SettingVM = koinViewModel()) {
             0 -> Column(modifier = Modifier.padding(innerPadding)) {
                 TTSProviderList(
                     settings = settings,
-                    onUpdateSettings = vm::updateSettings,
+                    onUpdateSettings = { updated -> vm.updateSettings { updated } },
                     onEdit = { editingTTSProvider = it },
                     modifier = Modifier.weight(1f),
                 )
@@ -151,7 +151,7 @@ fun SettingSpeechPage(vm: SettingVM = koinViewModel()) {
 
             1 -> ASRProviderList(
                 settings = settings,
-                onUpdateSettings = vm::updateSettings,
+                onUpdateSettings = { updated -> vm.updateSettings { updated } },
                 onEdit = { editingASRProvider = it },
                 modifier = Modifier.padding(innerPadding)
             )
@@ -210,7 +210,7 @@ fun SettingSpeechPage(vm: SettingVM = koinViewModel()) {
                             val newProviders = settings.ttsProviders.map {
                                 if (it.id == provider.id) currentProvider else it
                             }
-                            vm.updateSettings(settings.copy(ttsProviders = newProviders))
+                            vm.updateSettings({ current -> current.copy(ttsProviders = newProviders) })
                             editingTTSProvider = null
                         },
                         modifier = Modifier.weight(1f)
@@ -273,7 +273,7 @@ fun SettingSpeechPage(vm: SettingVM = koinViewModel()) {
                             val newProviders = settings.asrProviders.map {
                                 if (it.id == provider.id) currentProvider else it
                             }
-                            vm.updateSettings(settings.copy(asrProviders = newProviders))
+                            vm.updateSettings({ current -> current.copy(asrProviders = newProviders) })
                             editingASRProvider = null
                         },
                         modifier = Modifier.weight(1f)

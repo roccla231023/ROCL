@@ -1,12 +1,12 @@
 package me.rerere.rikkahub.service
 
+import kotlin.uuid.Uuid
 import me.rerere.ai.core.MessageRole
 import me.rerere.ai.ui.UIMessage
 import me.rerere.ai.ui.UIMessagePart
 import me.rerere.rikkahub.data.ai.transformers.InputMessageTransformer
 import me.rerere.rikkahub.data.ai.transformers.TransformerContext
 import me.rerere.rikkahub.data.model.Conversation
-import kotlin.uuid.Uuid
 
 internal const val CONTINUE_TAIL_CHARS_DEFAULT = 320
 internal const val CONTINUE_MIN_OVERLAP_DEFAULT = 20

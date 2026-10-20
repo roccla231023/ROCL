@@ -64,7 +64,7 @@ fun SettingRpOptimizationsPage(vm: SettingVM = koinViewModel()) {
     fun updateRules(rules: List<RpStyleRule>) {
         val next = displaySetting.copy(rpStyleRules = rules)
         displaySetting = next
-        vm.updateSettings(settings.copy(displaySetting = next))
+        vm.updateSettings({ current -> current.copy(displaySetting = next) })
     }
 
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()

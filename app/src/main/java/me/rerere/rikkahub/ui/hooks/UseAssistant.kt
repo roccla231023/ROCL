@@ -5,26 +5,26 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlin.uuid.Uuid
 import me.rerere.rikkahub.data.datastore.Settings
 import me.rerere.rikkahub.data.datastore.getCurrentAssistant
 import me.rerere.rikkahub.data.datastore.getGroupChatTemplate
 import me.rerere.rikkahub.data.model.Assistant
 import me.rerere.rikkahub.data.model.GroupChatTemplate
-import kotlin.uuid.Uuid
 
 @Composable
 fun rememberAssistantState(
     settings: Settings,
-    onUpdateSettings: (Settings) -> Unit
+    onSelectAssistant: (Assistant) -> Unit
 ): AssistantState {
-    return remember(settings, onUpdateSettings) {
-        AssistantState(settings, onUpdateSettings)
+    return remember(settings, onSelectAssistant) {
+        AssistantState(settings, onSelectAssistant)
     }
 }
 
 class AssistantState(
     private val settings: Settings,
-    private val onUpdateSettings: (Settings) -> Unit
+    private val onSelectAssistant: (Assistant) -> Unit
 ) {
     private var _currentAssistant by mutableStateOf(
         settings.getCurrentAssistant()
@@ -34,14 +34,10 @@ class AssistantState(
     val currentGroup: GroupChatTemplate? = settings.getGroupChatTemplate(settings.assistantId)
 
     fun setSelectAssistant(assistant: Assistant) {
-        onUpdateSettings(
-            settings.copy(
-                assistantId = assistant.id
-            )
-        )
+        onSelectAssistant(assistant)
     }
 
     fun setSelectTarget(id: Uuid) {
-        onUpdateSettings(settings.copy(assistantId = id))
+        onSelectAssistant(settings.assistants.find { it.id == id } ?: Assistant(id = id))
     }
 }

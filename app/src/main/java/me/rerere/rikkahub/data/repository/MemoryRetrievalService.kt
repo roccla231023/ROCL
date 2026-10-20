@@ -10,7 +10,7 @@ import me.rerere.rikkahub.data.model.MemoryRetrievalMode
 import me.rerere.rikkahub.data.model.effectiveMemoryRetrievalMode
 
 class MemoryRetrievalService(
-    private val memoryRepository: MemoryRepository,
+    private val memoryRepository: LegacyMemoryRepository,
     private val embeddingService: EmbeddingService,
 ) {
     suspend fun memoriesForGeneration(

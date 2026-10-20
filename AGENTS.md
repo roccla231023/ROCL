@@ -4,7 +4,19 @@
 
 RikkaHub is a native Android LLM chat client that supports switching between different AI providers
 for conversations.
-Built with Jetpack Compose, Kotlin, and follows Material Design 3 principles.
+Built with Jetpack Compose, Kotlin, and follows Material 3 Expressive (MD3 Expressive) design language.
+
+## Design Language
+
+The UI follows Material 3 Expressive. New and reworked screens should match it rather than the older baseline
+Material 3 look (cards with dividers, plain forms).
+
+- The app theme is `MaterialExpressiveTheme` (app/src/main/java/me/rerere/rikkahub/ui/theme/Theme.kt); prefer the
+  expressive variants of components, shapes (`MaterialShapes`), emphasized typography (e.g. `titleSmallEmphasized`)
+  and motion from `androidx.compose.material3` over hand-rolled equivalents.
+- Settings-style and form pages use segmented groups via `CardGroup` (
+  app/src/main/java/me/rerere/rikkahub/ui/components/ui/CardGroup.kt) instead of a card with dividers.
+- Favor larger corner radii, filled/tonal containers, and whole-row click targets.
 
 ## Build, Test, and Development Commands
 
@@ -12,6 +24,8 @@ Built with Jetpack Compose, Kotlin, and follows Material Design 3 principles.
 ./gradlew assembleDebug          # 构建 Debug APK
 ./gradlew test                   # 运行所有模块的 JVM 单元测试
 ./gradlew lint                   # 运行 Android Lint
+./gradlew spotlessApply          # 用 ktlint 格式化相对 origin/master 改动过的 Kotlin 文件
+./gradlew spotlessCheck          # 只检查格式不改文件
 ```
 
 ## Module Structure
@@ -22,6 +36,7 @@ Built with Jetpack Compose, Kotlin, and follows Material Design 3 principles.
 - **document**: Document parsing module for handling PDF, DOCX, PPTX, and EPUB files
 - **highlight**: Code syntax highlighting implementation
 - **material3**: Material color utility extensions used by the app UI
+- **ui**: Reusable Compose UI components that do not depend on app logic
 - **search**: Search functionality SDK for multiple providers (Exa, Tavily, Zhipu, Bing, Brave, SearXNG, and others)
 - **speech**: Speech module for TTS and ASR implementations
 - **web**: Embedded web server module that provides Ktor server startup function and hosts static frontend build files (
@@ -37,8 +52,17 @@ Built with Jetpack Compose, Kotlin, and follows Material Design 3 principles.
 
 - **Conversation**: A persistent conversation thread between the user and an assistant. Each conversation maintains a
   list of MessageNodes in a tree structure to support message branching, along with metadata like title, creation time,
-  update time, pin status, chat suggestions, optional conversation-level system prompt, and prompt injection bindings. (
-  app/src/main/java/me/rerere/rikkahub/data/model/Conversation.kt)
+  update time, pin status, chat suggestions, optional conversation-level system prompt, and prompt injection bindings.
+  Once a conversation is persisted it also holds a `ConversationConfig` snapshot (chat model, reasoning level, search,
+  MCP servers, workspace, skills) taken from the assistant; from then on chat-page changes to those settings stay on
+  the conversation, and code should read them through `Settings.getAssistantOf(conversation)` /
+  `Settings.getChatModelOf(conversation)` instead of the assistant directly. Once loaded, the in-memory
+  `ConversationSession` is the single source of truth: change a conversation through `ChatService` (which applies
+  `session.update { latest -> ... }` and then `flush()`), never by saving a whole `Conversation` snapshot or one read
+  back from the database; deleting also goes through `ChatService` so a running generation cannot re-insert it. (
+  app/src/main/java/me/rerere/rikkahub/data/model/Conversation.kt,
+  app/src/main/java/me/rerere/rikkahub/data/model/ConversationConfig.kt,
+  app/src/main/java/me/rerere/rikkahub/service/ConversationSession.kt)
 
 - **UIMessage**: A platform-agnostic message abstraction that encapsulates chat messages with different types of content
   parts (text, images, documents, reasoning, tool calls/results, etc.). Each message has a role (USER, ASSISTANT,

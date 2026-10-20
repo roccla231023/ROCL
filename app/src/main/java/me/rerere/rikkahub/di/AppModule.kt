@@ -5,17 +5,15 @@ import com.google.firebase.analytics.analytics
 import com.google.firebase.crashlytics.crashlytics
 import kotlinx.serialization.json.Json
 import me.rerere.rikkahub.AppScope
+import me.rerere.rikkahub.data.ai.ChatRequestFactory
 import me.rerere.rikkahub.data.ai.subagent.SubAgentEngine
-import me.rerere.rikkahub.data.rp.runtime.RpContextBuilder
-import me.rerere.rikkahub.data.rp.runtime.RpModelGateway
-import me.rerere.rikkahub.data.rp.runtime.RpRuntime
-import me.rerere.rikkahub.data.rp.runtime.RpStateReducer
 import me.rerere.rikkahub.data.ai.subagent.SubAgentRunRegistry
-import me.rerere.rikkahub.data.ai.tools.local.LocalTools
 import me.rerere.rikkahub.data.ai.tools.ChatToolFactory
+import me.rerere.rikkahub.data.ai.tools.local.LocalTools
 import me.rerere.rikkahub.data.event.AppEventBus
 import me.rerere.rikkahub.service.ChatNotificationManager
 import me.rerere.rikkahub.service.ChatService
+import me.rerere.rikkahub.service.MediaCreationService
 import me.rerere.rikkahub.ui.pages.extensions.workspace.WorkspaceTerminalSessionManager
 import me.rerere.rikkahub.utils.EmojiData
 import me.rerere.rikkahub.utils.EmojiUtils
@@ -85,18 +83,6 @@ val appModule = module {
 
     single { SubAgentRunRegistry() }
 
-    single { RpModelGateway(providerManager = get(), json = get()) }
-    single { RpStateReducer() }
-    single { RpContextBuilder(get()) }
-    single {
-        RpRuntime(
-            settingsStore = get(),
-            rpRepository = get(),
-            modelGateway = get(),
-            stateReducer = get(),
-            contextBuilder = get(),
-        )
-    }
 
     single {
         SubAgentEngine(
@@ -108,7 +94,7 @@ val appModule = module {
 
     single {
         ChatToolFactory(
-            json = get(),
+            context = get(),
             memoryRepository = get(),
             conversationRepository = get(),
             localTools = get(),
@@ -120,18 +106,29 @@ val appModule = module {
     }
 
     single {
+        ChatRequestFactory(
+            context = get(),
+            providerManager = get(),
+            usageRecorder = get(),
+            memoryRetrievalService = get(),
+            chatToolFactory = get(),
+            memoryRepository = get(),
+            templateTransformer = get(),
+            workspaceRepository = get(),
+        )
+    }
+
+    single {
         ChatService(
             context = get(),
             appScope = get(),
             appEventBus = get(),
             settingsStore = get(),
             conversationRepo = get(),
-            memoryRetrievalService = get(),
-            generationLoop = get(),
+            requestFactory = get(),
+            memoryConsolidationScheduler = get(),
             translationHandler = get(),
-            templateTransformer = get(),
-            providerManager = get(),
-            chatToolFactory = get(),
+            metaGenerator = get(),
             mcpManager = get(),
             filesManager = get(),
             workspaceRepository = get(),
@@ -140,6 +137,18 @@ val appModule = module {
     }
 
     single<me.rerere.rikkahub.data.repository.ConversationDeletionCoordinator> { get<ChatService>() }
+
+    single {
+        MediaCreationService(
+            context = get(),
+            appScope = get(),
+            settingsStore = get(),
+            repository = get(),
+            manager = get(),
+            remoteFileStore = get(),
+            okHttpClient = get(),
+        )
+    }
 
     single {
         WebServerManager(

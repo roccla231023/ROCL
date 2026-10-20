@@ -1,11 +1,14 @@
 package me.rerere.rikkahub.data.ai.tools
 
+import android.content.Context
 import android.util.Log
-import kotlinx.serialization.json.Json
+import java.io.File
+import kotlin.uuid.Uuid
 import kotlinx.serialization.json.jsonObject
 import me.rerere.ai.core.Tool
 import me.rerere.ai.provider.BuiltInTools
 import me.rerere.ai.provider.Model
+import me.rerere.ai.ui.UIMessagePart
 import me.rerere.rikkahub.data.ai.mcp.McpManager
 import me.rerere.rikkahub.data.ai.subagent.SubAgentEngine
 import me.rerere.rikkahub.data.ai.subagent.buildSubAgentTool
@@ -14,15 +17,22 @@ import me.rerere.rikkahub.data.ai.tools.local.LocalTools
 import me.rerere.rikkahub.data.datastore.Settings
 import me.rerere.rikkahub.data.datastore.findModelById
 import me.rerere.rikkahub.data.datastore.findProvider
-import me.rerere.rikkahub.data.files.SkillManager
+import me.rerere.rikkahub.data.files.FileFolders
 import me.rerere.rikkahub.data.model.Assistant
 import me.rerere.rikkahub.data.model.SessionMemory
 import me.rerere.rikkahub.data.repository.ConversationRepository
 import me.rerere.rikkahub.data.repository.MemoryRepository
 import me.rerere.rikkahub.data.repository.WorkspaceRepository
+import me.rerere.rikkahub.data.repository.memoryId
+import me.rerere.rikkahub.data.skills.SkillManager
 import me.rerere.workspace.WorkspaceShellStatus
 
 private const val TAG = "ChatToolFactory"
+private const val MAX_TOOL_OUTPUT_CHARS = 32 * 1024
+private const val TOOL_OUTPUT_PREVIEW_CHARS = 4 * 1024
+
+// 搜索结果的体积由用户设置的结果数决定，且结果列表 UI 与引用跳转都依赖完整的 JSON 结构，不参与截断
+private val TOOLS_WITHOUT_OUTPUT_TRUNCATION = setOf("search_web")
 
 internal fun shouldUseExternalWebSearch(assistant: Assistant, model: Model): Boolean {
     return assistant.enableWebSearch && BuiltInTools.Search !in model.tools
@@ -58,7 +68,7 @@ class InvalidMcpServerNamesException(val names: List<String>) :
 
 /** Creates the complete tool set for one generation run, including approval resumption. */
 class ChatToolFactory(
-    private val json: Json,
+    private val context: Context,
     private val memoryRepository: MemoryRepository,
     private val conversationRepository: ConversationRepository,
     private val localTools: LocalTools,
@@ -76,33 +86,10 @@ class ChatToolFactory(
         onSessionMemoriesChanged: (suspend (List<SessionMemory>) -> Unit)? = null,
     ): List<Tool> {
         var currentSessionMemories = sessionMemories
+        val workspaceTools = createWorkspaceToolsIfReady(assistant.workspaceId?.toString(), workspaceCwd)
         val assembled = buildList {
             if (assistant.enableMemory) {
-                val memoryAssistantId = if (assistant.useGlobalMemory) {
-                    MemoryRepository.GLOBAL_MEMORY_ID
-                } else {
-                    assistant.id.toString()
-                }
-                addAll(
-                    buildMemoryTools(
-                        json = json,
-                        onCreation = { content ->
-                            memoryRepository.addMemory(
-                                assistantId = memoryAssistantId,
-                                content = content,
-                                embeddingAssistantId = assistant.id.toString(),
-                            )
-                        },
-                        onUpdate = { id, content ->
-                            memoryRepository.updateContent(
-                                id = id,
-                                content = content,
-                                embeddingAssistantId = assistant.id.toString(),
-                            )
-                        },
-                        onDelete = { id -> memoryRepository.deleteMemory(id) },
-                    )
-                )
+                addAll(buildMemoryTools(memoryRepository, assistant.memoryId))
             }
             if (shouldUseExternalWebSearch(assistant, model)) {
                 addAll(createSearchTools(settings, assistant.searchServiceId))
@@ -111,7 +98,7 @@ class ChatToolFactory(
             if (assistant.enableSessionMemory && onSessionMemoriesChanged != null) {
                 addAll(
                     buildSessionMemoryTools(
-                        json = json,
+                        json = me.rerere.rikkahub.utils.JsonInstant,
                         getMemories = { currentSessionMemories },
                         onChange = { updated ->
                             currentSessionMemories = updated
@@ -123,7 +110,7 @@ class ChatToolFactory(
             if (assistant.enableRecentChatsReference) {
                 addAll(createConversationTools(conversationRepository, assistant.id))
             }
-            addAll(createWorkspaceToolsIfReady(assistant.workspaceId?.toString(), workspaceCwd))
+            addAll(workspaceTools)
             if (assistant.enabledSkills.isNotEmpty()) {
                 addAll(
                     createSkillTools(
@@ -133,7 +120,7 @@ class ChatToolFactory(
                 )
             }
 
-            val mcpTools = mcpManager.getAllAvailableTools(assistant.mcpServers)
+            val mcpTools = mcpManager.getAllAvailableTools(assistant)
             val invalidNames = mcpTools
                 .map { it.second }
                 .distinct()
@@ -153,9 +140,10 @@ class ChatToolFactory(
                 )
             }
         }
+        val finalTools = if (workspaceTools.isEmpty()) assembled else assembled.map(::withOutputTruncation)
         // 门控：没在设置里选子代理模型 = 完全不暴露 dispatch_subagent（schema 都不挂）。
         // 不是「暴露了再报错」，是结构上不存在。
-        val subAgentModelId = settings.subAgentModelId ?: return assembled
+        val subAgentModelId = settings.subAgentModelId ?: return finalTools
         val subAgentModel = settings.providers.findModelById(subAgentModelId)
         // findModelById 不看 provider.enabled，只看 id。provider 被禁用时也要按未配置处理，
         // 否则会挂上一个调用时才失败的 dispatch_subagent。
@@ -168,10 +156,10 @@ class ChatToolFactory(
                 TAG,
                 "createTools: sub-agent model $subAgentModelId not usable, sub-agent disabled"
             )
-            return assembled
+            return finalTools
         }
         val subTools = filterSubAgentTools(assembled)
-        return assembled + buildSubAgentTool(
+        return finalTools + buildSubAgentTool(
             engine = subAgentEngine,
             model = subAgentModel,
             settings = settings,
@@ -185,6 +173,37 @@ class ChatToolFactory(
                 null
             },
         )
+    }
+
+    private fun withOutputTruncation(tool: Tool): Tool {
+        if (tool.name in TOOLS_WITHOUT_OUTPUT_TRUNCATION) return tool
+        val execute = tool.execute
+        return tool.copy(execute = { truncateOutput(execute(it)) })
+    }
+
+    private fun truncateOutput(output: List<UIMessagePart>): List<UIMessagePart> {
+        val textParts = output.filterIsInstance<UIMessagePart.Text>()
+        val totalChars = textParts.sumOf { it.text.length }
+        if (totalChars <= MAX_TOOL_OUTPUT_CHARS) return output
+
+        val fileName = "${Uuid.random()}.txt"
+        Log.i(TAG, "truncateOutput: saving $totalChars chars to $fileName")
+        val fullText = textParts.joinToString("\n") { it.text }
+        val outputDir = File(context.filesDir, FileFolders.TOOL_OUTPUTS).apply { mkdirs() }
+        File(outputDir, fileName).writeText(fullText)
+
+        return listOf(
+            UIMessagePart.Text(
+                buildString {
+                    appendLine("[Tool output truncated: $totalChars characters total]")
+                    appendLine("Full output saved to: /tool_outputs/$fileName")
+                    appendLine("Use shell to read: `cat /tool_outputs/$fileName`")
+                    appendLine("Use shell to search: `grep \"pattern\" /tool_outputs/$fileName`")
+                    appendLine()
+                    append(fullText.take(TOOL_OUTPUT_PREVIEW_CHARS))
+                }
+            )
+        ) + output.filter { it !is UIMessagePart.Text }
     }
 
     private suspend fun createWorkspaceToolsIfReady(workspaceId: String?, cwd: String?): List<Tool> {

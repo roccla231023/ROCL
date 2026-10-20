@@ -1,5 +1,6 @@
 package me.rerere.rikkahub.service
 
+import kotlin.uuid.Uuid
 import me.rerere.ai.core.MessageRole
 import me.rerere.ai.ui.UIMessage
 import me.rerere.ai.ui.UIMessagePart
@@ -8,7 +9,6 @@ import me.rerere.rikkahub.data.model.toMessageNode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import kotlin.uuid.Uuid
 
 class HiddenContinueRequestTest {
     @Test

@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -11,16 +12,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.DefaultAlpha
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.net.toUri
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.request.crossfade
 import coil3.request.placeholder
 import me.rerere.rikkahub.R
+import me.rerere.rikkahub.data.repository.WorkspaceRepository
 import me.rerere.rikkahub.ui.components.ui.ImagePreviewDialog
-import me.rerere.rikkahub.ui.components.ui.LocalExportContext
+import me.rerere.rikkahub.ui.context.LocalWorkspaceId
 import me.rerere.rikkahub.ui.modifier.shimmer
 import me.rerere.rikkahub.ui.theme.LocalDarkMode
+import me.rerere.ui.components.LocalExportContext
+import org.koin.compose.koinInject
 
 @Composable
 fun ZoomableAsyncImage(
@@ -31,12 +36,20 @@ fun ZoomableAsyncImage(
     contentScale: ContentScale = ContentScale.Fit,
     alpha: Float = DefaultAlpha,
 ) {
+    val workspaceId = LocalWorkspaceId.current
+    val path = remember(model) { model?.takeIf { it.startsWith("/") && !it.startsWith("//") }?.toUri()?.path }
+    val workspaceRepository: WorkspaceRepository? = if (workspaceId != null && path != null) koinInject() else null
+    val resolvedModel by produceState(model, workspaceId, path) {
+        value = if (workspaceId != null && path != null) {
+            workspaceRepository?.resolveRootfsFile(workspaceId, path)?.absolutePath ?: model
+        } else model
+    }
     var showImageViewer by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val placeholder = if(LocalDarkMode.current) R.drawable.placeholder_dark else R.drawable.placeholder
     val export = LocalExportContext.current
     val coilModel = ImageRequest.Builder(context)
-        .data(model)
+        .data(resolvedModel)
         .placeholder(placeholder)
         .crossfade(false)
         .allowHardware(!export)
@@ -64,7 +77,7 @@ fun ZoomableAsyncImage(
         },
     )
     if (showImageViewer) {
-        ImagePreviewDialog(images = listOf(model ?: "")) {
+        ImagePreviewDialog(images = listOf(resolvedModel ?: "")) {
             showImageViewer = false
         }
     }

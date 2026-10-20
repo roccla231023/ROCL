@@ -1,5 +1,7 @@
 package me.rerere.rikkahub.data.ai.groupchat
 
+import java.util.Locale
+import kotlin.uuid.Uuid
 import me.rerere.ai.core.MessageRole
 import me.rerere.ai.ui.UIMessage
 import me.rerere.ai.ui.UIMessagePart
@@ -7,8 +9,6 @@ import me.rerere.rikkahub.data.model.Assistant
 import me.rerere.rikkahub.data.model.GroupChatSeat
 import me.rerere.rikkahub.data.model.GroupChatTemplate
 import me.rerere.rikkahub.data.model.buildSeatDisplayNames
-import java.util.Locale
-import kotlin.uuid.Uuid
 
 object GroupChatEngine {
     fun resolveMentionedSeatIds(

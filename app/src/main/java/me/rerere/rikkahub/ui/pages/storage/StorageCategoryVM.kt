@@ -2,6 +2,7 @@ package me.rerere.rikkahub.ui.pages.storage
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlin.uuid.Uuid
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,7 +27,6 @@ import me.rerere.rikkahub.data.repository.StorageCategoryKey
 import me.rerere.rikkahub.data.repository.StorageCategoryUsage
 import me.rerere.rikkahub.data.repository.StorageManagerRepository
 import me.rerere.rikkahub.utils.UiState
-import kotlin.uuid.Uuid
 
 data class AttachmentListState<T>(
     val items: List<T>,

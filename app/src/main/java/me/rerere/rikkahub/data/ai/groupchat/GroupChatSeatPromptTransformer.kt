@@ -1,11 +1,11 @@
 package me.rerere.rikkahub.data.ai.groupchat
 
+import kotlin.uuid.Uuid
 import me.rerere.ai.ui.UIMessage
 import me.rerere.rikkahub.data.ai.transformers.InputMessageTransformer
 import me.rerere.rikkahub.data.ai.transformers.TransformerContext
 import me.rerere.rikkahub.data.model.Assistant
 import me.rerere.rikkahub.data.model.GroupChatSeat
-import kotlin.uuid.Uuid
 
 class GroupChatSeatPromptTransformer(
     private val seat: GroupChatSeat,

@@ -1,8 +1,8 @@
 package me.rerere.rikkahub.data.model
 
+import kotlin.uuid.Uuid
 import kotlinx.serialization.Serializable
 import me.rerere.ai.core.ReasoningLevel
-import kotlin.uuid.Uuid
 
 @Serializable
 data class GroupChatTemplate(

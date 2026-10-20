@@ -29,6 +29,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlin.uuid.Uuid
 import kotlinx.coroutines.launch
 import me.rerere.ai.core.ReasoningLevel
 import me.rerere.ai.provider.Model
@@ -48,7 +49,6 @@ import me.rerere.rikkahub.ui.components.ui.CardGroup
 import me.rerere.rikkahub.ui.theme.CustomColors
 import me.rerere.rikkahub.utils.plus
 import org.koin.androidx.compose.koinViewModel
-import kotlin.uuid.Uuid
 
 @Composable
 fun SettingModelPage(vm: SettingVM = koinViewModel()) {
@@ -112,7 +112,7 @@ private fun ModelSettingsPage(settings: Settings, vm: SettingVM, contentPadding:
                 description = stringResource(R.string.setting_model_page_chat_model_desc),
                 modelId = settings.chatModelId,
                 providers = settings.providers,
-                onSelect = { vm.updateSettings(settings.copy(chatModelId = it.id)) },
+                onSelect = { vm.updateSettings({ current -> current.copy(chatModelId = it.id) }) },
             )
         }
         item {
@@ -121,10 +121,10 @@ private fun ModelSettingsPage(settings: Settings, vm: SettingVM, contentPadding:
                 description = stringResource(R.string.setting_model_page_fast_model_desc),
                 modelId = settings.fastModelId,
                 providers = settings.providers,
-                onSelect = { vm.updateSettings(settings.copy(fastModelId = it.id)) },
+                onSelect = { vm.updateSettings({ current -> current.copy(fastModelId = it.id) }) },
                 reasoningLevel = settings.fastModelReasoningLevel,
                 onUpdateReasoningLevel = {
-                    vm.updateSettings(settings.copy(fastModelReasoningLevel = it))
+                    vm.updateSettings({ current -> current.copy(fastModelReasoningLevel = it) })
                 },
             )
         }
@@ -135,11 +135,11 @@ private fun ModelSettingsPage(settings: Settings, vm: SettingVM, contentPadding:
                 description = stringResource(R.string.setting_model_page_subagent_model_desc),
                 modelId = settings.subAgentModelId,
                 providers = settings.providers,
-                onSelect = { vm.updateSettings(settings.copy(subAgentModelId = it.id)) },
-                onClear = { vm.updateSettings(settings.copy(subAgentModelId = null)) },
+                onSelect = { vm.updateSettings({ current -> current.copy(subAgentModelId = it.id) }) },
+                onClear = { vm.updateSettings({ current -> current.copy(subAgentModelId = null) }) },
                 reasoningLevel = settings.subAgentReasoningLevel,
                 onUpdateReasoningLevel = {
-                    vm.updateSettings(settings.copy(subAgentReasoningLevel = it))
+                    vm.updateSettings({ current -> current.copy(subAgentReasoningLevel = it) })
                 },
             )
         }
@@ -155,7 +155,7 @@ private fun ModelSettingsPage(settings: Settings, vm: SettingVM, contentPadding:
                 description = stringResource(R.string.setting_model_page_translate_model_desc),
                 modelId = settings.translateModeId,
                 providers = settings.providers,
-                onSelect = { vm.updateSettings(settings.copy(translateModeId = it.id)) },
+                onSelect = { vm.updateSettings({ current -> current.copy(translateModeId = it.id) }) },
             )
         }
         item {
@@ -164,7 +164,7 @@ private fun ModelSettingsPage(settings: Settings, vm: SettingVM, contentPadding:
                 description = stringResource(R.string.setting_model_page_ocr_model_desc),
                 modelId = settings.ocrModelId,
                 providers = settings.providers,
-                onSelect = { vm.updateSettings(settings.copy(ocrModelId = it.id)) },
+                onSelect = { vm.updateSettings({ current -> current.copy(ocrModelId = it.id) }) },
             )
         }
         item {
@@ -173,7 +173,7 @@ private fun ModelSettingsPage(settings: Settings, vm: SettingVM, contentPadding:
                 description = stringResource(R.string.setting_model_page_compress_model_desc),
                 modelId = settings.compressModelId,
                 providers = settings.providers,
-                onSelect = { vm.updateSettings(settings.copy(compressModelId = it.id)) },
+                onSelect = { vm.updateSettings({ current -> current.copy(compressModelId = it.id) }) },
             )
         }
         item {
@@ -182,7 +182,7 @@ private fun ModelSettingsPage(settings: Settings, vm: SettingVM, contentPadding:
                 description = stringResource(R.string.setting_model_page_embedding_model_desc),
                 modelId = settings.embeddingModelId,
                 providers = settings.providers,
-                onSelect = { vm.updateSettings(settings.copy(embeddingModelId = it.id)) },
+                onSelect = { vm.updateSettings({ current -> current.copy(embeddingModelId = it.id) }) },
                 modelType = ModelType.EMBEDDING,
             )
         }
@@ -201,7 +201,7 @@ private fun SuggestionSettingItem(
                 Switch(
                     checked = settings.enableSuggestion,
                     onCheckedChange = {
-                        vm.updateSettings(settings.copy(enableSuggestion = it))
+                        vm.updateSettings({ current -> current.copy(enableSuggestion = it) })
                     }
                 )
             },

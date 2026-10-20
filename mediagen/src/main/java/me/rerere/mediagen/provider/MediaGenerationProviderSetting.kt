@@ -4,6 +4,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import me.rerere.mediagen.model.MediaGenerationModel
 import me.rerere.mediagen.model.MediaKind
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import kotlin.uuid.Uuid
 
 /**
@@ -20,9 +21,25 @@ sealed class MediaGenerationProviderSetting {
     // What our adapter implements, not every API offered by this vendor.
     abstract val supportedKinds: Set<MediaKind>
 
+    /**
+     * 下载产出地址 [url] 时要带上的请求头。多数厂商给的是带签名的地址，不需要额外的头；
+     * OpenRouter 的视频、以及部分 MiniMax 中转站的结果要凭 API Key 从它自己的接口取。
+     */
+    open fun downloadHeaders(url: String): Map<String, String> = emptyMap()
+
+    // 密钥只发给 baseUrl 所在的站点，结果地址指向别处时原样下载
+    protected fun sameOriginBearer(url: String): Map<String, String> {
+        val target = url.toHttpUrlOrNull() ?: return emptyMap()
+        val base = baseUrl.toHttpUrlOrNull() ?: return emptyMap()
+        if (target.scheme != base.scheme || target.host != base.host || target.port != base.port) return emptyMap()
+        return mapOf("Authorization" to "Bearer $apiKey")
+    }
+
     abstract fun copyProvider(
         id: Uuid = this.id,
         name: String = this.name,
+        apiKey: String = this.apiKey,
+        baseUrl: String = this.baseUrl,
         models: List<MediaGenerationModel> = this.models,
     ): MediaGenerationProviderSetting
 
@@ -34,7 +51,8 @@ sealed class MediaGenerationProviderSetting {
         override val apiKey: String = "",
         override val baseUrl: String = "https://api.openai.com/v1",
         override val models: List<MediaGenerationModel> = listOf(
-            MediaGenerationModel(modelId = "gpt-image-2", kind = MediaKind.IMAGE),
+            MediaGenerationModel(modelId = "gpt-image-2.5-sunburst", kind = MediaKind.IMAGE),
+            MediaGenerationModel(modelId = "gpt-image-2.5-flare", kind = MediaKind.IMAGE),
         ),
     ) : MediaGenerationProviderSetting() {
         override val supportedKinds: Set<MediaKind>
@@ -43,11 +61,15 @@ sealed class MediaGenerationProviderSetting {
         override fun copyProvider(
             id: Uuid,
             name: String,
+            apiKey: String,
+            baseUrl: String,
             models: List<MediaGenerationModel>,
         ): MediaGenerationProviderSetting {
             return this.copy(
                 id = id,
                 name = name,
+                apiKey = apiKey,
+                baseUrl = baseUrl,
                 models = models,
             )
         }
@@ -66,7 +88,7 @@ sealed class MediaGenerationProviderSetting {
         val workspaceId: String = "",
         override val baseUrl: String = "https://$WORKSPACE_PLACEHOLDER.cn-beijing.maas.aliyuncs.com/api/v1",
         override val models: List<MediaGenerationModel> = listOf(
-            MediaGenerationModel(modelId = "wan2.7-image-pro", kind = MediaKind.IMAGE),
+            MediaGenerationModel(modelId = "qwen-image-3.0", kind = MediaKind.IMAGE),
             MediaGenerationModel(modelId = "wan3.0-video", kind = MediaKind.VIDEO),
         ),
     ) : MediaGenerationProviderSetting() {
@@ -76,11 +98,15 @@ sealed class MediaGenerationProviderSetting {
         override fun copyProvider(
             id: Uuid,
             name: String,
+            apiKey: String,
+            baseUrl: String,
             models: List<MediaGenerationModel>,
         ): MediaGenerationProviderSetting {
             return this.copy(
                 id = id,
                 name = name,
+                apiKey = apiKey,
+                baseUrl = baseUrl,
                 models = models,
             )
         }
@@ -99,7 +125,7 @@ sealed class MediaGenerationProviderSetting {
         override val baseUrl: String = "https://ark.cn-beijing.volces.com/api/v3",
         override val models: List<MediaGenerationModel> = listOf(
             MediaGenerationModel(modelId = "doubao-seedream-5-0-pro-260628", kind = MediaKind.IMAGE),
-            MediaGenerationModel(modelId = "doubao-seedance-2-0-260128", kind = MediaKind.VIDEO),
+            MediaGenerationModel(modelId = "doubao-seedance-2-5-260628", kind = MediaKind.VIDEO),
         ),
     ) : MediaGenerationProviderSetting() {
         override val supportedKinds: Set<MediaKind>
@@ -108,11 +134,15 @@ sealed class MediaGenerationProviderSetting {
         override fun copyProvider(
             id: Uuid,
             name: String,
+            apiKey: String,
+            baseUrl: String,
             models: List<MediaGenerationModel>,
         ): MediaGenerationProviderSetting {
             return this.copy(
                 id = id,
                 name = name,
+                apiKey = apiKey,
+                baseUrl = baseUrl,
                 models = models,
             )
         }
@@ -132,14 +162,56 @@ sealed class MediaGenerationProviderSetting {
         override val supportedKinds: Set<MediaKind>
             get() = setOf(MediaKind.VIDEO)
 
+        // 官方结果是带签名的直链（不同源），中转站可能把视频放在自己需要鉴权的接口后面
+        override fun downloadHeaders(url: String): Map<String, String> = sameOriginBearer(url)
+
         override fun copyProvider(
             id: Uuid,
             name: String,
+            apiKey: String,
+            baseUrl: String,
             models: List<MediaGenerationModel>,
         ): MediaGenerationProviderSetting {
             return this.copy(
                 id = id,
                 name = name,
+                apiKey = apiKey,
+                baseUrl = baseUrl,
+                models = models,
+            )
+        }
+    }
+
+    @Serializable
+    @SerialName("openrouter")
+    data class OpenRouter(
+        override val id: Uuid = Uuid.random(),
+        override val name: String = "OpenRouter",
+        override val apiKey: String = "",
+        override val baseUrl: String = "https://openrouter.ai/api/v1",
+        override val models: List<MediaGenerationModel> = listOf(
+            MediaGenerationModel(modelId = "openai/gpt-image-2.5-sunburst", kind = MediaKind.IMAGE),
+            MediaGenerationModel(modelId = "openai/gpt-image-2.5-flare", kind = MediaKind.IMAGE),
+            MediaGenerationModel(modelId = "google/veo-3.1", kind = MediaKind.VIDEO),
+        ),
+    ) : MediaGenerationProviderSetting() {
+        override val supportedKinds: Set<MediaKind>
+            get() = setOf(MediaKind.IMAGE, MediaKind.VIDEO)
+
+        override fun downloadHeaders(url: String): Map<String, String> = sameOriginBearer(url)
+
+        override fun copyProvider(
+            id: Uuid,
+            name: String,
+            apiKey: String,
+            baseUrl: String,
+            models: List<MediaGenerationModel>,
+        ): MediaGenerationProviderSetting {
+            return this.copy(
+                id = id,
+                name = name,
+                apiKey = apiKey,
+                baseUrl = baseUrl,
                 models = models,
             )
         }
@@ -152,6 +224,7 @@ sealed class MediaGenerationProviderSetting {
                 Aliyun::class,
                 Volcengine::class,
                 MiniMax::class,
+                OpenRouter::class,
             )
         }
     }

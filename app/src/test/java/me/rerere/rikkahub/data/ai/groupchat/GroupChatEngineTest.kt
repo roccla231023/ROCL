@@ -1,5 +1,6 @@
 package me.rerere.rikkahub.data.ai.groupchat
 
+import kotlin.uuid.Uuid
 import me.rerere.ai.core.MessageRole
 import me.rerere.ai.core.ReasoningLevel
 import me.rerere.ai.ui.UIMessage
@@ -14,7 +15,6 @@ import me.rerere.rikkahub.data.model.resolveGroupChatModelId
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import kotlin.uuid.Uuid
 
 class GroupChatEngineTest {
     private val gpt = Assistant(id = Uuid.parse("11111111-1111-1111-1111-111111111111"), name = "GPT")

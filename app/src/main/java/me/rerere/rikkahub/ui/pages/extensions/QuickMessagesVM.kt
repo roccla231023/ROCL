@@ -2,13 +2,13 @@ package me.rerere.rikkahub.ui.pages.extensions
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlin.uuid.Uuid
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import me.rerere.rikkahub.data.datastore.Settings
 import me.rerere.rikkahub.data.datastore.SettingsStore
 import me.rerere.rikkahub.data.model.QuickMessage
-import kotlin.uuid.Uuid
 
 class QuickMessagesVM(
     private val settingsStore: SettingsStore

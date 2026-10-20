@@ -1,41 +1,43 @@
 package me.rerere.rikkahub.di
 
 import android.content.Context
+import java.io.File
+import me.rerere.rikkahub.data.ai.rag.EmbeddingService
 import me.rerere.rikkahub.data.files.FileFolders
 import me.rerere.rikkahub.data.files.FilesManager
-import me.rerere.rikkahub.data.files.SkillManager
 import me.rerere.rikkahub.data.repository.ConversationRepository
 import me.rerere.rikkahub.data.repository.FavoriteRepository
-import me.rerere.rikkahub.data.repository.FolderRepository
 import me.rerere.rikkahub.data.repository.FilesRepository
+import me.rerere.rikkahub.data.repository.FolderRepository
 import me.rerere.rikkahub.data.repository.GenMediaRepository
-import me.rerere.rikkahub.data.ai.rag.EmbeddingService
+import me.rerere.rikkahub.data.repository.MediaCreationRepository
 import me.rerere.rikkahub.data.repository.MemoryRepository
 import me.rerere.rikkahub.data.repository.MemoryRetrievalService
 import me.rerere.rikkahub.data.repository.StorageManagerRepository
+import me.rerere.rikkahub.data.repository.TranslationHistoryRepository
 import me.rerere.rikkahub.data.repository.WorkspaceRepository
-import me.rerere.rikkahub.data.rp.repository.RpRepository
+import me.rerere.rikkahub.data.skills.SkillManager
 import me.rerere.workspace.ProotShellRunner
 import me.rerere.workspace.RootfsInstaller
 import me.rerere.workspace.WorkspaceBindMount
 import me.rerere.workspace.WorkspaceManager
 import org.koin.dsl.module
-import java.io.File
 
 val repositoryModule = module {
     single {
-        ConversationRepository(get(), get(), get(), get(), get(), get(), get(), get(), get(), get())
+        ConversationRepository(get(), get(), get(), get(), get(), get(), get(), get())
     }
 
     single {
         FolderRepository(get(), get())
     }
 
-    single { RpRepository(get(), get(), get()) }
 
     single {
-        MemoryRepository(get(), get())
+        MemoryRepository(get())
     }
+
+    single { me.rerere.rikkahub.data.repository.LegacyMemoryRepository(get(), get()) }
 
     single {
         EmbeddingService(
@@ -64,7 +66,15 @@ val repositoryModule = module {
     }
 
     single {
+        TranslationHistoryRepository(get())
+    }
+
+    single {
         GenMediaRepository(get())
+    }
+
+    single {
+        MediaCreationRepository(context = get(), database = get(), dao = get(), json = get())
     }
 
     single {

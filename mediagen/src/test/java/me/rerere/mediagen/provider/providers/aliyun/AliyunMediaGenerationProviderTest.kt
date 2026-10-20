@@ -148,6 +148,18 @@ class AliyunMediaGenerationProviderTest {
         )
         assertEquals("1024x2048", qwenTask.outputs.single().resolution)
 
+        val qwen3Task = generation.parseTask(
+            parse(
+                """
+                {
+                  "output": {"choices": [{"message": {"content": [{"image": "https://oss.example.com/d.png"}]}}]},
+                  "usage": {"output_width": 1536, "output_height": 1024, "output_image_count": 1}
+                }
+                """.trimIndent()
+            ),
+        )
+        assertEquals("1536x1024", qwen3Task.outputs.single().resolution)
+
         val empty = generation.parseTask(parse("""{"output":{"choices":[]},"request_id":"r1"}"""))
         assertEquals(MediaGenerationStatus.FAILED, empty.status)
         assertEquals("Aliyun returned no image", empty.error?.message)
@@ -258,6 +270,20 @@ class AliyunMediaGenerationProviderTest {
         assertEquals(400, error.statusCode)
         assertEquals("InvalidParameter", error.code)
         assertEquals("n must be 1", error.message)
+    }
+
+    @Test
+    fun aliyunTreatsUnknownTaskStatusAsExpired() {
+        val video = AliyunVideoGeneration(client)
+        // 文档里 task_id 过期后的查询结果
+        val expired = video.parseTask(parse("""{"output":{"task_id":"t1","task_status":"UNKNOWN"}}"""))
+        assertEquals(MediaGenerationStatus.EXPIRED, expired.status)
+        assertTrue(expired.isTerminal)
+
+        // 文档没列出的状态仍然当作未结束，不能把还在跑的任务判成过期
+        val unrecognised = video.parseTask(parse("""{"output":{"task_id":"t1","task_status":"SUSPENDED"}}"""))
+        assertEquals(MediaGenerationStatus.UNKNOWN, unrecognised.status)
+        assertTrue(!unrecognised.isTerminal)
     }
 
     @Test

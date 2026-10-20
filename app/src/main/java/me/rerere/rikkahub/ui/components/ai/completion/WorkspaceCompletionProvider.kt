@@ -1,6 +1,7 @@
 package me.rerere.rikkahub.ui.components.ai.completion
 
 import androidx.compose.ui.text.TextRange
+import kotlin.math.max
 import kotlinx.coroutines.CancellationException
 import me.rerere.hugeicons.HugeIcons
 import me.rerere.hugeicons.stroke.File02
@@ -8,7 +9,6 @@ import me.rerere.hugeicons.stroke.Folder01
 import me.rerere.rikkahub.data.repository.WorkspaceRepository
 import me.rerere.workspace.WorkspaceFileEntry
 import me.rerere.workspace.WorkspaceStorageArea
-import kotlin.math.max
 
 class WorkspaceCompletionProvider(
     private val workspaceId: String?,

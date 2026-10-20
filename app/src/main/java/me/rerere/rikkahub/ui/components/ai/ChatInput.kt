@@ -37,8 +37,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.material3.BasicAlertDialog
-import me.rerere.rikkahub.data.datastore.ChatComposerMaterial
-import me.rerere.rikkahub.ui.theme.CustomColors
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -73,7 +71,6 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
-import com.dokar.sonner.ToastType
 import dev.chrisbanes.haze.HazeInput
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.blur.HazeBlurStyle
@@ -84,6 +81,8 @@ import dev.chrisbanes.haze.glass.GlassStyle
 import dev.chrisbanes.haze.glass.OpticalSizeValue
 import dev.chrisbanes.haze.glass.hazeGlass
 import dev.chrisbanes.haze.glass.material3.Material3
+import kotlin.time.Duration.Companion.seconds
+import kotlin.uuid.Uuid
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.collectLatest
 import me.rerere.ai.provider.Model
@@ -99,6 +98,7 @@ import me.rerere.hugeicons.stroke.Fullscreen
 import me.rerere.hugeicons.stroke.Zap
 import me.rerere.rikkahub.R
 import me.rerere.rikkahub.data.datastore.BackgroundEffectType
+import me.rerere.rikkahub.data.datastore.ChatComposerMaterial
 import me.rerere.rikkahub.data.datastore.Settings
 import me.rerere.rikkahub.data.datastore.getCurrentAssistant
 import me.rerere.rikkahub.data.datastore.getCurrentChatModel
@@ -121,12 +121,12 @@ import me.rerere.rikkahub.ui.context.LocalASRState
 import me.rerere.rikkahub.ui.context.LocalSettings
 import me.rerere.rikkahub.ui.context.LocalToaster
 import me.rerere.rikkahub.ui.hooks.ChatInputState
-import me.rerere.rikkahub.utils.SoundEffectPlayer
-import org.koin.compose.koinInject
-import kotlin.time.Duration.Companion.seconds
 import me.rerere.rikkahub.ui.pages.chat.VoicePhase
 import me.rerere.rikkahub.ui.pages.chat.VoiceSessionState
-import kotlin.uuid.Uuid
+import me.rerere.rikkahub.ui.theme.CustomColors
+import me.rerere.rikkahub.utils.SoundEffectPlayer
+import me.rerere.ui.toast.ToastType
+import org.koin.compose.koinInject
 
 @Composable
 fun ChatInput(
@@ -135,6 +135,8 @@ fun ChatInput(
     settings: Settings,
     hazeState: HazeState,
     enableSearch: Boolean,
+    assistant: Assistant,
+    chatModel: Model?,
     onUpdateSearchMode: (SearchMode) -> Unit,
     modifier: Modifier = Modifier,
     completionProviders: List<ChatCompletionProvider> = emptyList(),
@@ -178,11 +180,7 @@ fun ChatInput(
         bottomStart = themeShape.bottomStart,
     )
     val modelListState = rememberModelListState(
-        modelId = if (groupMode) {
-            settings.chatModelId
-        } else {
-            settings.getCurrentAssistant().chatModelId ?: settings.chatModelId
-        },
+        modelId = chatModel?.id,
         providers = settings.providers,
         type = ModelType.CHAT,
     )
@@ -315,7 +313,7 @@ fun ChatInput(
                         state = state,
                         completionProviders = completionProviders,
                         onSendMessage = { sendMessage() },
-                        quickMessageIds = quickMessageIds,
+                        quickMessageIds = quickMessageIds ?: assistant.quickMessageIds,
                     )
 
                     Row(
@@ -342,7 +340,6 @@ fun ChatInput(
                             // Search
                             val enableSearchMsg = stringResource(R.string.web_search_enabled)
                             val disableSearchMsg = stringResource(R.string.web_search_disabled)
-                            val chatModel = settings.getCurrentChatModel()
                             SearchPickerButton(
                                 enableSearch = enableSearch,
                                 settings = settings,
@@ -364,9 +361,8 @@ fun ChatInput(
                             )
 
                             // Reasoning
-                            val model = settings.getCurrentChatModel()
+                            val model = chatModel
                             if (model?.abilities?.contains(ModelAbility.REASONING) == true) {
-                                val assistant = settings.getCurrentAssistant()
                                 ReasoningButton(
                                     reasoningLevel = assistant.reasoningLevel,
                                     onUpdateReasoningLevel = {

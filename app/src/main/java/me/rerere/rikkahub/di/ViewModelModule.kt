@@ -3,26 +3,26 @@ package me.rerere.rikkahub.di
 import me.rerere.rikkahub.ui.pages.assistant.AssistantVM
 import me.rerere.rikkahub.ui.pages.assistant.detail.AssistantDetailVM
 import me.rerere.rikkahub.ui.pages.assistant.groupchat.GroupChatTemplateDetailVM
-import me.rerere.rikkahub.ui.pages.rp.RpVM
-import me.rerere.rikkahub.ui.pages.rp.RpCardDetailVM
-import me.rerere.rikkahub.ui.pages.rp.RpSessionVM
 import me.rerere.rikkahub.ui.pages.backup.BackupVM
 import me.rerere.rikkahub.ui.pages.chat.ChatDrawerVM
 import me.rerere.rikkahub.ui.pages.chat.ChatVM
 import me.rerere.rikkahub.ui.pages.debug.DebugVM
-import me.rerere.rikkahub.ui.pages.favorite.FavoriteVM
-import me.rerere.rikkahub.ui.pages.search.SearchVM
-import me.rerere.rikkahub.ui.pages.history.HistoryVM
-import me.rerere.rikkahub.ui.pages.stats.StatsVM
-import me.rerere.rikkahub.ui.pages.imggen.ImgGenVM
 import me.rerere.rikkahub.ui.pages.extensions.PromptVM
 import me.rerere.rikkahub.ui.pages.extensions.QuickMessagesVM
 import me.rerere.rikkahub.ui.pages.extensions.skills.SkillDetailVM
 import me.rerere.rikkahub.ui.pages.extensions.skills.SkillsVM
 import me.rerere.rikkahub.ui.pages.extensions.workspace.WorkspaceDetailVM
 import me.rerere.rikkahub.ui.pages.extensions.workspace.WorkspaceVM
+import me.rerere.rikkahub.ui.pages.favorite.FavoriteVM
+import me.rerere.rikkahub.ui.pages.history.HistoryVM
+import me.rerere.rikkahub.ui.pages.imggen.ImgGenVM
+import me.rerere.rikkahub.ui.pages.mediacreation.MediaCreationSessionsVM
+import me.rerere.rikkahub.ui.pages.mediacreation.MediaCreationVM
+import me.rerere.rikkahub.ui.pages.memory.MemoryFileVM
+import me.rerere.rikkahub.ui.pages.search.SearchVM
 import me.rerere.rikkahub.ui.pages.setting.SettingVM
 import me.rerere.rikkahub.ui.pages.share.handler.ShareHandlerVM
+import me.rerere.rikkahub.ui.pages.stats.StatsVM
 import me.rerere.rikkahub.ui.pages.storage.StorageCategoryVM
 import me.rerere.rikkahub.ui.pages.storage.StorageManagerVM
 import me.rerere.rikkahub.ui.pages.translator.TranslatorVM
@@ -36,7 +36,6 @@ val viewModelModule = module {
             id = params.get(),
             context = get(),
             settingsStore = get(),
-            conversationRepo = get(),
             chatService = get(),
             updateChecker = get(),
             analytics = get(),
@@ -49,22 +48,7 @@ val viewModelModule = module {
     viewModelOf(::DebugVM)
     viewModelOf(::HistoryVM)
     viewModelOf(::AssistantVM)
-    viewModel<RpVM> { RpVM(repository = get()) }
-    viewModel<RpCardDetailVM> {
-        RpCardDetailVM(
-            id = it.get(),
-            settingsStore = get(),
-            rpRepository = get(),
-            conversationRepository = get(),
-        )
-    }
-    viewModel<RpSessionVM> {
-        RpSessionVM(
-            id = it.get(),
-            repository = get(),
-            runtime = get(),
-        )
-    }
+
     viewModel<GroupChatTemplateDetailVM> {
         GroupChatTemplateDetailVM(
             id = it.get(),
@@ -77,9 +61,18 @@ val viewModelModule = module {
             id = it.get(),
             settingsStore = get(),
             memoryRepository = get(),
+            legacyMemoryRepository = get(),
+            memoryConsolidationScheduler = get(),
             filesManager = get(),
             skillManager = get(),
             workspaceRepository = get(),
+        )
+    }
+    viewModel<MemoryFileVM> {
+        MemoryFileVM(
+            memoryId = it[0],
+            path = it[1],
+            memoryRepository = get(),
         )
     }
     viewModelOf(::TranslatorVM)
@@ -91,6 +84,18 @@ val viewModelModule = module {
     }
     viewModelOf(::BackupVM)
     viewModelOf(::ImgGenVM)
+    viewModelOf(::MediaCreationSessionsVM)
+    viewModel<MediaCreationVM> {
+        MediaCreationVM(
+            id = it.get(),
+            context = get(),
+            settingsStore = get(),
+            repository = get(),
+            service = get(),
+            remoteFileStore = get(),
+            appScope = get(),
+        )
+    }
     viewModelOf(::PromptVM)
     viewModelOf(::QuickMessagesVM)
     viewModelOf(::SkillsVM)

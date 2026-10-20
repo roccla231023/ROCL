@@ -27,9 +27,9 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.SheetValue
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -43,6 +43,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import kotlin.uuid.Uuid
 import kotlinx.coroutines.launch
 import me.rerere.hugeicons.HugeIcons
 import me.rerere.hugeicons.stroke.Edit03
@@ -55,16 +56,15 @@ import me.rerere.rikkahub.data.model.GroupChatTemplate
 import me.rerere.rikkahub.ui.components.ui.UIAvatar
 import me.rerere.rikkahub.ui.context.LocalNavController
 import me.rerere.rikkahub.ui.hooks.rememberAssistantState
-import kotlin.uuid.Uuid
 
 @Composable
 fun AssistantPicker(
     settings: Settings,
-    onUpdateSettings: (Settings) -> Unit,
+    onSelectAssistant: (Assistant) -> Unit,
     modifier: Modifier = Modifier,
     onClickSetting: () -> Unit,
 ) {
-    val state = rememberAssistantState(settings, onUpdateSettings)
+    val state = rememberAssistantState(settings, onSelectAssistant)
     val defaultAssistantName = stringResource(R.string.assistant_page_default_assistant)
     val groupName = state.currentGroup?.name?.ifBlank { stringResource(R.string.group_chat_page_title) }
     var showPicker by remember { mutableStateOf(false) }

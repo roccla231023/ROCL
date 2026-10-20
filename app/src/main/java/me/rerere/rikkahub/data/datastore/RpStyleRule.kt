@@ -1,8 +1,8 @@
 package me.rerere.rikkahub.data.datastore
 
 import androidx.compose.ui.graphics.Color
-import kotlinx.serialization.Serializable
 import kotlin.uuid.Uuid
+import kotlinx.serialization.Serializable
 
 @Serializable
 data class RpStyleRule(

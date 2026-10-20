@@ -50,6 +50,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
+import java.io.File
+import kotlin.uuid.Uuid
 import me.rerere.hugeicons.HugeIcons
 import me.rerere.hugeicons.stroke.CheckmarkCircle02
 import me.rerere.hugeicons.stroke.Delete02
@@ -61,8 +63,6 @@ import me.rerere.rikkahub.data.model.Assistant
 import me.rerere.rikkahub.data.repository.AssistantFileEntry
 import me.rerere.rikkahub.ui.context.LocalToaster
 import me.rerere.rikkahub.utils.UiState
-import java.io.File
-import kotlin.uuid.Uuid
 
 @Composable
 fun StorageFilesScaffoldContent(
@@ -175,7 +175,7 @@ fun StorageFilesScaffoldContent(
                     selectionMode = selectionMode,
                     onClick = {
                         if (selectionMode) {
-                        selectedPaths =
+                            selectedPaths =
                                 if (isSelected) selectedPaths - entry.absolutePath else selectedPaths + entry.absolutePath
                             return@AssistantFileRow
                         }
@@ -197,7 +197,7 @@ fun StorageFilesScaffoldContent(
                                     R.string.storage_files_open_failed,
                                     entry.fileName.trim().ifBlank { File(entry.absolutePath).name },
                                 ),
-                                type = com.dokar.sonner.ToastType.Error,
+                                type = me.rerere.ui.toast.ToastType.Error,
                             )
                         }
                     },

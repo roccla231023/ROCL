@@ -10,6 +10,9 @@ import io.ktor.serialization.kotlinx.json.json
 import io.modelcontextprotocol.kotlin.sdk.client.Client
 import io.modelcontextprotocol.kotlin.sdk.types.ImageContent
 import io.modelcontextprotocol.kotlin.sdk.types.TextContent
+import java.util.concurrent.TimeUnit
+import kotlin.io.encoding.Base64
+import kotlin.uuid.Uuid
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,11 +29,9 @@ import me.rerere.rikkahub.AppScope
 import me.rerere.rikkahub.data.datastore.SettingsStore
 import me.rerere.rikkahub.data.files.FilesManager
 import me.rerere.rikkahub.data.files.saveUploadFromBytes
+import me.rerere.rikkahub.data.model.Assistant
 import me.rerere.rikkahub.utils.JsonInstant
 import okhttp3.OkHttpClient
-import java.util.concurrent.TimeUnit
-import kotlin.io.encoding.Base64
-import kotlin.uuid.Uuid
 
 /**
  * MCP 子系统的公共入口。
@@ -102,9 +103,9 @@ class McpManager(
 
     fun getStatus(config: McpServerConfig): Flow<McpStatus> = sessionRegistry.getStatus(config.id)
 
-    fun getAllAvailableTools(mcpServerIds: Set<Uuid>): List<Triple<Uuid, String, McpTool>> {
+    fun getAllAvailableTools(assistant: Assistant): List<Triple<Uuid, String, McpTool>> {
         val settings = settingsStore.settingsFlow.value
-        return filterAvailableMcpTools(settings.mcpServers, mcpServerIds)
+        return filterAvailableMcpTools(settings.mcpServers, assistant.mcpServers)
     }
 
     suspend fun callTool(serverId: Uuid, toolName: String, args: JsonObject): List<UIMessagePart> {

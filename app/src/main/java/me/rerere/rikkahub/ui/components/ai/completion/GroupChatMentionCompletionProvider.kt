@@ -1,10 +1,10 @@
 package me.rerere.rikkahub.ui.components.ai.completion
 
 import androidx.compose.ui.text.TextRange
+import kotlin.uuid.Uuid
 import me.rerere.rikkahub.data.model.Assistant
 import me.rerere.rikkahub.data.model.GroupChatTemplate
 import me.rerere.rikkahub.data.model.buildSeatDisplayNames
-import kotlin.uuid.Uuid
 
 class GroupChatMentionCompletionProvider(
     private val template: GroupChatTemplate,
